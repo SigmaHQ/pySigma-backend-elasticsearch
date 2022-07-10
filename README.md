@@ -8,7 +8,7 @@ Badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/th
 This is the Elasticsearch backend for pySigma. It provides the package `sigma.backends.elasticsearch` with the `ElasticsearchQueryStringBackend` class.
 Further, it contains the following processing pipelines in `sigma.pipelines.elasticsearch`:
 
-* No pipelines yet defined.
+* ecs_windows in ecs submodule: ECS mapping for Windows event logs ingested with Winlogbeat.
 
 It supports the following output formats:
 
