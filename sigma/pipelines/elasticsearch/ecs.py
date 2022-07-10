@@ -88,7 +88,10 @@ def ecs_windows():
                     "SourceAddress": "source.ip",
                     "TargetDomainName": "user.domain",
                     "WorkstationName": "source.domain",
-                })
+                }),
+                rule_conditions=[
+                    LogsourceCondition(product="windows")
+                ],
             ),
             ProcessingItem(         # Prepend each field that was not processed by previous field mapping transformation with "winlog.event_data."
                 identifier="ecs_windows_winlog_eventdata_prefix",
@@ -99,6 +102,9 @@ def ecs_windows():
                 ],
                 detection_item_condition_negation=True,
                 detection_item_condition_linking=any,
+                rule_conditions=[
+                    LogsourceCondition(product="windows")
+                ],
             )
         ],
     )
