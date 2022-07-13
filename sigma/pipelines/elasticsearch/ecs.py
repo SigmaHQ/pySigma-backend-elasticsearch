@@ -68,7 +68,7 @@ ecs_windows_variable_mappings = {
 
 def ecs_windows():
     return ProcessingPipeline(
-        name="Elastic Common Schema (ECS) Windows log mappings",
+        name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat from version 7",
         priority=20,
         items=[
             ProcessingItem(     # Windows log channels
@@ -174,6 +174,44 @@ def ecs_windows():
             ProcessingItem(         # Prepend each field that was not processed by previous field mapping transformation with "winlog.event_data."
                 identifier="ecs_windows_winlog_eventdata_prefix",
                 transformation=AddFieldnamePrefixTransformation("winlog.event_data."),
+                detection_item_conditions=[
+                    RuleProcessingItemAppliedCondition("ecs_windows_field_mapping"),
+                    IncludeFieldCondition(fields=["\\w+\\."], type="re"),
+                ],
+                detection_item_condition_negation=True,
+                detection_item_condition_linking=any,
+                rule_conditions=[
+                    LogsourceCondition(product="windows")
+                ],
+            )
+        ],
+    )
+
+def ecs_windows_old():
+    return ProcessingPipeline(
+        name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat up to version 6",
+        priority=20,
+        items=[
+            ProcessingItem(     # Windows log channels
+                identifier=f"elasticsearch_windows_{service}",
+                transformation=AddConditionTransformation({ "winlog.channel": source}),
+                rule_conditions=[logsource_windows(service)],
+            )
+            for service, source in windows_logsource_mapping.items()
+        ] + [
+            ProcessingItem(     # Field mappings
+                identifier="ecs_windows_field_mapping",
+                transformation=FieldMappingTransformation({
+                    "EventID": "event_id",
+                    "Channel": "winlog.channel",
+                }),
+                rule_conditions=[
+                    LogsourceCondition(product="windows")
+                ],
+            ),
+            ProcessingItem(         # Prepend each field that was not processed by previous field mapping transformation with "winlog.event_data."
+                identifier="ecs_windows_eventdata_prefix",
+                transformation=AddFieldnamePrefixTransformation("event_data."),
                 detection_item_conditions=[
                     RuleProcessingItemAppliedCondition("ecs_windows_field_mapping"),
                     IncludeFieldCondition(fields=["\\w+\\."], type="re"),

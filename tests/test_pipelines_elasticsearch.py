@@ -1,6 +1,6 @@
 import pytest
 from sigma.backends.elasticsearch import ElasticsearchQueryStringBackend
-from sigma.pipelines.elasticsearch.ecs import ecs_windows
+from sigma.pipelines.elasticsearch.ecs import ecs_windows, ecs_windows_old
 from sigma.collection import SigmaCollection
 
 def test_ecs_windows():
@@ -35,6 +35,22 @@ def test_ecs_windows_variable_mapping():
                 condition: sel
         """)
     ) == ['process.command_line:"test" AND process.pe.original_file_name:"test.exe"']
+
+def test_ecs_windows_old():
+    assert ElasticsearchQueryStringBackend(ecs_windows_old()).convert(
+        SigmaCollection.from_yaml(f"""
+            title: Test
+            status: test
+            logsource:
+                product: windows
+                service: security
+            detection:
+                sel:
+                    EventID: 123
+                    Image: test.exe
+                condition: sel
+        """)
+    ) == ['winlog.channel:"Security" AND event_id:123 AND event_data.Image:"test.exe"']
 
 def test_ecs_windows_other_logsource():
     assert ElasticsearchQueryStringBackend(ecs_windows()).convert(
