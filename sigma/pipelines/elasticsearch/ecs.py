@@ -3,6 +3,69 @@ from sigma.processing.transformations import FieldMappingTransformation, AddFiel
 from sigma.processing.conditions import LogsourceCondition, IncludeFieldCondition, ExcludeFieldCondition, RuleProcessingItemAppliedCondition
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 
+ecs_windows_variable_mappings = {
+    "FileVersion": (
+        ("category", "process_creation", "process.pe.file_version"),
+        ("category", "image_load", "file.pe.file_version"),
+    ),
+    "Description": (
+        ("category", "process_creation", "process.pe.description"),
+        ("category", "image_load", "file.pe.description"),
+        ("category", "sysmon_error", "winlog.event_data.Description"),
+    ),
+    "Product": (
+        ("category", "process_creation", "process.pe.product"),
+        ("category", "image_load", "file.pe.product"),
+    ),
+    "Company": (
+        ("category", "process_creation", "process.pe.company"),
+        ("category", "image_load", "file.pe.company"),
+    ),
+    "OriginalFileName": (
+        ("category", "process_creation", "process.pe.original_file_name"),
+        ("category", "image_load", "file.pe.original_file_name"),
+    ),
+    "CommandLine": (
+        ("category", "process_creation", "process.command_line"),
+        ("service", "security", "process.command_line"),
+        ("service", "powershell-classic", "powershell.command.value"),
+    ),
+    "Protocol": (
+        ("category", "network_connection", "network.transport"),
+    ),
+    "Initiated": (
+        ("category", "network_connection", "network.direction"),
+    ),
+    "Signature": (
+        ("category", "driver_loaded", "file.code_signature.subject_name"),
+        ("category", "image_loaded", "file.code_signature.subject_name"),
+    ),
+    "EngineVersion": (
+        ("service", "powershell-classic", "powershell.engine.version"),
+    ),
+    "HostVersion": (
+        ("service", "powershell-classic", "powershell.process.executable_version"),
+    ),
+    "SubjectLogonId": (
+        ("service", "security", "winlog.logon.id"),
+    ),
+    "ServiceName": (
+        ("service", "security", "service.name"),
+    ),
+    "SubjectDomainName": (
+        ("service", "security", "user.domain"),
+    ),
+    "SubjectUserName": (
+        ("service", "security", "user.name"),
+    ),
+    "SubjectUserSid": (
+        ("service", "security", "user.id"),
+    ),
+    "TargetLogonId": (
+        ("service", "security", "winlog.logon.id"),
+    ),
+}
+
 def ecs_windows():
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Windows log mappings",
@@ -14,6 +77,21 @@ def ecs_windows():
                 rule_conditions=[logsource_windows(service)],
             )
             for service, source in windows_logsource_mapping.items()
+        ] + [                   # Variable field mappinga depending on category/service
+           ProcessingItem(
+                identifier=f"elasticsearch_windows-{field}-{logsrc_field}-{logsrc}",
+                transformation=FieldMappingTransformation({
+                    field: mapped
+                }),
+                rule_conditions=[
+                    LogsourceCondition(**{
+                        "product": "windows",
+                        logsrc_field: logsrc,
+                    }),
+                ]
+           )
+           for field, mappings in ecs_windows_variable_mappings.items()
+           for (logsrc_field, logsrc, mapped) in mappings
         ] + [
             ProcessingItem(     # Field mappings
                 identifier="ecs_windows_field_mapping",
@@ -98,7 +176,7 @@ def ecs_windows():
                 transformation=AddFieldnamePrefixTransformation("winlog.event_data."),
                 detection_item_conditions=[
                     RuleProcessingItemAppliedCondition("ecs_windows_field_mapping"),
-                    IncludeFieldCondition(["winlog.channel"]),
+                    IncludeFieldCondition(fields=["\\w+\\."], type="re"),
                 ],
                 detection_item_condition_negation=True,
                 detection_item_condition_linking=any,
