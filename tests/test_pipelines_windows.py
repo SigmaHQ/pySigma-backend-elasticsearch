@@ -1,6 +1,6 @@
 import pytest
 from sigma.backends.elasticsearch import ElasticsearchQueryStringBackend
-from sigma.pipelines.elasticsearch.ecs import ecs_windows, ecs_windows_old
+from sigma.pipelines.elasticsearch.windows import ecs_windows, ecs_windows_old
 from sigma.collection import SigmaCollection
 
 def test_ecs_windows():
