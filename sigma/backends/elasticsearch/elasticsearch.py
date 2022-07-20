@@ -87,3 +87,21 @@ class ElasticsearchQueryStringBackend(TextQueryBackend):
         # the SIEM.
         return "\n".join(queries)
 
+    def finalize_query_dsl_qs(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> str:
+        return {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "query_string": {
+                                "query": query,
+                                "analyze_wildcard": True
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+
+    def finalize_output_dsl_qs(self, queries: List[str]) -> str:
+        return [q for q in queries]
