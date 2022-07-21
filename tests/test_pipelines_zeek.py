@@ -20,12 +20,12 @@ def sigma_rule():
 
 def test_ecs_zeek_beats(sigma_rule):
     assert ElasticsearchQueryStringBackend(ecs_zeek_beats()).convert(sigma_rule) == \
-        ['event.dataset:"zeek.http" AND http.request.method:"POST" AND url.domain:"test.invalid" OR destination.domain:"test.invalid" AND zeek.\\*.username:"testuser"']
+        ['event.dataset:"zeek.http" AND (http.request.method:"POST" AND (url.domain:"test.invalid" OR destination.domain:"test.invalid") AND zeek.\\*.username:"testuser")']
 
 def test_ecs_zeek_corelight(sigma_rule):
     assert ElasticsearchQueryStringBackend(ecs_zeek_corelight()).convert(sigma_rule) == \
-        ['event.dataset:"zeek.http" AND http.request.method:"POST" AND url.domain:"test.invalid" OR destination.domain:"test.invalid" AND zeek.\\*.username:"testuser"']
+        ['event.dataset:"zeek.http" AND (http.request.method:"POST" AND (url.domain:"test.invalid" OR destination.domain:"test.invalid") AND zeek.\\*.username:"testuser")']
 
 def test_zeek_raw(sigma_rule):
     assert ElasticsearchQueryStringBackend(zeek_raw()).convert(sigma_rule) == \
-        ['@stream:"http" AND method:"POST" AND host:"test.invalid" AND username:"testuser"']
+        ['@stream:"http" AND (method:"POST" AND host:"test.invalid" AND username:"testuser")']

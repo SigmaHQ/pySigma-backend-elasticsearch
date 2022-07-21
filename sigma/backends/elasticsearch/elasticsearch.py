@@ -17,6 +17,7 @@ class ElasticsearchQueryStringBackend(TextQueryBackend):
     # The backend generates grouping if required
     precedence : ClassVar[Tuple[ConditionItem, ConditionItem, ConditionItem]] = (ConditionNOT, ConditionOR, ConditionAND)
     group_expression : ClassVar[str] = "({expr})"   # Expression for precedence override grouping as format string with {expr} placeholder
+    parenthesize: bool = True
 
     # Generated query tokens
     token_separator : str = " "     # separator inserted between all boolean operators

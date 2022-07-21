@@ -18,7 +18,7 @@ def test_ecs_windows():
                     TestField: test
                 condition: sel
         """)
-    ) == ['winlog.channel:"Security" AND event.code:123 AND process.executable:"test.exe" AND winlog.event_data.TestField:"test"']
+    ) == ['winlog.channel:"Security" AND (event.code:123 AND process.executable:"test.exe" AND winlog.event_data.TestField:"test")']
 
 def test_ecs_windows_variable_mapping():
     assert ElasticsearchQueryStringBackend(ecs_windows()).convert(
@@ -50,7 +50,7 @@ def test_ecs_windows_old():
                     Image: test.exe
                 condition: sel
         """)
-    ) == ['winlog.channel:"Security" AND event_id:123 AND event_data.Image:"test.exe"']
+    ) == ['winlog.channel:"Security" AND (event_id:123 AND event_data.Image:"test.exe")']
 
 def test_ecs_windows_other_logsource():
     assert ElasticsearchQueryStringBackend(ecs_windows()).convert(
