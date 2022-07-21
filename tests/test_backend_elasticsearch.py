@@ -83,14 +83,14 @@ def test_es_qs_and_or_expression(es_qs_backend : ElasticsearchQueryStringBackend
                         - valueB2
                 condition: sel
         """)
-    assert es_qs_backend.convert(rule) == ['fieldA:("valueA1" OR "valueA2") AND fieldB:("valueB1" OR "valueB2")']
+    assert es_qs_backend.convert(rule) == ['(fieldA:("valueA1" OR "valueA2")) AND (fieldB:("valueB1" OR "valueB2"))']
     assert es_qs_backend.convert(rule, output_format="dsl_qs") == [{
         "query": {
             "bool": {
                 "must": [
                     {
                         "query_string": {
-                            "query": "fieldA:(\"valueA1\" OR \"valueA2\") AND fieldB:(\"valueB1\" OR \"valueB2\")",
+                            "query": "(fieldA:(\"valueA1\" OR \"valueA2\")) AND (fieldB:(\"valueB1\" OR \"valueB2\"))",
                             "analyze_wildcard": True
                         }
                     }
@@ -116,14 +116,14 @@ def test_es_qs_or_and_expression(es_qs_backend : ElasticsearchQueryStringBackend
                     fieldB: valueB2
                 condition: 1 of sel*
         """)
-    assert es_qs_backend.convert(rule) == ['(fieldA:"valueA1" AND fieldB:"valueB1") OR (fieldA:"valueA2" AND fieldB:"valueB2")']
+    assert es_qs_backend.convert(rule) == ['fieldA:"valueA1" AND fieldB:"valueB1" OR fieldA:"valueA2" AND fieldB:"valueB2"']
     assert es_qs_backend.convert(rule, output_format="dsl_qs") == [{
         "query": {
             "bool": {
                 "must": [
                     {
                         "query_string": {
-                            "query": "(fieldA:\"valueA1\" AND fieldB:\"valueB1\") OR (fieldA:\"valueA2\" AND fieldB:\"valueB2\")",
+                            "query": "fieldA:\"valueA1\" AND fieldB:\"valueB1\" OR fieldA:\"valueA2\" AND fieldB:\"valueB2\"",
                             "analyze_wildcard": True
                         }
                     }
