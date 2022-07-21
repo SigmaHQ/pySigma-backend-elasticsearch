@@ -1,1 +1,1 @@
-from .elasticsearch import ElasticsearchQueryStringBackend
+from .elasticsearch import LuceneBackend

@@ -1,5 +1,5 @@
 import pytest
-from sigma.backends.elasticsearch import ElasticsearchQueryStringBackend
+from sigma.backends.elasticsearch import LuceneBackend
 from sigma.pipelines.elasticsearch.zeek import ecs_zeek_beats, ecs_zeek_corelight, zeek_raw
 from sigma.collection import SigmaCollection
 
@@ -19,13 +19,13 @@ def sigma_rule():
     """)
 
 def test_ecs_zeek_beats(sigma_rule):
-    assert ElasticsearchQueryStringBackend(ecs_zeek_beats()).convert(sigma_rule) == \
+    assert LuceneBackend(ecs_zeek_beats()).convert(sigma_rule) == \
         ['event.dataset:"zeek.http" AND (http.request.method:"POST" AND (url.domain:"test.invalid" OR destination.domain:"test.invalid") AND zeek.\\*.username:"testuser")']
 
 def test_ecs_zeek_corelight(sigma_rule):
-    assert ElasticsearchQueryStringBackend(ecs_zeek_corelight()).convert(sigma_rule) == \
+    assert LuceneBackend(ecs_zeek_corelight()).convert(sigma_rule) == \
         ['event.dataset:"zeek.http" AND (http.request.method:"POST" AND (url.domain:"test.invalid" OR destination.domain:"test.invalid") AND zeek.\\*.username:"testuser")']
 
 def test_zeek_raw(sigma_rule):
-    assert ElasticsearchQueryStringBackend(zeek_raw()).convert(sigma_rule) == \
+    assert LuceneBackend(zeek_raw()).convert(sigma_rule) == \
         ['@stream:"http" AND (method:"POST" AND host:"test.invalid" AND username:"testuser")']

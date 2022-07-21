@@ -7,7 +7,7 @@ import sigma
 import re
 from typing import ClassVar, Dict, List, Optional, Pattern, Tuple
 
-class ElasticsearchQueryStringBackend(TextQueryBackend):
+class LuceneBackend(TextQueryBackend):
     """
     Elasticsearch query string backend. Generates query strings described here in the Elasticsearch documentation:
 
