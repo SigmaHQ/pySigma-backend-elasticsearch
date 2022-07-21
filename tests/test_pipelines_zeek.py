@@ -5,7 +5,7 @@ from sigma.collection import SigmaCollection
 
 def test_ecs_zeek_beats():
     assert ElasticsearchQueryStringBackend(ecs_zeek_beats()).convert(
-        SigmaCollection.from_yaml(f"""
+        SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -17,11 +17,11 @@ def test_ecs_zeek_beats():
                     username: testuser
                 condition: sel
         """)
-    ) == ['event.dataset:"zeek.http" AND http.request.method:"POST" AND url.domain:"test.invalid" OR destination.domain:"test.invalid" AND zeek.\\*.username:"testuser"']
+    ) == ['event.dataset:"zeek.http" AND http.request.method:"POST" AND (url.domain:"test.invalid" OR destination.domain:"test.invalid") AND zeek.\\*.username:"testuser"']
 
 def test_ecs_zeek_corelight():
     assert ElasticsearchQueryStringBackend(ecs_zeek_corelight()).convert(
-        SigmaCollection.from_yaml(f"""
+        SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -33,4 +33,4 @@ def test_ecs_zeek_corelight():
                     username: testuser
                 condition: sel
         """)
-    ) == ['event.dataset:"zeek.http" AND http.request.method:"POST" AND url.domain:"test.invalid" OR destination.domain:"test.invalid" AND zeek.\\*.username:"testuser"']
+    ) == ['event.dataset:"zeek.http" AND http.request.method:"POST" AND (url.domain:"test.invalid" OR destination.domain:"test.invalid") AND zeek.\\*.username:"testuser"']
