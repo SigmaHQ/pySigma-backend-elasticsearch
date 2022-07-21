@@ -88,7 +88,7 @@ class LuceneBackend(TextQueryBackend):
         # the SIEM.
         return "\n".join(queries)
 
-    def finalize_query_dsl_qs(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> str:
+    def finalize_query_dsl_lucene(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> str:
         return {
             "query": {
                 "bool": {
@@ -104,5 +104,5 @@ class LuceneBackend(TextQueryBackend):
             }
         }
 
-    def finalize_output_dsl_qs(self, queries: List[str]) -> str:
+    def finalize_output_dsl_lucene(self, queries: List[str]) -> str:
         return [q for q in queries]

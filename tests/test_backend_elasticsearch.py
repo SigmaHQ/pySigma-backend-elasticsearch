@@ -135,7 +135,7 @@ def test_lucene_field_name_with_whitespace(lucene_backend : LuceneBackend):
         """)
     assert lucene_backend.convert(rule) == ['field\\ name:"value"']
 
-def test_elasticsearch_dsl_qs(lucene_backend : LuceneBackend):
+def test_elasticsearch_dsl_lucene(lucene_backend : LuceneBackend):
     """Test for DSL output with embedded query string query."""
     rule = SigmaCollection.from_yaml("""
             title: Test
@@ -149,7 +149,7 @@ def test_elasticsearch_dsl_qs(lucene_backend : LuceneBackend):
                     fieldB: valueB
                 condition: sel
         """)
-    assert lucene_backend.convert(rule, output_format="dsl_qs") == [{
+    assert lucene_backend.convert(rule, output_format="dsl_lucene") == [{
         "query": {
             "bool": {
                 "must": [
