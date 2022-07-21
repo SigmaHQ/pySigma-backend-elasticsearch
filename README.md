@@ -23,6 +23,7 @@ It supports the following output formats:
 This backend is currently maintained by:
 
 * [Thomas Patzke](https://github.com/SigmaHQ/)
+* [Hendrik Bäcker](https://github.com/andurin)
 
 Further maintainers required! Send a message to [Thomas](mailto:thomas@patzke.org) if you want to co-maintain this
 backend.
