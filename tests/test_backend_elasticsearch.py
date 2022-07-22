@@ -20,7 +20,7 @@ def test_lucene_and_expression(lucene_backend : LuceneBackend):
                 condition: sel
         """)
 
-    assert lucene_backend.convert(rule) == ['fieldA:"valueA" AND fieldB:"valueB"']
+    assert lucene_backend.convert(rule) == ['fieldA:valueA AND fieldB:valueB']
 
 def test_lucene_or_expression(lucene_backend : LuceneBackend):
     rule = SigmaCollection.from_yaml("""
@@ -36,7 +36,7 @@ def test_lucene_or_expression(lucene_backend : LuceneBackend):
                     fieldB: valueB
                 condition: 1 of sel*
         """)
-    assert lucene_backend.convert(rule) == ['fieldA:"valueA" OR fieldB:"valueB"']
+    assert lucene_backend.convert(rule) == ['fieldA:valueA OR fieldB:valueB']
 
 def test_lucene_and_or_expression(lucene_backend : LuceneBackend):
     rule = SigmaCollection.from_yaml("""
@@ -55,7 +55,7 @@ def test_lucene_and_or_expression(lucene_backend : LuceneBackend):
                         - valueB2
                 condition: sel
         """)
-    assert lucene_backend.convert(rule) == ['(fieldA:("valueA1" OR "valueA2")) AND (fieldB:("valueB1" OR "valueB2"))']
+    assert lucene_backend.convert(rule) == ['(fieldA:(valueA1 OR valueA2)) AND (fieldB:(valueB1 OR valueB2))']
 
 def test_lucene_or_and_expression(lucene_backend : LuceneBackend):
     rule = SigmaCollection.from_yaml("""
@@ -73,7 +73,7 @@ def test_lucene_or_and_expression(lucene_backend : LuceneBackend):
                     fieldB: valueB2
                 condition: 1 of sel*
         """)
-    assert lucene_backend.convert(rule) == ['(fieldA:"valueA1" AND fieldB:"valueB1") OR (fieldA:"valueA2" AND fieldB:"valueB2")']
+    assert lucene_backend.convert(rule) == ['(fieldA:valueA1 AND fieldB:valueB1) OR (fieldA:valueA2 AND fieldB:valueB2)']
 
 def test_lucene_in_expression(lucene_backend : LuceneBackend):
     rule = SigmaCollection.from_yaml("""
@@ -90,7 +90,7 @@ def test_lucene_in_expression(lucene_backend : LuceneBackend):
                         - valueC*
                 condition: sel
         """)
-    assert lucene_backend.convert(rule) == ['fieldA:("valueA" OR "valueB" OR "valueC*")']
+    assert lucene_backend.convert(rule) == ['fieldA:(valueA OR valueB OR valueC*)']
 
 def test_lucene_regex_query(lucene_backend : LuceneBackend):
     rule = SigmaCollection.from_yaml("""
@@ -105,7 +105,7 @@ def test_lucene_regex_query(lucene_backend : LuceneBackend):
                     fieldB: foo
                 condition: sel
         """)
-    assert lucene_backend.convert(rule) == ['fieldA:/foo.*bar/ AND fieldB:"foo"']
+    assert lucene_backend.convert(rule) == ['fieldA:/foo.*bar/ AND fieldB:foo']
 
 def test_lucene_cidr_query(lucene_backend : LuceneBackend):
     rule = SigmaCollection.from_yaml("""
@@ -133,7 +133,7 @@ def test_lucene_field_name_with_whitespace(lucene_backend : LuceneBackend):
                     field name: value
                 condition: sel
         """)
-    assert lucene_backend.convert(rule) == ['field\\ name:"value"']
+    assert lucene_backend.convert(rule) == ['field\\ name:value']
 
 def test_elasticsearch_dsl_lucene(lucene_backend : LuceneBackend):
     """Test for DSL output with embedded query string query."""
@@ -155,7 +155,7 @@ def test_elasticsearch_dsl_lucene(lucene_backend : LuceneBackend):
                 "must": [
                     {
                         "query_string": {
-                            "query": "fieldA:\"valueA\" AND fieldB:\"valueB\"",
+                            "query": "fieldA:valueA AND fieldB:valueB",
                             "analyze_wildcard": True
                         }
                     }
