@@ -105,4 +105,4 @@ class LuceneBackend(TextQueryBackend):
         }
 
     def finalize_output_dsl_lucene(self, queries: List[str]) -> str:
-        return [q for q in queries]
+        return list(queries)
