@@ -119,7 +119,7 @@ def test_lucene_cidr_query(lucene_backend : LuceneBackend):
                     field|cidr: 192.168.0.0/16
                 condition: sel
         """)
-    assert lucene_backend.convert(rule) == ['field:192.168.0.0/16']
+    assert lucene_backend.convert(rule) == ['field:192.168.0.0\\/16']
 
 def test_lucene_field_name_with_whitespace(lucene_backend : LuceneBackend):
     rule = SigmaCollection.from_yaml("""

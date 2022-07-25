@@ -50,7 +50,7 @@ class LuceneBackend(TextQueryBackend):
     re_escape_char : ClassVar[str] = "\\"               # Character used for escaping in regular expressions
 
     # cidr expressions
-    cidr_expression : ClassVar[str] = "{field}:{value}"    # CIDR expression query as format string with placeholders {field} = {value}
+    cidr_expression : ClassVar[str] = "{field}:{network}\\/{prefixlen}"    # CIDR expression query as format string with placeholders {field} = {value}
 
     # Numeric comparison operators
     compare_op_expression : ClassVar[str] = "{field}:{operator}{value}"  # Compare operation query as format string with placeholders {field}, {operator} and {value}
