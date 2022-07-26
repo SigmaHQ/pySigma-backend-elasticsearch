@@ -136,7 +136,7 @@ def test_lucene_field_name_with_whitespace(lucene_backend : LuceneBackend):
         """)
     assert lucene_backend.convert(rule, output_format="kibana") == ['field\\ name:value']
 
-def test_elasticsearch_dsl_lucene(lucene_backend : LuceneBackend):
+def test_elasticsearch_ndjson_lucene(lucene_backend : LuceneBackend):
     """Test for NDJSON output with embedded query string query."""
     rule = SigmaCollection.from_yaml("""
             title: Test
@@ -156,7 +156,7 @@ def test_elasticsearch_dsl_lucene(lucene_backend : LuceneBackend):
             "type": "search",
             "attributes": {
                 "title": "SIGMA - Test",
-                "description": "",
+                "description": None,
                 "hits": 0,
                 "columns": [],
                 "sort": [
@@ -175,7 +175,7 @@ def test_elasticsearch_dsl_lucene(lucene_backend : LuceneBackend):
                     }]
             }
 
-def test_elasticsearch_ndjson_lucene(lucene_backend : LuceneBackend):
+def test_elasticsearch_dsl_lucene(lucene_backend : LuceneBackend):
     """Test for DSL output with embedded query string query."""
     rule = SigmaCollection.from_yaml("""
             title: Test
