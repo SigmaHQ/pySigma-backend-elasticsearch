@@ -15,6 +15,7 @@ jobs:
         poetry-version: [ '1.1' ]
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: ankane/setup-elasticsearch@v1
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
