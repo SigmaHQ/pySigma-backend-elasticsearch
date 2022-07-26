@@ -1,5 +1,4 @@
 import pytest
-import json
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.collection import SigmaCollection
 
@@ -151,7 +150,7 @@ def test_elasticsearch_ndjson_lucene(lucene_backend : LuceneBackend):
                 condition: sel
         """)
     result = lucene_backend.convert(rule, output_format="kibana_ndjson")
-    assert json.loads(result) == {
+    assert result[0] == {
             "id": "None",
             "type": "search",
             "attributes": {

@@ -158,4 +158,4 @@ class LuceneBackend(TextQueryBackend):
         # TODO: implement the output finalization for all generated queries for the format kibana here. Usually,
         # the single generated queries are embedded into a structure, e.g. some JSON or XML that can be imported into
         # the SIEM.
-        return "\n".join([json.dumps(q) for q in queries])
+        return list(queries)
