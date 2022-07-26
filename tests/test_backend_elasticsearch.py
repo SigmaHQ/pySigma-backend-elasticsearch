@@ -135,6 +135,45 @@ def test_lucene_field_name_with_whitespace(lucene_backend : LuceneBackend):
         """)
     assert lucene_backend.convert(rule, output_format="kibana") == ['field\\ name:value']
 
+def test_elasticsearch_ndjson_lucene(lucene_backend : LuceneBackend):
+    """Test for NDJSON output with embedded query string query."""
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+        """)
+    result = lucene_backend.convert(rule, output_format="kibana_ndjson")
+    assert result[0] == {
+            "id": "None",
+            "type": "search",
+            "attributes": {
+                "title": "SIGMA - Test",
+                "description": None,
+                "hits": 0,
+                "columns": [],
+                "sort": [
+                    "@timestamp",
+                    "desc"
+                ],
+                "version": 1,
+                "kibanaSavedObjectMeta": {
+                    "searchSourceJSON": "{\"index\": \"beats-*\", \"filter\": [], \"highlight\": {\"pre_tags\": [\"@kibana-highlighted-field@\"], \"post_tags\": [\"@/kibana-highlighted-field@\"], \"fields\": {\"*\": {}}, \"require_field_match\": false, \"fragment_size\": 2147483647}, \"query\": {\"query_string\": {\"query\": \"fieldA:valueA AND fieldB:valueB\", \"analyze_wildcard\": true}}}"
+                    }
+                },
+                "references": [{
+                        "id": "beats-*",
+                        "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+                        "type": "index-pattern"
+                    }]
+            }
+
 def test_elasticsearch_dsl_lucene(lucene_backend : LuceneBackend):
     """Test for DSL output with embedded query string query."""
     rule = SigmaCollection.from_yaml("""

@@ -5,6 +5,7 @@ from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, Condition
 from sigma.types import SigmaCompareExpression
 import sigma
 import re
+import json
 from typing import ClassVar, Dict, List, Optional, Pattern, Tuple
 
 class LuceneBackend(TextQueryBackend):
@@ -105,4 +106,56 @@ class LuceneBackend(TextQueryBackend):
         }
 
     def finalize_output_dsl_lucene(self, queries: List[str]) -> str:
+        return list(queries)
+
+    def finalize_query_kibana_ndjson(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> str:
+        # TODO: implement the per-query output for the output format kibana here. Usually, the generated query is
+        # embedded into a template, e.g. a JSON format with additional information from the Sigma rule.
+        columns = list()
+        index = "beats-*"
+        ndjson = {
+            "id": str(rule.id),
+            "type": "search",
+            "attributes": {
+                "title": "SIGMA - {}".format(rule.title),
+                "description": rule.description,
+                "hits": 0,
+                "columns": columns,
+                "sort": ["@timestamp", "desc"],
+                "version": 1,
+                "kibanaSavedObjectMeta": {
+                    "searchSourceJSON": str(json.dumps({
+                        "index": index,
+                        "filter":  [],
+                        "highlight": {
+                            "pre_tags": ["@kibana-highlighted-field@"],
+                            "post_tags": ["@/kibana-highlighted-field@"],
+                            "fields": { "*":{} },
+                            "require_field_match": False,
+                            "fragment_size": 2147483647
+                            },
+                        "query": {
+                            "query_string": {
+                                "query": query,
+                                "analyze_wildcard": True
+                                }
+                            }
+                        })
+                    )
+                }
+            },
+            "references": [
+                {
+                    "id": index,
+                    "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+                    "type": "index-pattern"
+                }
+            ]
+        }
+        return ndjson
+
+    def finalize_output_kibana_ndjson(self, queries: List[str]) -> str:
+        # TODO: implement the output finalization for all generated queries for the format kibana here. Usually,
+        # the single generated queries are embedded into a structure, e.g. some JSON or XML that can be imported into
+        # the SIEM.
         return list(queries)
