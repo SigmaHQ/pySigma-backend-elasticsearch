@@ -1,9 +1,9 @@
 name: Test
 on:
   push:
-    branches: [ main connecttests]
+    branches: [ main ]
   pull_request:
-    branches: [ main connecttests]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -32,13 +32,13 @@ jobs:
       - name: Store coverage for badge
         if: ${{ runner.os == 'Linux' }}
         run: poetry run python print-coverage.py >> $GITHUB_ENV
-      # - name: Create coverage badge
-      #   if: ${{ github.repository == 'SigmaHQ/pySigma-backend-elasticsearch' && github.event_name == 'push' && runner.os == 'Linux' }}
-      #   uses: schneegans/dynamic-badges-action@v1.1.0
-      #   with:
-      #     auth: ${{ secrets.GIST_SECRET }}
-      #     gistID: 3c445ef26310e9f2d2ca09c697db1c71
-      #     filename: SigmaHQ-pySigma-backend-elasticsearch.json
-      #     label: Coverage
-      #     message: ${{ env.COVERAGE }}
-      #     color: ${{ env.COVERAGE_COLOR }}
+      - name: Create coverage badge
+        if: ${{ github.repository == 'SigmaHQ/pySigma-backend-elasticsearch' && github.event_name == 'push' && runner.os == 'Linux' }}
+        uses: schneegans/dynamic-badges-action@v1.1.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 3c445ef26310e9f2d2ca09c697db1c71
+          filename: SigmaHQ-pySigma-backend-elasticsearch.json
+          label: Coverage
+          message: ${{ env.COVERAGE }}
+          color: ${{ env.COVERAGE_COLOR }}
