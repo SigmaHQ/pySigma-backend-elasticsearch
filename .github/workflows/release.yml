@@ -24,6 +24,7 @@ jobs:
           [ "$(poetry version -s)" == "${GITHUB_REF#refs/tags/v}" ]
       - name: Install dependencies
         run: poetry install
+      - uses: ankane/setup-elasticsearch@v1
       - name: Run tests
         run: poetry run pytest
       - name: Build packages
