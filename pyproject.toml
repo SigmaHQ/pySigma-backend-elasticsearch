@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pySigma-backend-elasticsearch"
 version = "0.1.0"
-description = "(OrderedDict([('target_name', 'Elasticsearch'), ('backend_package_name', 'elasticsearch'), ('backend_name', 'Elasticsearch'), ('backend_class_name', 'ElasticsearchBackend'), ('package_type', 'backend'), ('package_name', 'pySigma-backend-elasticsearch'), ('package_description', 'pySigma Elasticsearch backend'), ('author', 'Thomas Patzke'), ('email', 'thomas@patzke.org'), ('license', 'LGPL-3.0-only'), ('github_account', 'SigmaHQ'), ('test_badge', 'True'), ('coverage_badge', 'True'), ('coverage_gist', '3c445ef26310e9f2d2ca09c697db1c71'), ('status_badge', 'True'), ('status', 'pre--release-orange'), ('additional_output_formats', 'True'), ('output_formats', 'kibana'), ('_template', 'https://github.com/SigmaHQ/cookiecutter-pySigma-backend')]), Undefined)"
+description = "pySigma Elasticsearch backend"
 authors = ["Thomas Patzke <thomas@patzke.org>"]
 license = "LGPL-3.0-only"
 repository = "https://github.com/SigmaHQ/pySigma-backend-elasticsearch"
