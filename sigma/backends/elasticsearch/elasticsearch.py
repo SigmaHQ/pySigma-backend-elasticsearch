@@ -78,17 +78,6 @@ class LuceneBackend(TextQueryBackend):
     unbound_value_str_expression : ClassVar[str] = '"{value}"'   # Expression for string value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression : ClassVar[str] = '{value}'   # Expression for number value not bound to a field as format string with placeholder {value}
 
-    def finalize_query_kibana(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> str:
-        # TODO: implement the per-query output for the output format kibana here. Usually, the generated query is
-        # embedded into a template, e.g. a JSON format with additional information from the Sigma rule.
-        return query
-
-    def finalize_output_kibana(self, queries: List[str]) -> str:
-        # TODO: implement the output finalization for all generated queries for the format kibana here. Usually,
-        # the single generated queries are embedded into a structure, e.g. some JSON or XML that can be imported into
-        # the SIEM.
-        return list(queries)
-
     def finalize_query_dsl_lucene(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> str:
         return {
             "query": {

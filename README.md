@@ -5,7 +5,14 @@ Badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/th
 
 # pySigma Elasticsearch Backend
 
-This is the Elasticsearch backend for pySigma. It provides the package `sigma.backends.elasticsearch` with the `ElasticsearchQueryStringBackend` class.
+This is the Elasticsearch backend for pySigma. It provides the package `sigma.backends.elasticsearch` with the `LuceneBackend` class.
+
+It supports the following output formats:
+
+* default: Lucene queries.
+* dsl_lucene: DSL with embedded Lucene queries.
+* kibana_ndjson: Kibana NDJSON with Lucene queries.
+
 Further, it contains the following processing pipelines in `sigma.pipelines.elasticsearch`:
 
 * ecs_windows in windows submodule: ECS mapping for Windows event logs ingested with Winlogbeat.
@@ -13,12 +20,6 @@ Further, it contains the following processing pipelines in `sigma.pipelines.elas
 * ecs_zeek_beats in zeek submodule: Zeek ECS mapping from Elastic.
 * ecs_zeek_corelight in zeek submodule: Zeek ECS mapping from Corelight.
 * zeek_raw in zeek submodule: Zeek raw JSON log field naming.
-
-It supports the following output formats:
-
-* default: Lucene queries.
-* dsl_lucene: DSL with embedded Lucene queries.
-* kibana: Kibana JSONL with Elasticsearch query strings (not yet implemented).
 
 This backend is currently maintained by:
 
