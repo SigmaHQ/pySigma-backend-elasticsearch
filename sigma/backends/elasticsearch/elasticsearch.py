@@ -78,7 +78,7 @@ class LuceneBackend(TextQueryBackend):
     unbound_value_str_expression : ClassVar[str] = '"{value}"'   # Expression for string value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression : ClassVar[str] = '{value}'   # Expression for number value not bound to a field as format string with placeholder {value}
 
-    def finalize_query_dsl_lucene(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> str:
+    def finalize_query_dsl_lucene(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> Dict:
         return {
             "query": {
                 "bool": {
@@ -94,10 +94,10 @@ class LuceneBackend(TextQueryBackend):
             }
         }
 
-    def finalize_output_dsl_lucene(self, queries: List[str]) -> str:
+    def finalize_output_dsl_lucene(self, queries: List[Dict]) -> Dict:
         return list(queries)
 
-    def finalize_query_kibana_ndjson(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> str:
+    def finalize_query_kibana_ndjson(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> Dict:
         # TODO: implement the per-query output for the output format kibana here. Usually, the generated query is
         # embedded into a template, e.g. a JSON format with additional information from the Sigma rule.
         columns = list()
@@ -143,7 +143,7 @@ class LuceneBackend(TextQueryBackend):
         }
         return ndjson
 
-    def finalize_output_kibana_ndjson(self, queries: List[str]) -> str:
+    def finalize_output_kibana_ndjson(self, queries: List[str]) -> List[Dict]:
         # TODO: implement the output finalization for all generated queries for the format kibana here. Usually,
         # the single generated queries are embedded into a structure, e.g. some JSON or XML that can be imported into
         # the SIEM.
