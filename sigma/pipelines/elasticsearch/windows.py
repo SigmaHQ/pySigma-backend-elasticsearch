@@ -211,7 +211,7 @@ def ecs_windows_old():
             ),
             ProcessingItem(         # Prepend each field that was not processed by previous field mapping transformation with "winlog.event_data."
                 identifier="ecs_windows_eventdata_prefix",
-                transformation=AddFieldnamePrefixTransformation("winlog.event_data."),
+                transformation=AddFieldnamePrefixTransformation("event_data."),
                 field_name_conditions=[
                     FieldNameProcessingItemAppliedCondition("ecs_windows_field_mapping"),
                     IncludeFieldCondition(fields=["\\w+\\."], type="re"),

@@ -50,7 +50,7 @@ def test_ecs_windows_old():
                     Image: test.exe
                 condition: sel
         """)
-    ) == ['winlog.channel:Security AND (event_id:123 AND event_data.Image:test.exe)']
+    ) == ['winlog.channel:Security AND (event_data.event_id:123 AND event_data.Image:test.exe)']
 
 def test_ecs_windows_other_logsource():
     assert LuceneBackend(ecs_windows()).convert(
