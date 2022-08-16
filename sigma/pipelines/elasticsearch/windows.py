@@ -1,6 +1,6 @@
 from sigma.pipelines.common import logsource_windows, windows_logsource_mapping
 from sigma.processing.transformations import FieldMappingTransformation, AddFieldnamePrefixTransformation, AddConditionTransformation
-from sigma.processing.conditions import LogsourceCondition, IncludeFieldCondition, ExcludeFieldCondition, RuleProcessingItemAppliedCondition
+from sigma.processing.conditions import LogsourceCondition, IncludeFieldCondition, FieldNameProcessingItemAppliedCondition
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 
 ecs_windows_variable_mappings = {
@@ -174,12 +174,12 @@ def ecs_windows():
             ProcessingItem(         # Prepend each field that was not processed by previous field mapping transformation with "winlog.event_data."
                 identifier="ecs_windows_winlog_eventdata_prefix",
                 transformation=AddFieldnamePrefixTransformation("winlog.event_data."),
-                detection_item_conditions=[
-                    RuleProcessingItemAppliedCondition("ecs_windows_field_mapping"),
+                field_name_conditions=[
+                    FieldNameProcessingItemAppliedCondition("ecs_windows_field_mapping"),
                     IncludeFieldCondition(fields=["\\w+\\."], type="re"),
                 ],
-                detection_item_condition_negation=True,
-                detection_item_condition_linking=any,
+                field_name_condition_negation=True,
+                field_name_condition_linking=any,
                 rule_conditions=[
                     LogsourceCondition(product="windows")
                 ],
@@ -212,12 +212,12 @@ def ecs_windows_old():
             ProcessingItem(         # Prepend each field that was not processed by previous field mapping transformation with "winlog.event_data."
                 identifier="ecs_windows_eventdata_prefix",
                 transformation=AddFieldnamePrefixTransformation("event_data."),
-                detection_item_conditions=[
-                    RuleProcessingItemAppliedCondition("ecs_windows_field_mapping"),
+                field_name_conditions=[
+                    FieldNameProcessingItemAppliedCondition("ecs_windows_field_mapping"),
                     IncludeFieldCondition(fields=["\\w+\\."], type="re"),
                 ],
-                detection_item_condition_negation=True,
-                detection_item_condition_linking=any,
+                field_name_condition_negation=True,
+                field_name_condition_linking=any,
                 rule_conditions=[
                     LogsourceCondition(product="windows")
                 ],

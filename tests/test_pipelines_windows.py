@@ -2,6 +2,7 @@ import pytest
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.pipelines.elasticsearch.windows import ecs_windows, ecs_windows_old
 from sigma.collection import SigmaCollection
+from sigma.rule import SigmaRule
 
 def test_ecs_windows():
     assert LuceneBackend(ecs_windows()).convert(
@@ -19,6 +20,26 @@ def test_ecs_windows():
                 condition: sel
         """)
     ) == ['winlog.channel:Security AND (event.code:123 AND process.executable:test.exe AND winlog.event_data.TestField:test)']
+
+def test_ecs_windows_fields():
+    rule = ecs_windows().apply(SigmaRule.from_yaml(f"""
+            title: Test
+            status: test
+            logsource:
+                product: windows
+                service: security
+            detection:
+                sel:
+                    EventID: 123
+                    Image: test.exe
+                    TestField: test
+                condition: sel
+            fields:
+                - EventID
+                - TestField
+        """)
+    )
+    assert rule.fields == ["event.code", "winlog.event_data.TestField"]
 
 def test_ecs_windows_variable_mapping():
     assert LuceneBackend(ecs_windows()).convert(
