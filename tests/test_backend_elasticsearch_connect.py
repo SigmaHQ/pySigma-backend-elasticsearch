@@ -18,7 +18,7 @@ def prepare_es_data():
     }
     )
     requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA", "fieldB" : "valueB" })
-    requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA", "fieldB" : "" })
+    requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "otherisempty", "fieldB" : "" })
     requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA1", "fieldB" : "valueB1" })
     requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA2", "fieldB" : "valueB2" })
     requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "foosamplebar", "fieldB" : "foo" })
@@ -68,7 +68,7 @@ class TestConnectElasticsearch:
                     product: test_product
                 detection:
                     sel:
-                        fieldA: valueA
+                        fieldA: otherisempty
                         fieldB: ''
                     condition: sel
             """)
@@ -151,7 +151,7 @@ class TestConnectElasticsearch:
         result_dsl = lucene_backend.convert(rule, output_format="dsl_lucene")[0]
         self.query_backend_hits(result_dsl, num_wanted=1)
 
-    def test_connect_lucene_in_expression(self, prepare_es_data, lucene_backend : LuceneBackend):
+    def test_connect_lucene_in_expression_empty_string(self, prepare_es_data, lucene_backend : LuceneBackend):
         rule = SigmaCollection.from_yaml("""
                 title: Test
                 status: test
@@ -161,7 +161,7 @@ class TestConnectElasticsearch:
                 detection:
                     sel:
                         fieldA:
-                            - valueA
+                            - otherisempty
                             - ''
                     condition: sel
             """)
