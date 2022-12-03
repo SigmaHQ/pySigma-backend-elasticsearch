@@ -22,6 +22,22 @@ def test_lucene_and_expression(lucene_backend : LuceneBackend):
 
     assert lucene_backend.convert(rule) == ['fieldA:valueA AND fieldB:valueB']
 
+def test_lucene_and_expression_empty_string(lucene_backend : LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: ''
+                condition: sel
+        """)
+
+    assert lucene_backend.convert(rule) == ['fieldA:valueA AND fieldB:""']
+
 def test_lucene_or_expression(lucene_backend : LuceneBackend):
     rule = SigmaCollection.from_yaml("""
             title: Test
@@ -91,6 +107,22 @@ def test_lucene_in_expression(lucene_backend : LuceneBackend):
                 condition: sel
         """)
     assert lucene_backend.convert(rule) == ['fieldA:(valueA OR valueB OR valueC*)']
+
+def test_lucene_in_expression_empty_string(lucene_backend : LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - valueA
+                        - ''
+                condition: sel
+        """)
+    assert lucene_backend.convert(rule) == ['fieldA:(valueA OR "")']
 
 def test_lucene_regex_query(lucene_backend : LuceneBackend):
     rule = SigmaCollection.from_yaml("""

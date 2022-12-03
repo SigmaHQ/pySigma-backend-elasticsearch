@@ -35,7 +35,9 @@ class LuceneBackend(TextQueryBackend):
     field_escape_pattern : ClassVar[Pattern] = re.compile("[\\s*]")   # All matches of this pattern are prepended with the string contained in field_escape.
 
     ## Values
-    str_quote       : ClassVar[str] = ''     # string quoting character (added as escaping character)
+    str_quote       : ClassVar[str] = '"'     # string quoting character (added as escaping character)
+    str_quote_pattern: ClassVar[Pattern] = re.compile(".")
+    str_quote_pattern_negation: ClassVar[bool] = True
     escape_char     : ClassVar[str] = "\\"    # Escaping character for special characrers inside string
     wildcard_multi  : ClassVar[str] = "*"     # Character used as multi-character wildcard
     wildcard_single : ClassVar[str] = "?"     # Character used as single-character wildcard
