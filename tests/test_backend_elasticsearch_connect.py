@@ -12,12 +12,19 @@ def prepare_es_data():
     requests.put("http://localhost:9200/test-index/_mapping", json={
         "properties": {
             "field": {
-               "type": "ip"
+                "type": "ip"
             },
-            "fieldK": {
-               "type": "keyword"
-            },
-        }
+        },
+        "dynamic_templates": [
+            {
+                "default": {
+                    "match": "*",
+                    "mapping": {
+                        "type": "keyword"
+                    }
+                }
+            }
+        ]
     }
     )
     requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA", "fieldB" : "valueB" })
