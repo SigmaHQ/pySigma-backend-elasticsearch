@@ -13,13 +13,16 @@ def prepare_es_data():
         "properties": {
             "field": {
                "type": "ip"
-            }
+            },
+            "fieldK": {
+               "type": "keyword"
+            },
         }
     }
     )
     requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA", "fieldB" : "valueB" })
     requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "otherisempty", "fieldB" : "" })
-    requests.post("http://localhost:9200/test-index/_doc/", json={ "field" : "dot.value" })
+    requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldK" : "dot.value" })
     requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA1", "fieldB" : "valueB1" })
     requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA2", "fieldB" : "valueB2" })
     requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "foosamplebar", "fieldB" : "foo" })
@@ -225,7 +228,7 @@ class TestConnectElasticsearch:
                     product: test_product
                 detection:
                     sel:
-                        field: dot.value
+                        fieldK: dot.value
                     condition: sel
             """)
 
