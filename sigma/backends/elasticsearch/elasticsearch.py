@@ -1,12 +1,14 @@
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule
 from sigma.conversion.base import TextQueryBackend
-from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
+from sigma.conversion.deferred import DeferredQueryExpression
+from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT, ConditionFieldEqualsValueExpression
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 from sigma.types import SigmaCompareExpression
 import sigma
 import re
 import json
-from typing import ClassVar, Dict, List, Optional, Pattern, Tuple
+from typing import ClassVar, Dict, List, Optional, Pattern, Tuple, Union
 
 class LuceneBackend(TextQueryBackend):
     """
@@ -79,6 +81,13 @@ class LuceneBackend(TextQueryBackend):
     # Value not bound to a field
     unbound_value_str_expression : ClassVar[str] = '"{value}"'   # Expression for string value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression : ClassVar[str] = '{value}'   # Expression for number value not bound to a field as format string with placeholder {value}
+
+    def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field matches regular expression value expressions."""
+        return self.re_expression.format(
+            field=cond.field,
+            regex=cond.value.regexp.replace("\\\\", "\\")
+        )
 
     def finalize_query_dsl_lucene(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> Dict:
         return {
