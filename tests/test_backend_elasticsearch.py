@@ -150,9 +150,10 @@ def test_lucene_regex_query_escaped_input(lucene_backend : LuceneBackend):
                 sel:
                     fieldA|re: 127\.0\.0\.1:[1-9]\d{3}
                     fieldB: foo
+                    fieldC|re: foo/bar
                 condition: sel
         """)
-    assert lucene_backend.convert(rule) == ['fieldA:/127\.0\.0\.1:[1-9]\d{3}/ AND fieldB:foo']
+    assert lucene_backend.convert(rule) == ['fieldA:/127\.0\.0\.1:[1-9]\d{3}/ AND fieldB:foo AND fieldC:/foo\\/bar/']
 
 def test_lucene_cidr_query(lucene_backend : LuceneBackend):
     rule = SigmaCollection.from_yaml("""
