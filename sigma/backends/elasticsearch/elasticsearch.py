@@ -51,6 +51,8 @@ class LuceneBackend(TextQueryBackend):
     # Regular expressions
     re_expression : ClassVar[str] = "{field}:/{regex}/" # Regular expression query as format string with placeholders {field} and {regex}
     re_escape_char : ClassVar[str] = "\\"               # Character used for escaping in regular expressions
+    re_escape : ClassVar[Tuple[str]] = ("/",)
+    re_escape_escape_char : ClassVar[bool] = False      # Don't escape the escape char
 
     # cidr expressions
     cidr_expression : ClassVar[str] = "{field}:{network}\\/{prefixlen}"    # CIDR expression query as format string with placeholders {field} = {value}
