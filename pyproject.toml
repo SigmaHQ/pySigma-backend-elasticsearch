@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pySigma-backend-elasticsearch"
-version = "0.1.2"
+version = "0.2.0"
 description = "pySigma Elasticsearch backend"
 authors = ["Thomas Patzke <thomas@patzke.org>"]
 license = "LGPL-3.0-only"
