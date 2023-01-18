@@ -82,6 +82,45 @@ class LuceneBackend(TextQueryBackend):
     unbound_value_str_expression : ClassVar[str] = '"{value}"'   # Expression for string value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression : ClassVar[str] = '{value}'   # Expression for number value not bound to a field as format string with placeholder {value}
 
+    def __init__(self, processing_pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = None,
+        collect_errors: bool = False,
+        index_names : List = [
+            "apm-*-transaction*",
+            "auditbeat-*",
+            "endgame-*",
+            "filebeat-*",
+            "logs-*",
+            "packetbeat-*",
+            "traces-apm*",
+            "winlogbeat-*",
+            "-*elastic-cloud-logs-*"
+        ],
+        schedule_interval : int = 5,
+        schedule_interval_unit : str = "m",
+        **kwargs):
+
+        super().__init__(processing_pipeline, collect_errors, **kwargs)
+        self.index_names = index_names or [
+            "apm-*-transaction*",
+            "auditbeat-*",
+            "endgame-*",
+            "filebeat-*",
+            "logs-*",
+            "packetbeat-*",
+            "traces-apm*",
+            "winlogbeat-*",
+            "-*elastic-cloud-logs-*"
+        ]
+        self.schedule_interval = schedule_interval or 5
+        self.schedule_interval_unit = schedule_interval_unit or "m"
+        self.severity_risk_mapping = {
+            "INFORMATIONAL" : 1,
+            "LOW" : 21,
+            "MEDIUM" : 47,
+            "HIGH" : 73,
+            "CRITICAL" : 99
+        }
+
     def finalize_query_dsl_lucene(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> Dict:
         return {
             "query": {
@@ -151,4 +190,63 @@ class LuceneBackend(TextQueryBackend):
         # TODO: implement the output finalization for all generated queries for the format kibana here. Usually,
         # the single generated queries are embedded into a structure, e.g. some JSON or XML that can be imported into
         # the SIEM.
+        return list(queries)
+
+    def finalize_query_siem_rule(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> Dict:
+        """
+        Create SIEM Rules in JSON Format. These rules could be imported into Kibana using the Create Rule API
+        https://www.elastic.co/guide/en/kibana/8.6/create-rule-api.html
+        This API (and generated data) is NOT the same like importing Detection Rules via:
+        Kibana -> Security -> Alerts -> Manage Rules -> Import
+        If you want to have a nice importable NDJSON File for the Security Rule importer
+        use pySigma Format 'siem_rule_ndjson' instead.
+        """
+
+        siem_rule = {
+            "name":"SIGMA - {}".format(rule.title),
+            "tags": ["{}-{}".format(n.namespace, n.name) for n in rule.tags],
+            "consumer": "siem",
+            "enabled": True,
+            "throttle": None,
+            "schedule":{
+                "interval": f"{self.schedule_interval}{self.schedule_interval_unit}"
+            },
+            "params":{
+                "author": [rule.author] if rule.author is not None else [],
+                "description": rule.description if rule.description is not None else "No description",
+                "ruleId": str(rule.id),
+                "falsePositives": rule.falsepositives,
+                "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+                "immutable": False,
+                "license": "DRL",
+                "outputIndex": "",
+                "meta": {
+                    "from": "1m",
+                },
+                "maxSignals": 100,
+                "riskScore": self.severity_risk_mapping[rule.level.name] if rule.level is not None else 21,
+                "riskScoreMapping": [],
+                "severity": str(rule.level.name).lower() if rule.level is not None else "low",
+                "severityMapping": [],
+                "threat": [],
+                "to": "now",
+                "references": rule.references,
+                "version": 1,
+                "exceptionsList": [],
+                "relatedIntegrations": [],
+                "requiredFields": [],
+                "setup": "",
+                "type": "query",
+                "language": "lucene",
+                "index": self.index_names,
+                "query": query,
+                "filters": []
+            },
+            "rule_type_id":"siem.queryRule",
+            "notify_when":"onActiveAlert",
+            "actions":[]
+            }
+        return siem_rule
+
+    def finalize_output_siem_rule(self, queries: List[Dict]) -> Dict:
         return list(queries)
