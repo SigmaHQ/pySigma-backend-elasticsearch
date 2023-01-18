@@ -250,3 +250,53 @@ class LuceneBackend(TextQueryBackend):
 
     def finalize_output_siem_rule(self, queries: List[Dict]) -> Dict:
         return list(queries)
+
+    def finalize_query_siem_rule_ndjson(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> Dict:
+        """
+        Generating SIEM/Detection Rules in NDJSON Format. Compatible with
+
+        https://www.elastic.co/guide/en/security/8.6/rules-ui-management.html#import-export-rules-ui
+        """
+
+        siem_rule = {
+            "id": str(rule.id),
+            "name":"SIGMA - {}".format(rule.title),
+            "tags": ["{}-{}".format(n.namespace, n.name) for n in rule.tags],
+            "enabled": True,
+            "throttle": "no_actions",
+            "interval": f"{self.schedule_interval}{self.schedule_interval_unit}",
+            "author": [rule.author] if rule.author is not None else [],
+            "description": rule.description if rule.description is not None else "No description",
+            "rule_id": str(rule.id),
+            "false_positives": rule.falsepositives,
+            "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+            "immutable": False,
+            "license": "DRL",
+            "output_index": "",
+            "meta": {
+                "from": "1m",
+            },
+            "max_signals": 100,
+            "risk_score": self.severity_risk_mapping[rule.level.name] if rule.level is not None else 21,
+            "risk_score_mapping": [],
+            "severity": str(rule.level.name).lower() if rule.level is not None else "low",
+            "severity_mapping": [],
+            "threat": [],
+            "to": "now",
+            "references": rule.references,
+            "version": 1,
+            "exceptions_list": [],
+            "related_integrations": [],
+            "required_fields": [],
+            "setup": "",
+            "type": "query",
+            "language": "lucene",
+            "index": self.index_names,
+            "query": query,
+            "filters": [],
+            "actions":[]
+            }
+        return siem_rule
+
+    def finalize_output_siem_rule_ndjson(self, queries: List[Dict]) -> Dict:
+        return list(queries)
