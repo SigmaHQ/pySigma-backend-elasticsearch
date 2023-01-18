@@ -5,43 +5,53 @@ import time
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.collection import SigmaCollection
 
+def es_available_test():
+    try:
+        requests.get('http://localhost:9200/')
+    except requests.exceptions.ConnectionError:
+        return False
+    return True
+
 @pytest.fixture(scope="class")
+@pytest.mark.skipif(es_available_test == False, reason="ES not available... Skipping tests...")
 def prepare_es_data():
-    requests.delete('http://localhost:9200/test-index')
-    requests.put("http://localhost:9200/test-index")
-    requests.put("http://localhost:9200/test-index/_mapping", json={
-        "properties": {
-            "field": {
-                "type": "ip"
+    if es_available_test():
+        requests.delete('http://localhost:9200/test-index')
+        requests.put("http://localhost:9200/test-index")
+        requests.put("http://localhost:9200/test-index/_mapping", json={
+            "properties": {
+                "field": {
+                    "type": "ip"
+                },
             },
-        },
-        "dynamic_templates": [
-            {
-                "default": {
-                    "match": "*",
-                    "mapping": {
-                        "type": "keyword"
+            "dynamic_templates": [
+                {
+                    "default": {
+                        "match": "*",
+                        "mapping": {
+                            "type": "keyword"
+                        }
                     }
                 }
-            }
-        ]
-    }
-    )
-    requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA", "fieldB" : "valueB" })
-    requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "otherisempty", "fieldB" : "" })
-    requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldK" : "dot.value" })
-    requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA1", "fieldB" : "valueB1" })
-    requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA2", "fieldB" : "valueB2" })
-    requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "foosamplebar", "fieldB" : "foo" })
-    requests.post("http://localhost:9200/test-index/_doc/", json={ "field" : "192.168.1.1" })
-    requests.post("http://localhost:9200/test-index/_doc/", json={ "field name" : "value" })
-    # Wait a bit for Documents to be indexed
-    time.sleep(1)
+            ]
+        }
+        )
+        requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA", "fieldB" : "valueB" })
+        requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "otherisempty", "fieldB" : "" })
+        requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldK" : "dot.value" })
+        requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA1", "fieldB" : "valueB1" })
+        requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "valueA2", "fieldB" : "valueB2" })
+        requests.post("http://localhost:9200/test-index/_doc/", json={ "fieldA" : "foosamplebar", "fieldB" : "foo" })
+        requests.post("http://localhost:9200/test-index/_doc/", json={ "field" : "192.168.1.1" })
+        requests.post("http://localhost:9200/test-index/_doc/", json={ "field name" : "value" })
+        # Wait a bit for Documents to be indexed
+        time.sleep(1)
 
 @pytest.fixture
 def lucene_backend():
     return LuceneBackend()
 
+@pytest.mark.skipif(es_available_test() == False, reason="ES not available")
 class TestConnectElasticsearch:
 
     def query_backend_hits(self, query, num_wanted=0):
