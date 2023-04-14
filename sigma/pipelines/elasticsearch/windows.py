@@ -1,4 +1,4 @@
-from sigma.pipelines.common import logsource_windows, windows_logsource_mapping
+from sigma.pipelines.common import logsource_windows, windows_logsource_mapping, generate_windows_logsource_items
 from sigma.processing.transformations import FieldMappingTransformation, AddFieldnamePrefixTransformation, AddConditionTransformation
 from sigma.processing.conditions import LogsourceCondition, IncludeFieldCondition, FieldNameProcessingItemAppliedCondition
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
@@ -70,14 +70,8 @@ def ecs_windows():
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat from version 7",
         priority=20,
-        items=[
-            ProcessingItem(     # Windows log channels
-                identifier=f"elasticsearch_windows_{service}",
-                transformation=AddConditionTransformation({ "winlog.channel": source}),
-                rule_conditions=[logsource_windows(service)],
-            )
-            for service, source in windows_logsource_mapping.items()
-        ] + [                   # Variable field mappinga depending on category/service
+        allowed_backends=("elasticsearch", "opensearch"),
+        items=generate_windows_logsource_items("winlog.channel", "{source}") + [                   # Variable field mappinga depending on category/service
            ProcessingItem(
                 identifier=f"elasticsearch_windows-{field}-{logsrc_field}-{logsrc}",
                 transformation=FieldMappingTransformation({
@@ -191,14 +185,8 @@ def ecs_windows_old():
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat up to version 6",
         priority=20,
-        items=[
-            ProcessingItem(     # Windows log channels
-                identifier=f"elasticsearch_windows_{service}",
-                transformation=AddConditionTransformation({ "winlog.channel": source}),
-                rule_conditions=[logsource_windows(service)],
-            )
-            for service, source in windows_logsource_mapping.items()
-        ] + [
+        allowed_backends=("elasticsearch", "opensearch"),
+        items=generate_windows_logsource_items("winlog.channel", "{source}") + [
             ProcessingItem(     # Field mappings
                 identifier="ecs_windows_field_mapping",
                 transformation=FieldMappingTransformation({
