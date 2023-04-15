@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pySigma-backend-elasticsearch"
-version = "1.0.0"
+version = "1.0.1"
 description = "pySigma Elasticsearch backend"
 authors = ["Thomas Patzke <thomas@patzke.org>"]
 license = "LGPL-3.0-only"
@@ -11,7 +11,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-pysigma = "^0.9.6"
+pysigma = "^0.9.5"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"

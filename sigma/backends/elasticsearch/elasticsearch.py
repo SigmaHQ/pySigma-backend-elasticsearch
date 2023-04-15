@@ -14,6 +14,14 @@ class LuceneBackend(TextQueryBackend):
 
     https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax
     """
+    name : ClassVar[str] = "Elasticsearch Lucene"               # A descriptive name of the backend
+    formats : ClassVar[Dict[str, str]] = {                # Output formats provided by the backend as name -> description mapping. The name should match to finalize_output_<name>.
+        "default": "Plain Elasticsearch Lucene queries",
+        "kibana_ndjson": "Kibana NDJSON import file with Lucene queries",
+        "dsl_lucene": "Elasticsearch query DSL with embedded Lucene queries",
+    }
+    requires_pipeline : ClassVar[bool] = True             # Does the backend requires that a processing pipeline is provided?
+
     # Operator precedence: tuple of Condition{AND,OR,NOT} in order of precedence.
     # The backend generates grouping if required
     precedence : ClassVar[Tuple[ConditionItem, ConditionItem, ConditionItem]] = (ConditionNOT, ConditionOR, ConditionAND)
