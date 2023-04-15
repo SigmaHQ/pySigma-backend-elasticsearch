@@ -1,12 +1,12 @@
-import pytest
 from sigma.backends.elasticsearch import LuceneBackend
 from sigma.pipelines.elasticsearch.windows import ecs_windows, ecs_windows_old
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 
+
 def test_ecs_windows():
     assert LuceneBackend(ecs_windows()).convert(
-        SigmaCollection.from_yaml(f"""
+        SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -21,8 +21,9 @@ def test_ecs_windows():
         """)
     ) == ['winlog.channel:Security AND (event.code:123 AND process.executable:test.exe AND winlog.event_data.TestField:test)']
 
+
 def test_ecs_windows_fields():
-    rule = ecs_windows().apply(SigmaRule.from_yaml(f"""
+    rule = ecs_windows().apply(SigmaRule.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -38,12 +39,13 @@ def test_ecs_windows_fields():
                 - EventID
                 - TestField
         """)
-    )
+                               )
     assert rule.fields == ["event.code", "winlog.event_data.TestField"]
+
 
 def test_ecs_windows_variable_mapping():
     assert LuceneBackend(ecs_windows()).convert(
-        SigmaCollection.from_yaml(f"""
+        SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -57,9 +59,10 @@ def test_ecs_windows_variable_mapping():
         """)
     ) == ['process.command_line:test AND process.pe.original_file_name:test.exe']
 
+
 def test_ecs_windows_old():
     assert LuceneBackend(ecs_windows_old()).convert(
-        SigmaCollection.from_yaml(f"""
+        SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -73,9 +76,10 @@ def test_ecs_windows_old():
         """)
     ) == ['winlog.channel:Security AND (event_id:123 AND event_data.Image:test.exe)']
 
+
 def test_ecs_windows_other_logsource():
     assert LuceneBackend(ecs_windows()).convert(
-        SigmaCollection.from_yaml(f"""
+        SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:

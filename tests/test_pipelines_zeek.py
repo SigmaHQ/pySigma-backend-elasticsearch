@@ -5,7 +5,7 @@ from sigma.collection import SigmaCollection
 
 @pytest.fixture
 def sigma_rule():
-    return SigmaCollection.from_yaml(f"""
+    return SigmaCollection.from_yaml("""
         title: Test
         status: test
         logsource:

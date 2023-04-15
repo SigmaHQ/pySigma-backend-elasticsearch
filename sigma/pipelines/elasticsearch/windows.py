@@ -1,5 +1,5 @@
-from sigma.pipelines.common import logsource_windows, windows_logsource_mapping, generate_windows_logsource_items
-from sigma.processing.transformations import FieldMappingTransformation, AddFieldnamePrefixTransformation, AddConditionTransformation
+from sigma.pipelines.common import generate_windows_logsource_items
+from sigma.processing.transformations import FieldMappingTransformation, AddFieldnamePrefixTransformation
 from sigma.processing.conditions import LogsourceCondition, IncludeFieldCondition, FieldNameProcessingItemAppliedCondition
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 
@@ -66,13 +66,14 @@ ecs_windows_variable_mappings = {
     ),
 }
 
+
 def ecs_windows():
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat from version 7",
         priority=20,
         allowed_backends=("elasticsearch", "opensearch"),
         items=generate_windows_logsource_items("winlog.channel", "{source}") + [                   # Variable field mappinga depending on category/service
-           ProcessingItem(
+            ProcessingItem(
                 identifier=f"elasticsearch_windows-{field}-{logsrc_field}-{logsrc}",
                 transformation=FieldMappingTransformation({
                     field: mapped
@@ -83,9 +84,9 @@ def ecs_windows():
                         logsrc_field: logsrc,
                     }),
                 ]
-           )
-           for field, mappings in ecs_windows_variable_mappings.items()
-           for (logsrc_field, logsrc, mapped) in mappings
+            )
+            for field, mappings in ecs_windows_variable_mappings.items()
+            for (logsrc_field, logsrc, mapped) in mappings
         ] + [
             ProcessingItem(     # Field mappings
                 identifier="ecs_windows_field_mapping",
@@ -167,9 +168,11 @@ def ecs_windows():
             ),
             ProcessingItem(         # Prepend each field that was not processed by previous field mapping transformation with "winlog.event_data."
                 identifier="ecs_windows_winlog_eventdata_prefix",
-                transformation=AddFieldnamePrefixTransformation("winlog.event_data."),
+                transformation=AddFieldnamePrefixTransformation(
+                    "winlog.event_data."),
                 field_name_conditions=[
-                    FieldNameProcessingItemAppliedCondition("ecs_windows_field_mapping"),
+                    FieldNameProcessingItemAppliedCondition(
+                        "ecs_windows_field_mapping"),
                     IncludeFieldCondition(fields=["\\w+\\."], type="re"),
                 ],
                 field_name_condition_negation=True,
@@ -180,6 +183,7 @@ def ecs_windows():
             )
         ],
     )
+
 
 def ecs_windows_old():
     return ProcessingPipeline(
@@ -201,7 +205,8 @@ def ecs_windows_old():
                 identifier="ecs_windows_eventdata_prefix",
                 transformation=AddFieldnamePrefixTransformation("event_data."),
                 field_name_conditions=[
-                    FieldNameProcessingItemAppliedCondition("ecs_windows_field_mapping"),
+                    FieldNameProcessingItemAppliedCondition(
+                        "ecs_windows_field_mapping"),
                     IncludeFieldCondition(fields=["\\w+\\."], type="re"),
                 ],
                 field_name_condition_negation=True,

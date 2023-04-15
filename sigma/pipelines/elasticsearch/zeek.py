@@ -1,5 +1,7 @@
-from sigma.processing.transformations import FieldMappingTransformation, AddFieldnamePrefixTransformation, AddConditionTransformation, ChangeLogsourceTransformation
-from sigma.processing.conditions import LogsourceCondition, IncludeFieldCondition, ExcludeFieldCondition, RuleProcessingItemAppliedCondition
+# pylint: disable=too-many-lines
+
+from sigma.processing.transformations import FieldMappingTransformation, AddConditionTransformation, ChangeLogsourceTransformation
+from sigma.processing.conditions import LogsourceCondition
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 
 ecs_zeek_beats_category_service_mapping = {
