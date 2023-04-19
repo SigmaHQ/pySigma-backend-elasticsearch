@@ -1,11 +1,12 @@
 import re
 import json
-from typing import ClassVar, Dict, List, Optional, Pattern, Tuple
+from typing import ClassVar, Dict, List, Optional, Pattern, Tuple, Union
 
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule
 from sigma.conversion.base import TextQueryBackend
-from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
+from sigma.conversion.deferred import DeferredQueryExpression
+from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT, ConditionFieldEqualsValueExpression
 from sigma.types import SigmaCompareExpression
 import sigma
 
@@ -166,6 +167,13 @@ class LuceneBackend(TextQueryBackend):
             "HIGH": 73,
             "CRITICAL": 99
         }
+
+    def convert_condition_field_eq_val_null(self, cond: ConditionFieldEqualsValueExpression, state: ConversionState) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field is null expression value expressions"""
+        if cond.parent_condition_chain_contains(ConditionNOT):
+            return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field)).replace(f"{self.not_token} ", "")
+        else:
+            return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field))
 
     def finalize_query_dsl_lucene(
             self,
