@@ -2,6 +2,7 @@
 name = "pySigma-backend-elasticsearch"
 version = "1.0.2"
 description = "pySigma Elasticsearch backend"
+readme = "README.md"
 authors = ["Thomas Patzke <thomas@patzke.org>", "Hendrik Baecker <hb@process-zero.de>"]
 license = "LGPL-3.0-only"
 repository = "https://github.com/SigmaHQ/pySigma-backend-elasticsearch"
