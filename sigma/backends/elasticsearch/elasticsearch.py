@@ -25,6 +25,8 @@ class LuceneBackend(TextQueryBackend):
         "default": "Plain Elasticsearch Lucene queries",
         "kibana_ndjson": "Kibana NDJSON import file with Lucene queries",
         "dsl_lucene": "Elasticsearch query DSL with embedded Lucene queries",
+        "siem_rule": "Elasticsearch query DSL as SIEM Rules in JSON Format",
+        "siem_rule_ndjson": "Elasticsearch query DSL as SIEM Rules in NDJSON Format",
     }
     # Does the backend requires that a processing pipeline is provided?
     requires_pipeline: ClassVar[bool] = True
