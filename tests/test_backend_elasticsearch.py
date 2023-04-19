@@ -200,6 +200,29 @@ def test_lucene_field_name_with_whitespace(lucene_backend: LuceneBackend):
     assert lucene_backend.convert(rule) == ['field\\ name:value']
 
 
+def test_lucene_not_filter_on_exists(lucene_backend: LuceneBackend):
+    """Test for DSL output with embedded query string query."""
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                selection:
+                    FieldA|endswith: 'valueA'
+                filter_1:
+                    FieldB: null
+                filter_2:
+                    FieldB: ''
+                condition: selection and not filter_1 and not filter_2
+        """)
+
+    assert lucene_backend.convert(rule) == [
+        'FieldA:*valueA AND (NOT _exists_:FieldB) AND (NOT FieldB:"")'
+        ]
+
+
 def test_elasticsearch_ndjson_lucene(lucene_backend: LuceneBackend):
     """Test for NDJSON output with embedded query string query."""
     rule = SigmaCollection.from_yaml("""
