@@ -1,13 +1,13 @@
 import re
 import json
-from typing import ClassVar, Dict, List, Optional, Pattern, Tuple, Union
+from typing import ClassVar, Dict, List, Optional, Pattern, Tuple, Union, Any
 
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredQueryExpression
-from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT, ConditionFieldEqualsValueExpression
-from sigma.types import SigmaCompareExpression
+from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionType
+from sigma.types import SigmaCompareExpression, SigmaString
 import sigma
 
 
@@ -142,8 +142,11 @@ class LuceneBackend(TextQueryBackend):
             "winlogbeat-*",
             "-*elastic-cloud-logs-*"
         ],
-            schedule_interval: int = 5,
-            schedule_interval_unit: str = "m",
+        schedule_interval: int = 5,
+        schedule_interval_unit: str = "m",
+        case_insensitive_whitelist: Optional[str] = None,
+        case_insensitive_blacklist: Optional[str] = None,
+        field_extension: Optional[Union[List[str], str]] = None,
             **kwargs):
 
         super().__init__(processing_pipeline, collect_errors, **kwargs)
@@ -167,6 +170,105 @@ class LuceneBackend(TextQueryBackend):
             "HIGH": 73,
             "CRITICAL": 99
         }
+        if case_insensitive_blacklist:
+            self.case_insensitive_blacklist = set(
+                item.strip() for item in case_insensitive_blacklist.split(','))
+        else:
+            self.case_insensitive_blacklist = set()
+
+        if case_insensitive_whitelist:
+            self.case_insensitive_whitelist = set(
+                item.strip() for item in case_insensitive_whitelist.split(','))
+        else:
+            self.case_insensitive_whitelist = set()
+
+        self.field_to_extension = {}
+
+        if field_extension:
+            if isinstance(field_extension, str):  # Only passed one field
+                field_extension = [field_extension]
+
+            for setting in field_extension:
+                field_and_extensions = setting.split(',')
+                field = field_and_extensions[0]
+                extensions = field_and_extensions[1:]
+                for extension in extensions:
+                    self.field_to_extension[extension.strip()] = field.strip()
+
+    def apply_backend_option_case_insensitive(self, cond: ConditionType) -> Tuple[ConditionType, bool]:
+        if hasattr(cond, 'args'):
+            conds = cond.args
+        else:
+            conds = [cond]
+
+        was_changed = False
+        for condition in conds:
+            if type(condition.value) == SigmaString:
+                if (
+                    ('*' in self.case_insensitive_whitelist or
+                     (condition.field in self.case_insensitive_whitelist))
+                    and (condition.field not in self.case_insensitive_blacklist)
+                ):
+                    was_changed = True
+                    converted = condition.value.convert(
+                        escape_char=self.escape_char,
+                        wildcard_multi='.*',
+                        wildcard_single='.',
+                        add_escaped='+-=&|!(){}"~?\\ <>#*./',
+                        filter_chars=self.filter_chars,
+                    )
+                    condition.value = re.sub(
+                        r"[A-Za-z]",
+                        lambda x: ("[" + x.group(0).upper() +
+                                   x.group(0).lower() + "]"
+                                   ),
+                        str(converted)
+                    )
+        return cond, was_changed
+
+    def apply_backend_option_field_extension(self, cond: ConditionType) -> ConditionType:
+        if hasattr(cond, 'args'):
+            conds = cond.args
+        else:
+            conds = [cond]
+
+        for condition in conds:
+            if condition.field in self.field_to_extension:
+                condition.field = f"{condition.field}.{self.field_to_extension[condition.field]}"
+
+        return cond
+
+    def convert_condition_as_in_expression(self, cond: Union[ConditionOR, ConditionAND], state: ConversionState) -> Union[str, DeferredQueryExpression]:
+        if self.case_insensitive_whitelist:
+            cond, was_changed = self.apply_backend_option_case_insensitive(
+                cond
+            )
+            if was_changed:  # don't want to escape value twice
+                return self.field_in_list_expression.format(
+                    field=self.escape_and_quote_field(cond.args[0].field),
+                    op=self.or_in_operator if isinstance(
+                        cond, ConditionOR) else self.and_in_operator,
+                    list=self.list_separator.join([
+                        f"/{arg.value}/"
+                        for arg in cond.args
+                    ]),
+                )
+        if self.field_to_extension:
+            cond = self.apply_backend_option_field_extension(cond)
+
+        return super().convert_condition_as_in_expression(cond, state)
+
+    def convert_condition_field_eq_val(self, cond: ConditionFieldEqualsValueExpression, state: ConversionState) -> Any:
+        if self.field_to_extension:
+            cond = self.apply_backend_option_field_extension(cond)
+        if self.case_insensitive_whitelist:
+            cond, was_changed = self.apply_backend_option_case_insensitive(
+                cond
+            )
+            if was_changed:
+                return self.re_expression.format(field=cond.field, regex=cond.value)
+
+        return super().convert_condition_field_eq_val(cond, state)
 
     def convert_condition_field_eq_val_null(self, cond: ConditionFieldEqualsValueExpression, state: ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field is null expression value expressions"""
