@@ -4,8 +4,20 @@ from sigma.collection import SigmaCollection
 
 
 @pytest.fixture
-def lucene_backend():
-    return LuceneBackend()
+def lucene_backend(request):
+    if not hasattr(request, "param"):
+        return LuceneBackend()
+
+    case_insensitive_whitelist = request.param.get(
+        "case_insensitive_whitelist", None)
+    case_insensitive_blacklist = request.param.get(
+        "case_insensitive_blacklist", None)
+    field_extension = request.param.get("field_extension", None)
+    return LuceneBackend(
+        case_insensitive_whitelist=case_insensitive_whitelist,
+        case_insensitive_blacklist=case_insensitive_blacklist,
+        field_extension=field_extension
+    )
 
 
 def test_lucene_and_expression(lucene_backend: LuceneBackend):
@@ -322,7 +334,7 @@ def test_elasticsearch_ndjson_lucene(lucene_backend: LuceneBackend):
             "version": 1,
             "kibanaSavedObjectMeta": {
                     "searchSourceJSON": "{\"index\": \"beats-*\", \"filter\": [], \"highlight\": {\"pre_tags\": [\"@kibana-highlighted-field@\"], \"post_tags\": [\"@/kibana-highlighted-field@\"], \"fields\": {\"*\": {}}, \"require_field_match\": false, \"fragment_size\": 2147483647}, \"query\": {\"query_string\": {\"query\": \"fieldA:valueA AND fieldB:valueB\", \"analyze_wildcard\": true}}}"
-                }
+                    }
         },
         "references": [{
             "id": "beats-*",
@@ -498,6 +510,163 @@ def test_elasticsearch_dsl_lucene(lucene_backend: LuceneBackend):
             }
         }
     }]
+
+
+@pytest.mark.parametrize("lucene_backend", [{"case_insensitive_whitelist": "fieldA"}], indirect=True)
+def test_lucene_and_expression_case_insensitive(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+        """)
+
+    a = lucene_backend.convert(rule)
+    assert lucene_backend.convert(
+        rule) == ['fieldA:/[Vv][Aa][Ll][Uu][Ee][Aa]/ AND fieldB:valueB']
+
+
+@pytest.mark.parametrize("lucene_backend", [{"case_insensitive_whitelist": "fieldA"}], indirect=True)
+def test_lucene_in_expression_case_insensitive(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - valueA
+                        - valueB
+                        - valueC*
+                condition: sel
+        """)
+    assert lucene_backend.convert(
+        rule) == ['fieldA:(/[Vv][Aa][Ll][Uu][Ee][Aa]/ OR /[Vv][Aa][Ll][Uu][Ee][Bb]/ OR /[Vv][Aa][Ll][Uu][Ee][Cc].*/)']
+
+
+@pytest.mark.parametrize("lucene_backend", [{"case_insensitive_whitelist": "fieldA, fieldB"}], indirect=True)
+def test_lucene_regex_case_insensitive_query(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|re: foo.*bar
+                    fieldB: foo
+                condition: sel
+        """)
+    assert lucene_backend.convert(
+        rule) == ['fieldA:/foo.*bar/ AND fieldB:/[Ff][Oo][Oo]/']
+
+
+@pytest.mark.parametrize("lucene_backend", [{"case_insensitive_whitelist": "*", "case_insensitive_blacklist": "fieldA"}], indirect=True)
+def test_lucene_query_case_insensitive_mix(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: bar 
+                    fieldB: foo 
+                condition: sel
+        """)
+    assert lucene_backend.convert(
+        rule) == ['fieldA:bar AND fieldB:/[Ff][Oo][Oo]/']
+
+
+@pytest.mark.parametrize("lucene_backend", [{"case_insensitive_whitelist": "fieldA"}], indirect=True)
+def test_lucene_case_insensitive_contains(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: foo.bar
+                condition: sel
+        """)
+    assert lucene_backend.convert(
+        rule) == ['fieldA:/.*[Ff][Oo][Oo]\\.[Bb][Aa][Rr].*/']
+
+
+@pytest.mark.parametrize("lucene_backend", [{"field_extension": ["keyword, fieldA, fieldD", "text, fieldB"]}], indirect=True)
+def test_lucene_field_extension_value_eq(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: foo12
+                    fieldB: foo34
+                    fieldC: foo56
+                    fieldD: foo78
+                condition: sel
+        """)
+    assert lucene_backend.convert(rule) == [
+        'fieldA.keyword:foo12 AND fieldB.text:foo34 AND fieldC:foo56 AND fieldD.keyword:foo78',]
+
+
+@pytest.mark.parametrize("lucene_backend", [{"field_extension": ["foo, fieldA", "bar, fieldB"]}], indirect=True)
+def test_lucene_and_or_expression_field_extension(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - valueA1
+                        - valueA2
+                    fieldB:
+                        - valueB1
+                        - valueB2
+                condition: sel
+        """)
+    assert lucene_backend.convert(
+        rule) == ['(fieldA.foo:(valueA1 OR valueA2)) AND (fieldB.bar:(valueB1 OR valueB2))']
+
+
+@pytest.mark.parametrize("lucene_backend", [{"field_extension": "foo, fieldA, fieldB"}], indirect=True)
+def test_lucene_query_single_field_extension(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - valueA1
+                        - valueA2
+                    fieldB:
+                        - valueB1
+                        - valueB2
+                condition: sel
+        """)
+    assert lucene_backend.convert(
+        rule) == ['(fieldA.foo:(valueA1 OR valueA2)) AND (fieldB.foo:(valueB1 OR valueB2))']
 
 
 def test_elasticsearch_kibana_output(lucene_backend: LuceneBackend):
