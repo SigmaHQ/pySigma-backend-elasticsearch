@@ -103,7 +103,7 @@ class LuceneBackend(TextQueryBackend):
 
     # Null/None expressions
     # Expression for field has null value as format string with {field} placeholder for field name
-    field_null_expression: ClassVar[str] = "(NOT _exists_:{field})"
+    field_null_expression: ClassVar[str] = "NOT _exists_:{field}"
 
     # Field value in list, e.g. "field in (value list)" or "field containsall (value list)"
     # Convert OR as in-expression
@@ -169,20 +169,25 @@ class LuceneBackend(TextQueryBackend):
         }
 
     @staticmethod
-    def _is_field_is_not_null(cond : ConditionNOT) -> bool:
-        return isinstance(cond.args[0], ConditionFieldEqualsValueExpression) and isinstance(cond.args[0].value, SigmaNull)
+    def _is_field_null_condition(cond : ConditionItem) -> bool:
+        return isinstance(cond, ConditionFieldEqualsValueExpression) and isinstance(cond.value, SigmaNull)
 
     def convert_condition_not(self, cond : ConditionNOT, state : ConversionState) -> Union[str, DeferredQueryExpression]:
-        """When checking if a field is not null, convert "NOT (NOT (exists))" to "exists"."""
-        if LuceneBackend._is_field_is_not_null(cond):
+        """When checking if a field is not null, convert "NOT NOT _exists_:field" to "_exists_:field"."""
+        if LuceneBackend._is_field_null_condition(cond.args[0]):
             return f"_exists_:{cond.args[0].field}"
 
         return super().convert_condition_not(cond, state)
 
     def compare_precedence(self, outer : ConditionItem, inner : ConditionItem) -> bool:
-        """Override precedence check to avoid parentheses around a field is not null condition."""
-        if isinstance(inner, ConditionNOT) and LuceneBackend._is_field_is_not_null(inner):
+        """Override precedence check for null field conditions."""
+        if isinstance(inner, ConditionNOT) and LuceneBackend._is_field_null_condition(inner.args[0]):
+            # inner will turn into "_exists_:field", no parentheses needed
             return True
+
+        if LuceneBackend._is_field_null_condition(inner):
+            # inner will turn into "NOT _exists_:field", force parentheses
+            return False
 
         return super().compare_precedence(outer, inner)
 

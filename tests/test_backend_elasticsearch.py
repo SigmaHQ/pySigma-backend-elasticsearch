@@ -315,6 +315,25 @@ def test_lucene_filter_not_or_null(lucene_backend: LuceneBackend):
     ]
 
 
+def test_lucene_filter_not(lucene_backend: LuceneBackend):
+    """Test for DSL output with embedded query string query."""
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                filter:
+                    Field: null
+                condition: not filter
+        """)
+
+    assert lucene_backend.convert(rule) == [
+        '_exists_:Field'
+    ]
+
+
 def test_elasticsearch_ndjson_lucene(lucene_backend: LuceneBackend):
     """Test for NDJSON output with embedded query string query."""
     rule = SigmaCollection.from_yaml("""
