@@ -219,7 +219,7 @@ def test_lucene_not_filter_null_and(lucene_backend: LuceneBackend):
         """)
 
     assert lucene_backend.convert(rule) == [
-        'FieldA:*valueA AND (NOT _exists_:FieldB) AND (NOT FieldB:"")'
+        'FieldA:*valueA AND _exists_:FieldB AND (NOT FieldB:"")'
     ]
 
 
@@ -242,7 +242,7 @@ def test_lucene_filter_null_and(lucene_backend: LuceneBackend):
         """)
 
     assert lucene_backend.convert(rule) == [
-        'FieldA:*valueA AND NOT _exists_:FieldB AND (NOT FieldB:"")'
+        'FieldA:*valueA AND (NOT _exists_:FieldB) AND (NOT FieldB:"")'
     ]
 
 
@@ -265,7 +265,7 @@ def test_lucene_not_filter_null_or(lucene_backend: LuceneBackend):
         """)
 
     assert lucene_backend.convert(rule) == [
-        'FieldA:*valueA AND ((NOT _exists_:FieldB) OR (NOT FieldB:""))'
+        'FieldA:*valueA AND (_exists_:FieldB OR (NOT FieldB:""))'
     ]
 
 
@@ -288,7 +288,30 @@ def test_lucene_filter_null_or(lucene_backend: LuceneBackend):
         """)
 
     assert lucene_backend.convert(rule) == [
-        'FieldA:*valueA AND (NOT _exists_:FieldB OR (NOT FieldB:""))'
+        'FieldA:*valueA AND ((NOT _exists_:FieldB) OR (NOT FieldB:""))'
+    ]
+
+
+def test_lucene_filter_not_or_null(lucene_backend: LuceneBackend):
+    """Test for DSL output with embedded query string query."""
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                selection:
+                    FieldA|endswith: 'valueA'
+                filter_1:
+                    FieldB: null
+                filter_2:
+                    FieldB: ''
+                condition: selection and not 1 of filter_*
+        """)
+
+    assert lucene_backend.convert(rule) == [
+        'FieldA:*valueA AND (NOT ((NOT _exists_:FieldB) OR FieldB:""))'
     ]
 
 

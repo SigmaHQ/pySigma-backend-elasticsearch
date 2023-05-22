@@ -7,7 +7,7 @@ from sigma.rule import SigmaRule
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT, ConditionFieldEqualsValueExpression
-from sigma.types import SigmaCompareExpression
+from sigma.types import SigmaCompareExpression, SigmaNull
 import sigma
 
 
@@ -103,7 +103,7 @@ class LuceneBackend(TextQueryBackend):
 
     # Null/None expressions
     # Expression for field has null value as format string with {field} placeholder for field name
-    field_null_expression: ClassVar[str] = "NOT _exists_:{field}"
+    field_null_expression: ClassVar[str] = "(NOT _exists_:{field})"
 
     # Field value in list, e.g. "field in (value list)" or "field containsall (value list)"
     # Convert OR as in-expression
@@ -168,12 +168,23 @@ class LuceneBackend(TextQueryBackend):
             "CRITICAL": 99
         }
 
-    def convert_condition_field_eq_val_null(self, cond: ConditionFieldEqualsValueExpression, state: ConversionState) -> Union[str, DeferredQueryExpression]:
-        """Conversion of field is null expression value expressions"""
-        if cond.parent_condition_chain_contains(ConditionNOT):
-            return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field)).replace(f"{self.not_token} ", "")
-        else:
-            return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field))
+    @staticmethod
+    def _is_field_is_not_null(cond : ConditionNOT) -> bool:
+        return isinstance(cond.args[0], ConditionFieldEqualsValueExpression) and isinstance(cond.args[0].value, SigmaNull)
+
+    def convert_condition_not(self, cond : ConditionNOT, state : ConversionState) -> Union[str, DeferredQueryExpression]:
+        """When checking if a field is not null, convert "NOT (NOT (exists))" to "exists"."""
+        if LuceneBackend._is_field_is_not_null(cond):
+            return f"_exists_:{cond.args[0].field}"
+
+        return super().convert_condition_not(cond, state)
+
+    def compare_precedence(self, outer : ConditionItem, inner : ConditionItem) -> bool:
+        """Override precedence check to avoid parentheses around a field is not null condition."""
+        if isinstance(inner, ConditionNOT) and LuceneBackend._is_field_is_not_null(inner):
+            return True
+
+        return super().compare_precedence(outer, inner)
 
     def finalize_query_dsl_lucene(
             self,
