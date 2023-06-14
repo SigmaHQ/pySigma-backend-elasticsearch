@@ -7,7 +7,7 @@ from sigma.rule import SigmaRule
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT, ConditionFieldEqualsValueExpression
-from sigma.types import SigmaCompareExpression
+from sigma.types import SigmaCompareExpression, SigmaNull
 import sigma
 
 
@@ -168,12 +168,28 @@ class LuceneBackend(TextQueryBackend):
             "CRITICAL": 99
         }
 
-    def convert_condition_field_eq_val_null(self, cond: ConditionFieldEqualsValueExpression, state: ConversionState) -> Union[str, DeferredQueryExpression]:
-        """Conversion of field is null expression value expressions"""
-        if cond.parent_condition_chain_contains(ConditionNOT):
-            return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field)).replace(f"{self.not_token} ", "")
-        else:
-            return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field))
+    @staticmethod
+    def _is_field_null_condition(cond : ConditionItem) -> bool:
+        return isinstance(cond, ConditionFieldEqualsValueExpression) and isinstance(cond.value, SigmaNull)
+
+    def convert_condition_not(self, cond : ConditionNOT, state : ConversionState) -> Union[str, DeferredQueryExpression]:
+        """When checking if a field is not null, convert "NOT NOT _exists_:field" to "_exists_:field"."""
+        if LuceneBackend._is_field_null_condition(cond.args[0]):
+            return f"_exists_:{cond.args[0].field}"
+
+        return super().convert_condition_not(cond, state)
+
+    def compare_precedence(self, outer : ConditionItem, inner : ConditionItem) -> bool:
+        """Override precedence check for null field conditions."""
+        if isinstance(inner, ConditionNOT) and LuceneBackend._is_field_null_condition(inner.args[0]):
+            # inner will turn into "_exists_:field", no parentheses needed
+            return True
+
+        if LuceneBackend._is_field_null_condition(inner):
+            # inner will turn into "NOT _exists_:field", force parentheses
+            return False
+
+        return super().compare_precedence(outer, inner)
 
     def finalize_query_dsl_lucene(
             self,
