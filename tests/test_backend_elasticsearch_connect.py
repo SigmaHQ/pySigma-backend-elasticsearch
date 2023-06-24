@@ -24,6 +24,12 @@ def prepare_es_data():
                 "field": {
                     "type": "ip"
                 },
+                "textFieldA": {
+                    "type":  "text"
+                },
+                "keywordFieldA": {
+                    "type":  "keyword"
+                }
             },
             "dynamic_templates": [
                 {
@@ -53,6 +59,14 @@ def prepare_es_data():
                       json={"field": "192.168.1.1"}, timeout=120)
         requests.post("http://localhost:9200/test-index/_doc/",
                       json={"field name": "value"}, timeout=120)
+        requests.post("http://localhost:9200/test-index/_doc/",
+                      json={"textFieldA": "value with spaces"}, timeout=120)
+        requests.post("http://localhost:9200/test-index/_doc/",
+                      json={"textFieldA": "value2 with spaces"}, timeout=120)
+        requests.post("http://localhost:9200/test-index/_doc/",
+                      json={"keywordFieldA": "value with spaces"}, timeout=120)
+        requests.post("http://localhost:9200/test-index/_doc/",
+                      json={"keywordFieldA": "value2 with spaces"}, timeout=120)
         # Wait a bit for Documents to be indexed
         time.sleep(1)
 
@@ -272,6 +286,40 @@ class TestConnectElasticsearch:
                 detection:
                     sel:
                         fieldK: dot.value
+                    condition: sel
+            """)
+
+        result_dsl = lucene_backend.convert(
+            rule, output_format="dsl_lucene")[0]
+        self.query_backend_hits(result_dsl, num_wanted=1)
+
+    def test_connect_lucene_space_value_text(self, prepare_es_data, lucene_backend: LuceneBackend):
+        rule = SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        textFieldA: 'value with spaces'
+                    condition: sel
+            """)
+
+        result_dsl = lucene_backend.convert(
+            rule, output_format="dsl_lucene")[0]
+        self.query_backend_hits(result_dsl, num_wanted=1)
+
+    def test_connect_lucene_space_value_keyword(self, prepare_es_data, lucene_backend: LuceneBackend):
+        rule = SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        keywordFieldA: 'value with spaces'
                     condition: sel
             """)
 
