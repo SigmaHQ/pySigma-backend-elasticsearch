@@ -542,6 +542,35 @@ def test_elasticsearch_dsl_lucene(lucene_backend: LuceneBackend):
     }]
 
 
+def test_es_dsl_lucene_space_value_text(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    textFieldA: 'value with spaces'
+                condition: sel
+        """)
+
+    assert lucene_backend.convert(rule, output_format="dsl_lucene") == [{
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "query_string": {
+                            "query": "textFieldA:\"value\\ with\\ spaces\"",
+                            "analyze_wildcard": True
+                        }
+                    }
+                ]
+            }
+        }
+    }]
+
+
 def test_elasticsearch_kibana_output(lucene_backend: LuceneBackend):
     """Test for output format kibana."""
     # TODO: implement a test for the output format
