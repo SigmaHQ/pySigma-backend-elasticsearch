@@ -21,7 +21,7 @@ def prepare_es_data():
         requests.put("http://localhost:9200/test-index", timeout=120)
         requests.put("http://localhost:9200/test-index/_mapping", timeout=120, json={
             "properties": {
-                "field": {
+                "ipfield": {
                     "type": "ip"
                 },
             },
@@ -50,7 +50,9 @@ def prepare_es_data():
         requests.post("http://localhost:9200/test-index/_doc/",
                       json={"fieldA": "foosamplebar", "fieldB": "foo"}, timeout=120)
         requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"field": "192.168.1.1"}, timeout=120)
+                      json={"ipfield": "192.168.1.1"}, timeout=120)
+        requests.post("http://localhost:9200/test-index/_doc/",
+                      json={"ipfield": "10.5.5.5"}, timeout=120)
         requests.post("http://localhost:9200/test-index/_doc/",
                       json={"field name": "value"}, timeout=120)
         # Wait a bit for Documents to be indexed
@@ -238,7 +240,24 @@ class TestConnectElasticsearch:
                     product: test_product
                 detection:
                     sel:
-                        field|cidr: 192.168.0.0/16
+                        ipfield|cidr: 192.168.0.0/16
+                    condition: sel
+            """)
+
+        result_dsl = lucene_backend.convert(
+            rule, output_format="dsl_lucene")[0]
+        self.query_backend_hits(result_dsl, num_wanted=1)
+
+    def test_connect_lucene_ip_query(self, prepare_es_data, lucene_backend: LuceneBackend):
+        rule = SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        ipfield: 192.168.1.1
                     condition: sel
             """)
 
