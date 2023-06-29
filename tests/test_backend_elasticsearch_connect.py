@@ -69,6 +69,12 @@ def prepare_es_data():
                       json={"keywordFieldA": "value with spaces"}, timeout=120)
         requests.post("http://localhost:9200/test-index/_doc/",
                       json={"keywordFieldA": "value2 with spaces"}, timeout=120)
+        requests.post("http://localhost:9200/test-index/_doc/",
+                      json={"OriginalFileName": "Cmd.exe", "CommandLine": "something < someother"}, timeout=120)
+        requests.post("http://localhost:9200/test-index/_doc/",
+                      json={"OriginalFileName": "Cmd.exe", "CommandLine": "something > someother"}, timeout=120)
+        requests.post("http://localhost:9200/test-index/_doc/",
+                      json={"OriginalFileName": "Cmd.exe", "CommandLine": "without angle bracket"}, timeout=120)
         # Wait a bit for Documents to be indexed
         time.sleep(1)
 
@@ -340,6 +346,47 @@ class TestConnectElasticsearch:
                     sel:
                         keywordFieldA: 'value with spaces'
                     condition: sel
+            """)
+
+        result_dsl = lucene_backend.convert(
+            rule, output_format="dsl_lucene")[0]
+        self.query_backend_hits(result_dsl, num_wanted=1)
+
+    def test_connect_lucene_angle_brackets(self, prepare_es_data, lucene_backend: LuceneBackend):
+        rule = SigmaCollection.from_yaml(r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    selection_cmd:
+                        - OriginalFileName: 'Cmd.exe'
+                        - Image|endswith: '\cmd.exe'
+                    selection_cli:
+                        - CommandLine|contains: '<'
+                        - CommandLine|contains: '>'
+                    condition: all of selection_*
+            """)
+
+        result_dsl = lucene_backend.convert(
+            rule, output_format="dsl_lucene")[0]
+        self.query_backend_hits(result_dsl, num_wanted=2)
+
+    def test_connect_lucene_angle_brackets_single(self, prepare_es_data, lucene_backend: LuceneBackend):
+        rule = SigmaCollection.from_yaml(r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    selection_cmd:
+                        - OriginalFileName: 'Cmd.exe'
+                        - Image|endswith: '\cmd.exe'
+                    selection_cli:
+                        CommandLine|contains: '<'
+                    condition: all of selection_*
             """)
 
         result_dsl = lucene_backend.convert(
