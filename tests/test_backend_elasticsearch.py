@@ -334,6 +334,29 @@ def test_lucene_filter_not(lucene_backend: LuceneBackend):
     ]
 
 
+def test_lucene_angle_brackets(lucene_backend: LuceneBackend):
+    """Test for DSL output with < or > in the values"""
+    rule = SigmaCollection.from_yaml(r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                selection_cmd:
+                    - OriginalFileName: 'Cmd.exe'
+                    - Image|endswith: '\cmd.exe'
+                selection_cli:
+                    - CommandLine|contains: '<'
+                    - CommandLine|contains: '>'
+                condition: all of selection_*
+        """)
+
+    assert lucene_backend.convert(rule) == [
+        r'(OriginalFileName:Cmd.exe OR Image:*\\cmd.exe) AND (CommandLine:(*\<* OR *\>*))'
+    ]
+
+
 def test_elasticsearch_ndjson_lucene(lucene_backend: LuceneBackend):
     """Test for NDJSON output with embedded query string query."""
     rule = SigmaCollection.from_yaml("""
