@@ -13,9 +13,9 @@ def es_available_test():
     return True
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="class", name="prepare_es_data")
 @pytest.mark.skipif(es_available_test is False, reason="ES not available... Skipping tests...")
-def prepare_es_data():
+def fixture_prepare_es_data():
     if es_available_test():
         requests.delete('http://localhost:9200/test-index', timeout=120)
         requests.put("http://localhost:9200/test-index", timeout=120)
@@ -79,8 +79,8 @@ def prepare_es_data():
         time.sleep(1)
 
 
-@pytest.fixture
-def lucene_backend():
+@pytest.fixture(name="lucene_backend")
+def fixture_lucene_backend():
     return LuceneBackend()
 
 

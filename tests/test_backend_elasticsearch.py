@@ -3,8 +3,8 @@ from sigma.backends.elasticsearch import LuceneBackend
 from sigma.collection import SigmaCollection
 
 
-@pytest.fixture
-def lucene_backend():
+@pytest.fixture(name="lucene_backend")
+def fixture_lucene_backend():
     return LuceneBackend()
 
 
