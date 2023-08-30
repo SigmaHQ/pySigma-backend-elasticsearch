@@ -12,7 +12,7 @@ ecs_zeek_beats_category_service_mapping = {
     "webserver": "http",
 }
 
-def ecs_zeek_beats():
+def ecs_zeek_beats() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) for Zeek using filebeat >= 7.6.1",
         priority=20,
@@ -481,7 +481,7 @@ def ecs_zeek_beats():
         ],
     )
 
-def ecs_zeek_corelight():
+def ecs_zeek_corelight() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) mapping from Corelight",
         priority=20,
@@ -950,7 +950,7 @@ def ecs_zeek_corelight():
     ],
 )
 
-def zeek_raw():
+def zeek_raw() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Zeek raw JSON field naming",
         priority=20,

@@ -67,7 +67,7 @@ ecs_windows_variable_mappings = {
 }
 
 
-def ecs_windows():
+def ecs_windows() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat from version 7",
         priority=20,
@@ -185,7 +185,7 @@ def ecs_windows():
     )
 
 
-def ecs_windows_old():
+def ecs_windows_old() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat up to version 6",
         priority=20,
