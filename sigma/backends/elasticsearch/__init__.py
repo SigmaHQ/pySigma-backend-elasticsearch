@@ -1,4 +1,4 @@
-from .elasticsearch import LuceneBackend
+from .elasticsearch_lucene import LuceneBackend
 
 backends = {
     "elasticsearch": LuceneBackend,
