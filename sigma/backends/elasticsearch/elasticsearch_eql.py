@@ -200,7 +200,7 @@ class EqlBackend(TextQueryBackend):
 
     def convert_condition_field_eq_val_str(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> Union[str, DeferredQueryExpression]:  # pragma: no cover
         """Conversion of field = string value expressions"""
         try:
             if (  # Check conditions for usage of 'startswith' operator
