@@ -20,7 +20,7 @@ import sigma
 
 class EqlBackend(TextQueryBackend):
     """
-    Elasticsearch event querly language backend. Generates query strings described here in the
+    Elasticsearch event query language backend. Generates query strings described here in the
     Elasticsearch documentation:
 
     https://www.elastic.co/guide/en/elasticsearch/reference/current/eql.html
