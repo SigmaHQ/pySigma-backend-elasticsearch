@@ -1,5 +1,5 @@
 import pytest
-from sigma.backends.elasticsearch import LuceneBackend
+from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 from sigma.collection import SigmaCollection
 
 

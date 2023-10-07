@@ -1,5 +1,5 @@
 import pytest
-from sigma.backends.elasticsearch import LuceneBackend
+from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 from sigma.pipelines.elasticsearch.zeek import ecs_zeek_beats, ecs_zeek_corelight, zeek_raw
 from sigma.collection import SigmaCollection
 
