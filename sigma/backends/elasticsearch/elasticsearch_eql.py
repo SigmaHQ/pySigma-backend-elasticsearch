@@ -100,13 +100,17 @@ class EqlBackend(TextQueryBackend):
     # Don't escape the escape char
     re_escape_escape_char: ClassVar[bool] = False
 
+    # Case sensitive string matching expression. String is quoted/escaped like a normal string.
+    # Placeholders {field} and {value} are replaced with field name and quoted/escaped string.
+    case_sensitive_match_expression: ClassVar[Optional[str]] = '{field} == {value}'
+
     # cidr expressions
     # CIDR expression query as format string with placeholders {field} = {value}
     cidr_expression: ClassVar[str] = 'cidrMatch({field}, "{network}/{prefixlen}")'
 
     # Numeric comparison operators
     # Compare operation query as format string with placeholders {field}, {operator} and {value}
-    compare_op_expression: ClassVar[str] = "{field}:{operator}{value}"
+    compare_op_expression: ClassVar[str] = "{field} {operator} {value}"
     # Mapping between CompareOperators elements and strings used as replacement
     # for {operator} in compare_op_expression
     compare_operators: ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
