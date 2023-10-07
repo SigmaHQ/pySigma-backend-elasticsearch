@@ -202,58 +202,17 @@ class EqlBackend(TextQueryBackend):
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:  # pragma: no cover
         """Conversion of field = string value expressions"""
-        try:
-            if (  # Check conditions for usage of 'startswith' operator
-                self.startswith_expression
-                is not None  # 'startswith' operator is defined in backend
-                and cond.value.endswith(
-                    SpecialChars.WILDCARD_MULTI
-                )  # String ends with wildcard
-                and not cond.value[
-                    :-1
-                ].contains_special()  # Remainder of string doesn't contains special characters
-            ):
-                expr = (
-                    self.startswith_expression
-                )  # If all conditions are fulfilled, use 'startswith' operartor instead of equal token
-                value = cond.value[:-1]
-            elif (  # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
-                self.endswith_expression is not None
-                and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:].contains_special()
-            ):
-                expr = self.endswith_expression
-                value = cond.value[1:]
-            elif (  # contains: string starts and ends with wildcard
-                self.contains_expression is not None
-                and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
-                and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:-1].contains_special()
-            ):
-                expr = self.contains_expression
-                value = cond.value[1:-1]
-            elif (  # wildcard match expression: string contains wildcard
-                self.wildcard_match_expression is not None
-                and cond.value.contains_special()
-            ):
-                expr = self.wildcard_match_expression
-                value = cond.value
-            elif (  # Use '==' as operator for empty string or ip addresses
-                cond.value.convert() == "" or self.is_ip(cond.value)
-            ):
-                expr = "{field}" + "==" + "{value}"
-                value = cond.value
-            else:
-                expr = "{field}" + self.eq_token + "{value}"
-                value = cond.value
+        if (  # Use '==' as operator for empty string or ip addresses
+            cond.value.convert() == "" or self.is_ip(cond.value)
+        ):
+            expr = "{field}" + "==" + "{value}"
+            value = cond.value
             return expr.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_str(value, state),
             )
-        except TypeError:  # pragma: no cover
-            raise NotImplementedError(
-                "Field equals string value expressions with strings are not supported by the backend."
-            )
+        else:
+            return super().convert_condition_field_eq_val_str(cond, state)
 
     def convert_condition_not(
         self, cond: ConditionNOT, state: ConversionState
