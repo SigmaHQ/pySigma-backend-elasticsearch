@@ -1,4 +1,4 @@
-from sigma.backends.elasticsearch import LuceneBackend
+from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 from sigma.pipelines.elasticsearch.windows import ecs_windows, ecs_windows_old
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule

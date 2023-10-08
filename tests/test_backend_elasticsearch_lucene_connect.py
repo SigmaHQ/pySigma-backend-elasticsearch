@@ -1,25 +1,61 @@
 import time
 import pytest
 import requests
-from sigma.backends.elasticsearch import LuceneBackend
+import urllib3
+from requests.auth import HTTPBasicAuth
+from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 from sigma.collection import SigmaCollection
 
+urllib3.disable_warnings()
+
+pytest.es_url=''
+pytest.es_creds = HTTPBasicAuth('sigmahq', 'sigmahq')
 
 def es_available_test():
+    state = False
+    # Try {es_url} without auth
     try:
-        requests.get('http://localhost:9200/', timeout=120)
+        if not state:
+            response = requests.get('http://localhost:9200', timeout=120)
+            if response.status_code == 200:
+                pytest.es_url='http://localhost:9200'
+                pytest.es_creds=False
+                state = True
     except requests.exceptions.ConnectionError:
-        return False
-    return True
+        state = False
+
+    # Try https://localhost:9200 without auth
+    try:
+        if not state:
+            response = requests.get('https://localhost:9200', timeout=120, verify=False)
+            if response.status_code == 200:
+                pytest.es_url='https://localhost:9200'
+                pytest.es_creds=False
+                state = True
+    except requests.exceptions.ConnectionError:
+        state = False
+
+    # Try https://localhost:9200 with auth
+    try:
+        if not state:
+            response=requests.get('https://localhost:9200', timeout=120, verify=False, auth=('sigmahq', 'sigmahq'))
+            if response.status_code == 200:
+                pytest.es_url='https://localhost:9200'
+                pytest.es_creds=HTTPBasicAuth('sigmahq', 'sigmahq')
+                state = True
+    except requests.exceptions.ConnectionError:
+        state = False
+
+    return state
 
 
 @pytest.fixture(scope="class", name="prepare_es_data")
 @pytest.mark.skipif(es_available_test is False, reason="ES not available... Skipping tests...")
 def fixture_prepare_es_data():
     if es_available_test():
-        requests.delete('http://localhost:9200/test-index', timeout=120)
-        requests.put("http://localhost:9200/test-index", timeout=120)
-        requests.put("http://localhost:9200/test-index/_mapping", timeout=120, json={
+        requests.delete(f'{pytest.es_url}/test-index', timeout=120, verify=False, auth=pytest.es_creds)
+        requests.put(f"{pytest.es_url}/test-index", timeout=120, verify=False, auth=pytest.es_creds)
+        requests.put(f"{pytest.es_url}/test-index/_mapping", timeout=120, verify=False, auth=pytest.es_creds, json={
             "properties": {
                 "ipfield": {
                     "type": "ip"
@@ -43,38 +79,38 @@ def fixture_prepare_es_data():
             ]
         }
         )
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"fieldA": "valueA", "fieldB": "valueB"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"fieldA": "otherisempty", "fieldB": ""}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"fieldK": "dot.value"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"fieldA": "valueA1", "fieldB": "valueB1"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"fieldA": "valueA2", "fieldB": "valueB2"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"fieldA": "foosamplebar", "fieldB": "foo"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"ipfield": "192.168.1.1"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"ipfield": "10.5.5.5"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"field name": "value"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"textFieldA": "value with spaces"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"textFieldA": "value2 with spaces"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"keywordFieldA": "value with spaces"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"keywordFieldA": "value2 with spaces"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"OriginalFileName": "Cmd.exe", "CommandLine": "something < someother"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"OriginalFileName": "Cmd.exe", "CommandLine": "something > someother"}, timeout=120)
-        requests.post("http://localhost:9200/test-index/_doc/",
-                      json={"OriginalFileName": "Cmd.exe", "CommandLine": "without angle bracket"}, timeout=120)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"fieldA": "valueA", "fieldB": "valueB"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"fieldA": "otherisempty", "fieldB": ""}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"fieldK": "dot.value"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"fieldA": "valueA1", "fieldB": "valueB1"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"fieldA": "valueA2", "fieldB": "valueB2"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"fieldA": "foosamplebar", "fieldB": "foo"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"ipfield": "192.168.1.1"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"ipfield": "10.5.5.5"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"field name": "value"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"textFieldA": "value with spaces"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"textFieldA": "value2 with spaces"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"keywordFieldA": "value with spaces"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"keywordFieldA": "value2 with spaces"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"OriginalFileName": "Cmd.exe", "CommandLine": "something < someother"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"OriginalFileName": "Cmd.exe", "CommandLine": "something > someother"}, timeout=120, verify=False, auth=pytest.es_creds)
+        requests.post(f"{pytest.es_url}/test-index/_doc/",
+                      json={"OriginalFileName": "Cmd.exe", "CommandLine": "without angle bracket"}, timeout=120, verify=False, auth=pytest.es_creds)
         # Wait a bit for Documents to be indexed
         time.sleep(1)
 
@@ -92,7 +128,7 @@ class TestConnectElasticsearch:
 
     def query_backend_hits(self, query, num_wanted=0):
         result = requests.post(
-            'http://localhost:9200/test-index/_search', json=query, timeout=120)
+            f'{pytest.es_url}/test-index/_search', json=query, timeout=120, verify=False, auth=pytest.es_creds)
         assert result.status_code == 200
         rjson = result.json()
         assert 'hits' in rjson
