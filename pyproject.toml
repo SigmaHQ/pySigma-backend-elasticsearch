@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pySigma-backend-elasticsearch"
-version = "1.0.8"
+version = "1.0.9"
 description = "pySigma Elasticsearch backend"
 readme = "README.md"
 authors = ["Thomas Patzke <thomas@patzke.org>", "Hendrik Baecker <hb@process-zero.de>"]
