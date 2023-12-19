@@ -11,6 +11,7 @@ It supports the following output formats:
 
 * default: Lucene queries.
 * dsl_lucene: DSL with embedded Lucene queries.
+* eql: Elastic Event Query Language queries.
 * kibana_ndjson: Kibana NDJSON with Lucene queries.
 
 Further, it contains the following processing pipelines in `sigma.pipelines.elasticsearch`:
