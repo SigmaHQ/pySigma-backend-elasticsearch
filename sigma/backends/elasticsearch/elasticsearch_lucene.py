@@ -3,7 +3,7 @@ import json
 from typing import Iterable, ClassVar, Dict, List, Optional, Pattern, Tuple, Union
 
 from sigma.conversion.state import ConversionState
-from sigma.rule import SigmaRule
+from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT, ConditionFieldEqualsValueExpression
@@ -191,7 +191,7 @@ class LuceneBackend(TextQueryBackend):
 
         return super().compare_precedence(outer, inner)
 
-    def finalize_output_threat_model(self, tags: List[str]) -> Iterable[Dict]:
+    def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
         attack_tags = [t for t in tags if t.namespace == 'attack']
         if not len(attack_tags) >= 2:
             return []
