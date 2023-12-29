@@ -534,6 +534,91 @@ def test_elasticsearch_siemrule_lucene_ndjson(lucene_backend: LuceneBackend):
         "actions": []
     }
 
+def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: LuceneBackend):
+    """Test for NDJSON output with embedded query string query."""
+    rule = SigmaCollection.from_yaml("""
+            title: Test
+            id: c277adc0-f0c4-42e1-af9d-fab062992156
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+            tags:
+                - attack.impact
+                - attack.t1496
+        """)
+    result = lucene_backend.convert(rule, output_format="siem_rule_ndjson")
+    assert result[0] == {
+        "id": "c277adc0-f0c4-42e1-af9d-fab062992156",
+        "name": "SIGMA - Test",
+        'tags': [],
+        "interval": "5m",
+        "enabled": True,
+        "description": "No description",
+        "risk_score": 21,
+        "severity": "low",
+        "license": "DRL",
+        "output_index": "",
+        "meta": {
+                "from": "1m",
+        },
+        "author": [],
+        "false_positives": [],
+        "from": "now-5m",
+        "rule_id": "c277adc0-f0c4-42e1-af9d-fab062992156",
+        "max_signals": 100,
+        "risk_score_mapping": [],
+        "severity_mapping": [],
+        "threat": [
+            {
+                "tactic": {
+                    "id": "TA0040",
+                    "reference": "https://attack.mitre.org/tactics/TA0040",
+                    "name": "Impact"
+                },
+                "framework": "MITRE ATT&CK",
+                "technique": [
+                    {
+                    "id": "T1496",
+                    "reference": "https://attack.mitre.org/techniques/T1496",
+                    "name": "Resource Hijacking",
+                    "subtechnique": []
+                    }
+                ]
+            }
+        ],
+        "to": "now",
+        "references": [],
+        "version": 1,
+        "exceptions_list": [],
+        "immutable": False,
+        "related_integrations": [],
+        "required_fields": [],
+        "setup": "",
+        "type": "query",
+        "language": "lucene",
+        "index": [
+                "apm-*-transaction*",
+                "auditbeat-*",
+                "endgame-*",
+                "filebeat-*",
+                "logs-*",
+                "packetbeat-*",
+                "traces-apm*",
+                "winlogbeat-*",
+                "-*elastic-cloud-logs-*"
+        ],
+        "query": "fieldA:valueA AND fieldB:valueB",
+        "filters": [],
+        "throttle": "no_actions",
+        "actions": []
+    }
+
 
 def test_elasticsearch_dsl_lucene(lucene_backend: LuceneBackend):
     """Test for DSL output with embedded query string query."""
