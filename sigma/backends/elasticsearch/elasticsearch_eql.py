@@ -1,6 +1,6 @@
 import re
 import json
-from typing import ClassVar, Dict, List, Optional, Pattern, Tuple, Union, Any
+from typing import Iterable, ClassVar, Dict, List, Optional, Pattern, Tuple, Union, Any
 
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule
@@ -14,6 +14,7 @@ from sigma.conditions import (
     ConditionFieldEqualsValueExpression,
 )
 from sigma.types import SigmaCompareExpression, SigmaNull, SpecialChars, SigmaNumber
+from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 import ipaddress
 import sigma
 
@@ -270,6 +271,45 @@ class EqlBackend(TextQueryBackend):
         """
         return {"query": f"any where {query}"}
 
+    def finalize_output_threat_model(self, tags: List[str]) -> Iterable[Dict]:
+        attack_tags = [t for t in tags if t.namespace == 'attack']
+        if not len(attack_tags) >= 2:
+            return []
+
+        techniques = [tag.name.upper() for tag in attack_tags if re.match(r"[tT]\d{4}", tag.name)]
+        tactics = [tag.name.lower() for tag in attack_tags if not re.match(r"[tT]\d{4}", tag.name)]
+
+        for (tactic, technique) in zip(tactics, techniques):
+            if not tactic or not technique:  # Only add threat if tactic and technique is known
+                continue
+
+            try:
+                tactic_id = [id for (id, name) in mitre_attack_tactics.items() if name == tactic.replace('_', '-')][0]
+                technique_name = mitre_attack_techniques[technique]
+            except (IndexError, KeyError):
+                # Occurs when Sigma Mitre Att&ck list is out of date
+                continue
+
+            yield {
+                "tactic": {
+                    "id": tactic_id,
+                    "reference": f"https://attack.mitre.org/tactics/{tactic_id}",
+                    "name": tactic.replace('_', ' ').title()
+                },
+                "framework": "MITRE ATT&CK",
+                "technique": [
+                    {
+                    "id": technique,
+                    "reference": f"https://attack.mitre.org/techniques/{technique}",
+                    "name": technique_name,
+                    "subtechnique": []
+                    }
+                ]
+            }
+
+        for tag in attack_tags:
+            tags.remove(tag)
+
     def finalize_output_eqlapi(self, queries: List[str]) -> Any:
         # TODO: implement the output finalization for all generated queries for the format {{ format }} here. Usually,
         # the single generated queries are embedded into a structure, e.g. some JSON or XML that can be imported into
@@ -296,7 +336,6 @@ class EqlBackend(TextQueryBackend):
 
         siem_rule = {
             "name": f"SIGMA - {rule.title}",
-            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "consumer": "siem",
             "enabled": True,
             "throttle": None,
@@ -326,7 +365,7 @@ class EqlBackend(TextQueryBackend):
                 if rule.level is not None
                 else "low",
                 "severityMapping": [],
-                "threat": [],
+                "threat": list(self.finalize_output_threat_model(rule.tags)),
                 "to": "now",
                 "references": rule.references,
                 "version": 1,
@@ -342,6 +381,7 @@ class EqlBackend(TextQueryBackend):
             },
             "rule_type_id": "siem.queryRule",
             "notify_when": "onActiveAlert",
+            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "actions": [],
         }
         return siem_rule
@@ -361,7 +401,6 @@ class EqlBackend(TextQueryBackend):
         siem_rule = {
             "id": str(rule.id),
             "name": f"SIGMA - {rule.title}",
-            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "enabled": True,
             "throttle": "no_actions",
             "interval": f"{self.schedule_interval}{self.schedule_interval_unit}",
@@ -387,7 +426,8 @@ class EqlBackend(TextQueryBackend):
             if rule.level is not None
             else "low",
             "severity_mapping": [],
-            "threat": [],
+            "threat": list(self.finalize_output_threat_model(rule.tags)),
+            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "to": "now",
             "references": rule.references,
             "version": 1,
