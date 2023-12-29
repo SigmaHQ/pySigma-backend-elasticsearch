@@ -284,6 +284,19 @@ class EqlBackend(TextQueryBackend):
                 continue
 
             try:
+                if '.' in technique:  # Contains reference to Mitre Att&ck subtechnique
+                    sub_technique = technique
+                    technique  = technique[0:5]
+                    sub_technique_name = mitre_attack_techniques[sub_technique]
+
+                    sub_techniques = [{
+                        "id": sub_technique,
+                        "reference": f"https://attack.mitre.org/techniques/{sub_technique.replace('.', '/')}",
+                        "name": sub_technique_name,
+                    }]
+                else:
+                    sub_techniques = []
+
                 tactic_id = [id for (id, name) in mitre_attack_tactics.items() if name == tactic.replace('_', '-')][0]
                 technique_name = mitre_attack_techniques[technique]
             except (IndexError, KeyError):
@@ -302,7 +315,7 @@ class EqlBackend(TextQueryBackend):
                     "id": technique,
                     "reference": f"https://attack.mitre.org/techniques/{technique}",
                     "name": technique_name,
-                    "subtechnique": []
+                    "subtechnique": sub_techniques
                     }
                 ]
             }
