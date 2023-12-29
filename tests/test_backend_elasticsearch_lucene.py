@@ -549,8 +549,10 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: Lucene
                     fieldB: valueB
                 condition: sel
             tags:
-                - attack.impact
-                - attack.t1496
+                - attack.execution
+                - attack.t1059.001
+                - attack.defense_evasion
+                - attack.t1027
         """)
     result = lucene_backend.convert(rule, output_format="siem_rule_ndjson")
     assert result[0] == {
@@ -577,17 +579,39 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: Lucene
         "threat": [
             {
                 "tactic": {
-                    "id": "TA0040",
-                    "reference": "https://attack.mitre.org/tactics/TA0040",
-                    "name": "Impact"
+                    "id": "TA0002",
+                    "reference": "https://attack.mitre.org/tactics/TA0002",
+                    "name": "Execution"
                 },
                 "framework": "MITRE ATT&CK",
                 "technique": [
                     {
-                    "id": "T1496",
-                    "reference": "https://attack.mitre.org/techniques/T1496",
-                    "name": "Resource Hijacking",
-                    "subtechnique": []
+                        "id": "T1059",
+                        "reference": "https://attack.mitre.org/techniques/T1059",
+                        "name": "Command and Scripting Interpreter",
+                        "subtechnique": [
+                            {
+                                "id": "T1059.001",
+                                "reference": "https://attack.mitre.org/techniques/T1059/001",
+                                "name": "PowerShell"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "tactic": {
+                    "id": "TA0005",
+                    "reference": "https://attack.mitre.org/tactics/TA0005",
+                    "name": "Defense_Evasion"
+                },
+                "framework": "MITRE ATT&CK",
+                "technique": [
+                    {
+                        "id": "T1027",
+                        "reference": "https://attack.mitre.org/techniques/T1027",
+                        "name": "Obfuscated Files or Information",
+                        "subtechnique": []
                     }
                 ]
             }

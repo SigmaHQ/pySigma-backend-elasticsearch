@@ -323,6 +323,7 @@ class EqlBackend(TextQueryBackend):
         for tag in attack_tags:
             tags.remove(tag)
 
+
     def finalize_output_eqlapi(self, queries: List[str]) -> Any:
         # TODO: implement the output finalization for all generated queries for the format {{ format }} here. Usually,
         # the single generated queries are embedded into a structure, e.g. some JSON or XML that can be imported into
