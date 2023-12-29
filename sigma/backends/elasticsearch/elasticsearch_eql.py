@@ -307,7 +307,7 @@ class EqlBackend(TextQueryBackend):
                 "tactic": {
                     "id": tactic_id,
                     "reference": f"https://attack.mitre.org/tactics/{tactic_id}",
-                    "name": tactic.replace('_', ' ').title()
+                    "name": tactic.title()
                 },
                 "framework": "MITRE ATT&CK",
                 "technique": [
