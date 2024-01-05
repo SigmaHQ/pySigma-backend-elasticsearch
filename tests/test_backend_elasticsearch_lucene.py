@@ -603,7 +603,7 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: Lucene
                 "tactic": {
                     "id": "TA0005",
                     "reference": "https://attack.mitre.org/tactics/TA0005",
-                    "name": "Defense_Evasion"
+                    "name": "Defense Evasion"
                 },
                 "framework": "MITRE ATT&CK",
                 "technique": [
