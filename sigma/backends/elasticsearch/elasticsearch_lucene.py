@@ -1,13 +1,14 @@
 import re
 import json
-from typing import ClassVar, Dict, List, Optional, Pattern, Tuple, Union
+from typing import Iterable, ClassVar, Dict, List, Optional, Pattern, Tuple, Union
 
 from sigma.conversion.state import ConversionState
-from sigma.rule import SigmaRule
+from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT, ConditionFieldEqualsValueExpression
 from sigma.types import SigmaCompareExpression, SigmaNull
+from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 import sigma
 
 
@@ -190,6 +191,58 @@ class LuceneBackend(TextQueryBackend):
 
         return super().compare_precedence(outer, inner)
 
+    def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
+        attack_tags = [t for t in tags if t.namespace == 'attack']
+        if not len(attack_tags) >= 2:
+            return []
+
+        techniques = [tag.name.upper() for tag in attack_tags if re.match(r"[tT]\d{4}", tag.name)]
+        tactics = [tag.name.lower() for tag in attack_tags if not re.match(r"[tT]\d{4}", tag.name)]
+
+        for (tactic, technique) in zip(tactics, techniques):
+            if not tactic or not technique:  # Only add threat if tactic and technique is known
+                continue
+
+            try:
+                if '.' in technique:  # Contains reference to Mitre Att&ck subtechnique
+                    sub_technique = technique
+                    technique  = technique[0:5]
+                    sub_technique_name = mitre_attack_techniques[sub_technique]
+
+                    sub_techniques = [{
+                        "id": sub_technique,
+                        "reference": f"https://attack.mitre.org/techniques/{sub_technique.replace('.', '/')}",
+                        "name": sub_technique_name,
+                    }]
+                else:
+                    sub_techniques = []
+
+                tactic_id = [id for (id, name) in mitre_attack_tactics.items() if name == tactic.replace('_', '-')][0]
+                technique_name = mitre_attack_techniques[technique]
+            except (IndexError, KeyError):
+                # Occurs when Sigma Mitre Att&ck list is out of date
+                continue
+
+            yield {
+                "tactic": {
+                    "id": tactic_id,
+                    "reference": f"https://attack.mitre.org/tactics/{tactic_id}",
+                    "name": tactic.title().replace('_', ' ')
+                },
+                "framework": "MITRE ATT&CK",
+                "technique": [
+                    {
+                    "id": technique,
+                    "reference": f"https://attack.mitre.org/techniques/{technique}",
+                    "name": technique_name,
+                    "subtechnique": sub_techniques
+                    }
+                ]
+            }
+
+        for tag in attack_tags:
+            tags.remove(tag)
+
     def finalize_query_dsl_lucene(
             self,
             rule: SigmaRule,
@@ -293,7 +346,6 @@ class LuceneBackend(TextQueryBackend):
 
         siem_rule = {
             "name": f"SIGMA - {rule.title}",
-            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "consumer": "siem",
             "enabled": True,
             "throttle": None,
@@ -317,7 +369,7 @@ class LuceneBackend(TextQueryBackend):
                 "riskScoreMapping": [],
                 "severity": str(rule.level.name).lower() if rule.level is not None else "low",
                 "severityMapping": [],
-                "threat": [],
+                "threat": list(self.finalize_output_threat_model(rule.tags)),
                 "to": "now",
                 "references": rule.references,
                 "version": 1,
@@ -332,6 +384,7 @@ class LuceneBackend(TextQueryBackend):
                 "filters": []
             },
             "rule_type_id": "siem.queryRule",
+            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "notify_when": "onActiveAlert",
             "actions": []
         }
@@ -350,7 +403,6 @@ class LuceneBackend(TextQueryBackend):
         siem_rule = {
             "id": str(rule.id),
             "name": f"SIGMA - {rule.title}",
-            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "enabled": True,
             "throttle": "no_actions",
             "interval": f"{self.schedule_interval}{self.schedule_interval_unit}",
@@ -370,7 +422,8 @@ class LuceneBackend(TextQueryBackend):
             "risk_score_mapping": [],
             "severity": str(rule.level.name).lower() if rule.level is not None else "low",
             "severity_mapping": [],
-            "threat": [],
+            "threat": list(self.finalize_output_threat_model(rule.tags)),
+            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "to": "now",
             "references": rule.references,
             "version": 1,

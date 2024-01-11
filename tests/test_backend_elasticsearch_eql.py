@@ -491,6 +491,97 @@ def test_elasticsearch_siemrule_eql(eql_backend: EqlBackend):
         "actions": [],
     }
 
+def test_elasticsearch_siemrule_eql_with_threatmodel(eql_backend: EqlBackend):
+    """Test for NDJSON output with embedded query string query."""
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            id: c277adc0-f0c4-42e1-af9d-fab062992156
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+            tags:
+                - attack.command_and_control
+                - attack.t1568
+        """
+    )
+    result = eql_backend.convert(rule, output_format="siem_rule")
+    assert result[0] == {
+        "name": "SIGMA - Test",
+        "tags": [],
+        "consumer": "siem",
+        "enabled": True,
+        "throttle": None,
+        "schedule": {"interval": "5m"},
+        "params": {
+            "author": [],
+            "description": "No description",
+            "ruleId": "c277adc0-f0c4-42e1-af9d-fab062992156",
+            "falsePositives": [],
+            "from": "now-5m",
+            "immutable": False,
+            "license": "DRL",
+            "outputIndex": "",
+            "meta": {
+                "from": "1m",
+            },
+            "maxSignals": 100,
+            "riskScore": 21,
+            "riskScoreMapping": [],
+            "severity": "low",
+            "severityMapping": [],
+            "threat": [
+                {
+                    "tactic": {
+                        "id": "TA0011",
+                        "reference": "https://attack.mitre.org/tactics/TA0011",
+                        "name": "Command And Control"
+                    },
+                    "framework": "MITRE ATT&CK",
+                    "technique": [
+                        {
+                        "id": "T1568",
+                        "reference": "https://attack.mitre.org/techniques/T1568",
+                        "name": "Dynamic Resolution",
+                        "subtechnique": []
+                        }
+                    ]
+                }
+            ],
+            "to": "now",
+            "references": [],
+            "version": 1,
+            "exceptionsList": [],
+            "relatedIntegrations": [],
+            "requiredFields": [],
+            "setup": "",
+            "type": "query",
+            "language": "lucene",
+            "index": [
+                "apm-*-transaction*",
+                "auditbeat-*",
+                "endgame-*",
+                "filebeat-*",
+                "logs-*",
+                "packetbeat-*",
+                "traces-apm*",
+                "winlogbeat-*",
+                "-*elastic-cloud-logs-*",
+            ],
+            "query": 'any where fieldA:"valueA" and fieldB:"valueB"',
+            "filters": [],
+        },
+        "rule_type_id": "siem.queryRule",
+        "notify_when": "onActiveAlert",
+        "actions": [],
+    }
+
 
 def test_elasticsearch_siemrule_eql_ndjson(eql_backend: EqlBackend):
     """Test for NDJSON output with embedded query string query."""
