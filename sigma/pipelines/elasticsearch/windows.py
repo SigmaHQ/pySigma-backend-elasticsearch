@@ -72,7 +72,7 @@ def ecs_windows() -> ProcessingPipeline:
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat from version 7",
         priority=20,
         allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
-        items=generate_windows_logsource_items("winlog.channel", "{source}") + [                   # Variable field mappinga depending on category/service
+        items=generate_windows_logsource_items("winlog.channel.keyword", "{source}") + [                   # Variable field mappinga depending on category/service
             ProcessingItem(
                 identifier=f"elasticsearch_windows-{field}-{logsrc_field}-{logsrc}",
                 transformation=FieldMappingTransformation({
@@ -190,12 +190,12 @@ def ecs_windows_old() -> ProcessingPipeline:
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat up to version 6",
         priority=20,
         allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
-        items=generate_windows_logsource_items("winlog.channel", "{source}") + [
+        items=generate_windows_logsource_items("winlog.channel.keyword", "{source}") + [
             ProcessingItem(     # Field mappings
                 identifier="ecs_windows_field_mapping",
                 transformation=FieldMappingTransformation({
                     "EventID": "event_id",
-                    "Channel": "winlog.channel",
+                    "Channel": "winlog.channel.keyword",
                 }),
                 rule_conditions=[
                     LogsourceCondition(product="windows")

@@ -693,7 +693,7 @@ def test_es_dsl_lucene_space_value_text(lucene_backend: LuceneBackend):
                 "must": [
                     {
                         "query_string": {
-                            "query": "textFieldA:\"value\\ with\\ spaces\"",
+                            "query": "textFieldA:value\\ with\\ spaces",
                             "analyze_wildcard": True
                         }
                     }
