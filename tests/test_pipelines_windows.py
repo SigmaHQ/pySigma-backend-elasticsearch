@@ -19,7 +19,7 @@ def test_ecs_windows():
                     TestField: test
                 condition: sel
         """)
-    ) == ['winlog.channel:Security AND (event.code:123 AND process.executable:test.exe AND winlog.event_data.TestField:test)']
+    ) == ['winlog.channel.keyword:Security AND (event.code:123 AND process.executable.keyword:test.exe AND winlog.event_data.TestField:test)']
 
 
 def test_ecs_windows_fields():
@@ -57,7 +57,7 @@ def test_ecs_windows_variable_mapping():
                     OriginalFileName: test.exe
                 condition: sel
         """)
-    ) == ['process.command_line:test AND process.pe.original_file_name:test.exe']
+    ) == ['process.command_line.keyword:test AND process.pe.original_file_name.keyword:test.exe']
 
 
 def test_ecs_windows_old():
@@ -74,7 +74,7 @@ def test_ecs_windows_old():
                     Image: test.exe
                 condition: sel
         """)
-    ) == ['winlog.channel:Security AND (event_id:123 AND event_data.Image:test.exe)']
+    ) == ['winlog.channel.keyword:Security AND (event_id:123 AND event_data.Image:test.exe)']
 
 
 def test_ecs_windows_other_logsource():
