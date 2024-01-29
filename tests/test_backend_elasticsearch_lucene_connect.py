@@ -61,7 +61,12 @@ def fixture_prepare_es_data():
                     "type": "ip"
                 },
                 "textFieldA": {
-                    "type":  "text"
+                    "type":  "text",
+                    "fields": {
+                        "keyword": {
+                            "type": "keyword"
+                        }
+                    }
                 },
                 "keywordFieldA": {
                     "type":  "keyword"
@@ -363,7 +368,7 @@ class TestConnectElasticsearch:
                     product: test_product
                 detection:
                     sel:
-                        textFieldA: 'value with spaces'
+                        textFieldA.keyword: 'value with spaces'
                     condition: sel
             """)
 
