@@ -37,3 +37,6 @@ addopts = "-vv --cov=sigma --cov-report term --cov-report xml:cov.xml"
 testpaths = [
     "tests",
 ]
+filterwarnings = [
+    'ignore:Unverified HTTPS request'
+]
