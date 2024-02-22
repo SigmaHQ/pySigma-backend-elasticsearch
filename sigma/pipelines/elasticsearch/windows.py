@@ -160,6 +160,7 @@ def ecs_windows() -> ProcessingPipeline:
                     "ProcessName": "process.executable",
                     "SourceAddress": "source.ip",
                     "TargetDomainName": "user.domain",
+                    "User": "user.name",
                     "WorkstationName": "source.domain",
                 }),
                 rule_conditions=[
