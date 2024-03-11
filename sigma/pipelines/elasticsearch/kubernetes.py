@@ -15,7 +15,7 @@ def ecs_kubernetes() -> ProcessingPipeline:
                     template=False
                 ),
                 rule_conditions=[
-                    LogsourceCondition(product='kubernetes',service='audit_logs'),
+                    LogsourceCondition(product='kubernetes',service='audit'),
                 ]
             ),
             ProcessingItem(
