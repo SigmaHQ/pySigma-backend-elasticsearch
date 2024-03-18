@@ -11,7 +11,7 @@ def test_ecs_kubernetes():
             status: test
             logsource:
                 product: kubernetes
-                service: audit_logs
+                service: audit
             detection:
                 selection:
                   verb: create
@@ -28,7 +28,7 @@ def test_ecs_kubernetes_apigroup():
             status: test
             logsource:
                 product: kubernetes
-                service: audit_logs
+                service: audit
             detection:
                 selection:
                   verb: create
@@ -45,7 +45,7 @@ def test_ecs_kubernetes_capabilities():
             status: test
             logsource:
                 product: kubernetes
-                service: audit_logs
+                service: audit
             detection:
                 selection:
                   verb: create
@@ -62,7 +62,7 @@ def test_ecs_kubernetes_capabilities():
             status: test
             logsource:
                 product: kubernetes
-                service: audit_logs
+                service: audit
             detection:
                 selection:
                   verb: create
@@ -79,7 +79,7 @@ def test_ecs_kubernetes_fields():
             status: test
             logsource:
                 product: kubernetes
-                service: audit_logs
+                service: audit
             detection:
                 selection:
                     verb: create
