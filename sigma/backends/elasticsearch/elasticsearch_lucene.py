@@ -6,7 +6,13 @@ from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredQueryExpression
-from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT, ConditionFieldEqualsValueExpression
+from sigma.conditions import (
+    ConditionItem,
+    ConditionAND,
+    ConditionOR,
+    ConditionNOT,
+    ConditionFieldEqualsValueExpression,
+)
 from sigma.types import SigmaCompareExpression, SigmaNull
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 import sigma
@@ -14,11 +20,12 @@ import sigma
 
 class LuceneBackend(TextQueryBackend):
     """
-    Elasticsearch query string backend. Generates query strings described here in the 
+    Elasticsearch query string backend. Generates query strings described here in the
     Elasticsearch documentation:
 
     https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax
     """
+
     # A descriptive name of the backend
     name: ClassVar[str] = "Elasticsearch Lucene"
     # Output formats provided by the backend as name -> description mapping.
@@ -36,13 +43,16 @@ class LuceneBackend(TextQueryBackend):
     # Operator precedence: tuple of Condition{AND,OR,NOT} in order of precedence.
     # The backend generates grouping if required
     precedence: ClassVar[Tuple[ConditionItem, ConditionItem, ConditionItem]] = (
-        ConditionNOT, ConditionOR, ConditionAND)
+        ConditionNOT,
+        ConditionOR,
+        ConditionAND,
+    )
     # Expression for precedence override grouping as format string with {expr} placeholder
     group_expression: ClassVar[str] = "({expr})"
     parenthesize: bool = True
 
     # Generated query tokens
-    token_separator: str = " "     # separator inserted between all boolean operators
+    token_separator: str = " "  # separator inserted between all boolean operators
     or_token: ClassVar[str] = "OR"
     and_token: ClassVar[str] = "AND"
     not_token: ClassVar[str] = "NOT"
@@ -71,7 +81,9 @@ class LuceneBackend(TextQueryBackend):
     wildcard_single: ClassVar[str] = "?"
     # Characters quoted in addition to wildcards and string quote
     add_escaped: ClassVar[str] = '+-=&|!(){}[]<>^"~*?:\\/ '
-    bool_values: ClassVar[Dict[bool, str]] = {   # Values to which boolean values are mapped.
+    bool_values: ClassVar[
+        Dict[bool, str]
+    ] = {  # Values to which boolean values are mapped.
         True: "true",
         False: "false",
     }
@@ -123,13 +135,15 @@ class LuceneBackend(TextQueryBackend):
 
     # Value not bound to a field
     # Expression for string value not bound to a field as format string with placeholder {value}
-    unbound_value_str_expression: ClassVar[str] = '*{value}*'
+    unbound_value_str_expression: ClassVar[str] = "*{value}*"
     # Expression for number value not bound to a field as format string with placeholder {value}
-    unbound_value_num_expression: ClassVar[str] = '{value}'
+    unbound_value_num_expression: ClassVar[str] = "{value}"
 
     def __init__(
         self,
-        processing_pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = None,
+        processing_pipeline: Optional[
+            "sigma.processing.pipeline.ProcessingPipeline"
+        ] = None,
         collect_errors: bool = False,
         index_names: List = [
             "apm-*-transaction*",
@@ -140,12 +154,12 @@ class LuceneBackend(TextQueryBackend):
             "packetbeat-*",
             "traces-apm*",
             "winlogbeat-*",
-            "-*elastic-cloud-logs-*"
+            "-*elastic-cloud-logs-*",
         ],
-            schedule_interval: int = 5,
-            schedule_interval_unit: str = "m",
-            **kwargs):
-
+        schedule_interval: int = 5,
+        schedule_interval_unit: str = "m",
+        **kwargs,
+    ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
         self.index_names = index_names or [
             "apm-*-transaction*",
@@ -156,7 +170,7 @@ class LuceneBackend(TextQueryBackend):
             "packetbeat-*",
             "traces-apm*",
             "winlogbeat-*",
-            "-*elastic-cloud-logs-*"
+            "-*elastic-cloud-logs-*",
         ]
         self.schedule_interval = schedule_interval or 5
         self.schedule_interval_unit = schedule_interval_unit or "m"
@@ -165,23 +179,42 @@ class LuceneBackend(TextQueryBackend):
             "LOW": 21,
             "MEDIUM": 47,
             "HIGH": 73,
-            "CRITICAL": 99
+            "CRITICAL": 99,
         }
 
     @staticmethod
-    def _is_field_null_condition(cond : ConditionItem) -> bool:
-        return isinstance(cond, ConditionFieldEqualsValueExpression) and isinstance(cond.value, SigmaNull)
+    def _is_field_null_condition(cond: ConditionItem) -> bool:
+        return isinstance(cond, ConditionFieldEqualsValueExpression) and isinstance(
+            cond.value, SigmaNull
+        )
 
-    def convert_condition_not(self, cond : ConditionNOT, state : ConversionState) -> Union[str, DeferredQueryExpression]:
+    def convert_condition_not(
+        self, cond: ConditionNOT, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
         """When checking if a field is not null, convert "NOT NOT _exists_:field" to "_exists_:field"."""
         if LuceneBackend._is_field_null_condition(cond.args[0]):
             return f"_exists_:{cond.args[0].field}"
 
         return super().convert_condition_not(cond, state)
 
-    def compare_precedence(self, outer : ConditionItem, inner : ConditionItem) -> bool:
+    def convert_condition_field_eq_val_cidr(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        if ":" in cond.value.cidr:
+            return (
+                super()
+                .convert_condition_field_eq_val_cidr(cond, state)
+                .replace(":::", ":\:\:")
+                .replace("::\/", "\:\:\/")
+            )
+        else:
+            return super().convert_condition_field_eq_val_cidr(cond, state)
+
+    def compare_precedence(self, outer: ConditionItem, inner: ConditionItem) -> bool:
         """Override precedence check for null field conditions."""
-        if isinstance(inner, ConditionNOT) and LuceneBackend._is_field_null_condition(inner.args[0]):
+        if isinstance(inner, ConditionNOT) and LuceneBackend._is_field_null_condition(
+            inner.args[0]
+        ):
             # inner will turn into "_exists_:field", no parentheses needed
             return True
 
@@ -192,32 +225,46 @@ class LuceneBackend(TextQueryBackend):
         return super().compare_precedence(outer, inner)
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
-        attack_tags = [t for t in tags if t.namespace == 'attack']
+        attack_tags = [t for t in tags if t.namespace == "attack"]
         if not len(attack_tags) >= 2:
             return []
 
-        techniques = [tag.name.upper() for tag in attack_tags if re.match(r"[tT]\d{4}", tag.name)]
-        tactics = [tag.name.lower() for tag in attack_tags if not re.match(r"[tT]\d{4}", tag.name)]
+        techniques = [
+            tag.name.upper() for tag in attack_tags if re.match(r"[tT]\d{4}", tag.name)
+        ]
+        tactics = [
+            tag.name.lower()
+            for tag in attack_tags
+            if not re.match(r"[tT]\d{4}", tag.name)
+        ]
 
-        for (tactic, technique) in zip(tactics, techniques):
-            if not tactic or not technique:  # Only add threat if tactic and technique is known
+        for tactic, technique in zip(tactics, techniques):
+            if (
+                not tactic or not technique
+            ):  # Only add threat if tactic and technique is known
                 continue
 
             try:
-                if '.' in technique:  # Contains reference to Mitre Att&ck subtechnique
+                if "." in technique:  # Contains reference to Mitre Att&ck subtechnique
                     sub_technique = technique
-                    technique  = technique[0:5]
+                    technique = technique[0:5]
                     sub_technique_name = mitre_attack_techniques[sub_technique]
 
-                    sub_techniques = [{
-                        "id": sub_technique,
-                        "reference": f"https://attack.mitre.org/techniques/{sub_technique.replace('.', '/')}",
-                        "name": sub_technique_name,
-                    }]
+                    sub_techniques = [
+                        {
+                            "id": sub_technique,
+                            "reference": f"https://attack.mitre.org/techniques/{sub_technique.replace('.', '/')}",
+                            "name": sub_technique_name,
+                        }
+                    ]
                 else:
                     sub_techniques = []
 
-                tactic_id = [id for (id, name) in mitre_attack_tactics.items() if name == tactic.replace('_', '-')][0]
+                tactic_id = [
+                    id
+                    for (id, name) in mitre_attack_tactics.items()
+                    if name == tactic.replace("_", "-")
+                ][0]
                 technique_name = mitre_attack_techniques[technique]
             except (IndexError, KeyError):
                 # Occurs when Sigma Mitre Att&ck list is out of date
@@ -227,39 +274,30 @@ class LuceneBackend(TextQueryBackend):
                 "tactic": {
                     "id": tactic_id,
                     "reference": f"https://attack.mitre.org/tactics/{tactic_id}",
-                    "name": tactic.title().replace('_', ' ')
+                    "name": tactic.title().replace("_", " "),
                 },
                 "framework": "MITRE ATT&CK",
                 "technique": [
                     {
-                    "id": technique,
-                    "reference": f"https://attack.mitre.org/techniques/{technique}",
-                    "name": technique_name,
-                    "subtechnique": sub_techniques
+                        "id": technique,
+                        "reference": f"https://attack.mitre.org/techniques/{technique}",
+                        "name": technique_name,
+                        "subtechnique": sub_techniques,
                     }
-                ]
+                ],
             }
 
         for tag in attack_tags:
             tags.remove(tag)
 
     def finalize_query_dsl_lucene(
-            self,
-            rule: SigmaRule,
-            query: str,
-            index: int,
-            state: ConversionState) -> Dict:
-
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> Dict:
         return {
             "query": {
                 "bool": {
                     "must": [
-                        {
-                            "query_string": {
-                                "query": query,
-                                "analyze_wildcard": True
-                            }
-                        }
+                        {"query_string": {"query": query, "analyze_wildcard": True}}
                     ]
                 }
             }
@@ -269,13 +307,8 @@ class LuceneBackend(TextQueryBackend):
         return list(queries)
 
     def finalize_query_kibana_ndjson(
-        self,
-        rule: SigmaRule,
-        query: str,
-        index: int,
-        state: ConversionState
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> Dict:
-
         # TODO: implement the per-query output for the output format kibana here. Usually, the
         # generated query is embedded into a template, e.g. a JSON format with additional
         # information from the Sigma rule.
@@ -292,33 +325,36 @@ class LuceneBackend(TextQueryBackend):
                 "sort": ["@timestamp", "desc"],
                 "version": 1,
                 "kibanaSavedObjectMeta": {
-                    "searchSourceJSON": str(json.dumps({
-                        "index": index,
-                        "filter":  [],
-                        "highlight": {
-                            "pre_tags": ["@kibana-highlighted-field@"],
-                            "post_tags": ["@/kibana-highlighted-field@"],
-                            "fields": {"*": {}},
-                            "require_field_match": False,
-                            "fragment_size": 2147483647
-                        },
-                        "query": {
-                            "query_string": {
-                                "query": query,
-                                "analyze_wildcard": True
+                    "searchSourceJSON": str(
+                        json.dumps(
+                            {
+                                "index": index,
+                                "filter": [],
+                                "highlight": {
+                                    "pre_tags": ["@kibana-highlighted-field@"],
+                                    "post_tags": ["@/kibana-highlighted-field@"],
+                                    "fields": {"*": {}},
+                                    "require_field_match": False,
+                                    "fragment_size": 2147483647,
+                                },
+                                "query": {
+                                    "query_string": {
+                                        "query": query,
+                                        "analyze_wildcard": True,
+                                    }
+                                },
                             }
-                        }
-                    })
+                        )
                     )
-                }
+                },
             },
             "references": [
                 {
                     "id": index,
                     "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
-                    "type": "index-pattern"
+                    "type": "index-pattern",
                 }
-            ]
+            ],
         }
         return ndjson
 
@@ -329,14 +365,10 @@ class LuceneBackend(TextQueryBackend):
         return list(queries)
 
     def finalize_query_siem_rule(
-        self,
-        rule: SigmaRule,
-        query: str,
-        index: int,
-        state: ConversionState
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> Dict:
         """
-        Create SIEM Rules in JSON Format. These rules could be imported into Kibana using the 
+        Create SIEM Rules in JSON Format. These rules could be imported into Kibana using the
         Create Rule API https://www.elastic.co/guide/en/kibana/8.6/create-rule-api.html
         This API (and generated data) is NOT the same like importing Detection Rules via:
         Kibana -> Security -> Alerts -> Manage Rules -> Import
@@ -354,7 +386,9 @@ class LuceneBackend(TextQueryBackend):
             },
             "params": {
                 "author": [rule.author] if rule.author is not None else [],
-                "description": rule.description if rule.description is not None else "No description",
+                "description": rule.description
+                if rule.description is not None
+                else "No description",
                 "ruleId": str(rule.id),
                 "falsePositives": rule.falsepositives,
                 "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
@@ -365,9 +399,13 @@ class LuceneBackend(TextQueryBackend):
                     "from": "1m",
                 },
                 "maxSignals": 100,
-                "riskScore": self.severity_risk_mapping[rule.level.name] if rule.level is not None else 21,
+                "riskScore": self.severity_risk_mapping[rule.level.name]
+                if rule.level is not None
+                else 21,
                 "riskScoreMapping": [],
-                "severity": str(rule.level.name).lower() if rule.level is not None else "low",
+                "severity": str(rule.level.name).lower()
+                if rule.level is not None
+                else "low",
                 "severityMapping": [],
                 "threat": list(self.finalize_output_threat_model(rule.tags)),
                 "to": "now",
@@ -381,19 +419,21 @@ class LuceneBackend(TextQueryBackend):
                 "language": "lucene",
                 "index": self.index_names,
                 "query": query,
-                "filters": []
+                "filters": [],
             },
             "rule_type_id": "siem.queryRule",
             "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "notify_when": "onActiveAlert",
-            "actions": []
+            "actions": [],
         }
         return siem_rule
 
     def finalize_output_siem_rule(self, queries: List[Dict]) -> Dict:
         return list(queries)
 
-    def finalize_query_siem_rule_ndjson(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> Dict:
+    def finalize_query_siem_rule_ndjson(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> Dict:
         """
         Generating SIEM/Detection Rules in NDJSON Format. Compatible with
 
@@ -407,7 +447,9 @@ class LuceneBackend(TextQueryBackend):
             "throttle": "no_actions",
             "interval": f"{self.schedule_interval}{self.schedule_interval_unit}",
             "author": [rule.author] if rule.author is not None else [],
-            "description": rule.description if rule.description is not None else "No description",
+            "description": rule.description
+            if rule.description is not None
+            else "No description",
             "rule_id": str(rule.id),
             "false_positives": rule.falsepositives,
             "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
@@ -418,9 +460,13 @@ class LuceneBackend(TextQueryBackend):
                 "from": "1m",
             },
             "max_signals": 100,
-            "risk_score": self.severity_risk_mapping[rule.level.name] if rule.level is not None else 21,
+            "risk_score": self.severity_risk_mapping[rule.level.name]
+            if rule.level is not None
+            else 21,
             "risk_score_mapping": [],
-            "severity": str(rule.level.name).lower() if rule.level is not None else "low",
+            "severity": str(rule.level.name).lower()
+            if rule.level is not None
+            else "low",
             "severity_mapping": [],
             "threat": list(self.finalize_output_threat_model(rule.tags)),
             "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
@@ -436,7 +482,7 @@ class LuceneBackend(TextQueryBackend):
             "index": self.index_names,
             "query": query,
             "filters": [],
-            "actions": []
+            "actions": [],
         }
         return siem_rule
 

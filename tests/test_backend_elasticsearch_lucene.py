@@ -9,7 +9,8 @@ def fixture_lucene_backend():
 
 
 def test_lucene_and_expression(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -20,13 +21,15 @@ def test_lucene_and_expression(lucene_backend: LuceneBackend):
                     fieldA: valueA
                     fieldB: valueB
                 condition: sel
-        """)
+        """
+    )
 
-    assert lucene_backend.convert(rule) == ['fieldA:valueA AND fieldB:valueB']
+    assert lucene_backend.convert(rule) == ["fieldA:valueA AND fieldB:valueB"]
 
 
 def test_lucene_and_expression_empty_string(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -37,13 +40,15 @@ def test_lucene_and_expression_empty_string(lucene_backend: LuceneBackend):
                     fieldA: valueA
                     fieldB: ''
                 condition: sel
-        """)
+        """
+    )
 
     assert lucene_backend.convert(rule) == ['fieldA:valueA AND fieldB:""']
 
 
 def test_lucene_or_expression(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -55,12 +60,14 @@ def test_lucene_or_expression(lucene_backend: LuceneBackend):
                 sel2:
                     fieldB: valueB
                 condition: 1 of sel*
-        """)
-    assert lucene_backend.convert(rule) == ['fieldA:valueA OR fieldB:valueB']
+        """
+    )
+    assert lucene_backend.convert(rule) == ["fieldA:valueA OR fieldB:valueB"]
 
 
 def test_lucene_and_or_expression(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -75,13 +82,16 @@ def test_lucene_and_or_expression(lucene_backend: LuceneBackend):
                         - valueB1
                         - valueB2
                 condition: sel
-        """)
-    assert lucene_backend.convert(
-        rule) == ['(fieldA:(valueA1 OR valueA2)) AND (fieldB:(valueB1 OR valueB2))']
+        """
+    )
+    assert lucene_backend.convert(rule) == [
+        "(fieldA:(valueA1 OR valueA2)) AND (fieldB:(valueB1 OR valueB2))"
+    ]
 
 
 def test_lucene_or_and_expression(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -95,13 +105,16 @@ def test_lucene_or_and_expression(lucene_backend: LuceneBackend):
                     fieldA: valueA2
                     fieldB: valueB2
                 condition: 1 of sel*
-        """)
+        """
+    )
     assert lucene_backend.convert(rule) == [
-        '(fieldA:valueA1 AND fieldB:valueB1) OR (fieldA:valueA2 AND fieldB:valueB2)']
+        "(fieldA:valueA1 AND fieldB:valueB1) OR (fieldA:valueA2 AND fieldB:valueB2)"
+    ]
 
 
 def test_lucene_in_expression(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -114,13 +127,14 @@ def test_lucene_in_expression(lucene_backend: LuceneBackend):
                         - valueB
                         - valueC*
                 condition: sel
-        """)
-    assert lucene_backend.convert(
-        rule) == ['fieldA:(valueA OR valueB OR valueC*)']
+        """
+    )
+    assert lucene_backend.convert(rule) == ["fieldA:(valueA OR valueB OR valueC*)"]
 
 
 def test_lucene_in_expression_empty_string(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -132,12 +146,14 @@ def test_lucene_in_expression_empty_string(lucene_backend: LuceneBackend):
                         - valueA
                         - ''
                 condition: sel
-        """)
+        """
+    )
     assert lucene_backend.convert(rule) == ['fieldA:(valueA OR "")']
 
 
 def test_lucene_regex_query(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -148,12 +164,14 @@ def test_lucene_regex_query(lucene_backend: LuceneBackend):
                     fieldA|re: foo.*bar
                     fieldB: foo
                 condition: sel
-        """)
-    assert lucene_backend.convert(rule) == ['fieldA:/foo.*bar/ AND fieldB:foo']
+        """
+    )
+    assert lucene_backend.convert(rule) == ["fieldA:/foo.*bar/ AND fieldB:foo"]
 
 
 def test_lucene_regex_query_escaped_input(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -165,13 +183,16 @@ def test_lucene_regex_query_escaped_input(lucene_backend: LuceneBackend):
                     fieldB: foo
                     fieldC|re: foo/bar
                 condition: sel
-        """)
+        """
+    )
     assert lucene_backend.convert(rule) == [
-        'fieldA:/127\.0\.0\.1:[1-9]\d{3}/ AND fieldB:foo AND fieldC:/foo\\/bar/']
+        "fieldA:/127\.0\.0\.1:[1-9]\d{3}/ AND fieldB:foo AND fieldC:/foo\\/bar/"
+    ]
 
 
 def test_lucene_cidr_query(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -181,12 +202,33 @@ def test_lucene_cidr_query(lucene_backend: LuceneBackend):
                 sel:
                     field|cidr: 192.168.0.0/16
                 condition: sel
-        """)
-    assert lucene_backend.convert(rule) == ['field:192.168.0.0\\/16']
+        """
+    )
+    assert lucene_backend.convert(rule) == ["field:192.168.0.0\\/16"]
+
+
+def test_lucene_cidr_ipv6_query(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|cidr: 
+                        - '::1/128'
+                        - 'fc00::/7'    
+                condition: sel
+        """
+    )
+    assert lucene_backend.convert(rule) == ["field:\:\:1\\/128 OR field:fc00\:\:\/7"]
 
 
 def test_lucene_field_name_with_whitespace(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -196,13 +238,15 @@ def test_lucene_field_name_with_whitespace(lucene_backend: LuceneBackend):
                 sel:
                     field name: value
                 condition: sel
-        """)
-    assert lucene_backend.convert(rule) == ['field\\ name:value']
+        """
+    )
+    assert lucene_backend.convert(rule) == ["field\\ name:value"]
 
 
 def test_lucene_not_filter_null_and(lucene_backend: LuceneBackend):
     """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -216,7 +260,8 @@ def test_lucene_not_filter_null_and(lucene_backend: LuceneBackend):
                 filter_2:
                     FieldB: ''
                 condition: selection and not filter_1 and not filter_2
-        """)
+        """
+    )
 
     assert lucene_backend.convert(rule) == [
         'FieldA:*valueA AND _exists_:FieldB AND (NOT FieldB:"")'
@@ -225,7 +270,8 @@ def test_lucene_not_filter_null_and(lucene_backend: LuceneBackend):
 
 def test_lucene_filter_null_and(lucene_backend: LuceneBackend):
     """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -239,7 +285,8 @@ def test_lucene_filter_null_and(lucene_backend: LuceneBackend):
                 filter_2:
                     FieldB: ''
                 condition: selection and filter_1 and not filter_2
-        """)
+        """
+    )
 
     assert lucene_backend.convert(rule) == [
         'FieldA:*valueA AND (NOT _exists_:FieldB) AND (NOT FieldB:"")'
@@ -248,7 +295,8 @@ def test_lucene_filter_null_and(lucene_backend: LuceneBackend):
 
 def test_lucene_not_filter_null_or(lucene_backend: LuceneBackend):
     """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -262,7 +310,8 @@ def test_lucene_not_filter_null_or(lucene_backend: LuceneBackend):
                 filter_2:
                     FieldB: ''
                 condition: selection and (not filter_1 or not filter_2)
-        """)
+        """
+    )
 
     assert lucene_backend.convert(rule) == [
         'FieldA:*valueA AND (_exists_:FieldB OR (NOT FieldB:""))'
@@ -271,7 +320,8 @@ def test_lucene_not_filter_null_or(lucene_backend: LuceneBackend):
 
 def test_lucene_filter_null_or(lucene_backend: LuceneBackend):
     """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -285,7 +335,8 @@ def test_lucene_filter_null_or(lucene_backend: LuceneBackend):
                 filter_2:
                     FieldB: ''
                 condition: selection and (filter_1 or not filter_2)
-        """)
+        """
+    )
 
     assert lucene_backend.convert(rule) == [
         'FieldA:*valueA AND ((NOT _exists_:FieldB) OR (NOT FieldB:""))'
@@ -294,7 +345,8 @@ def test_lucene_filter_null_or(lucene_backend: LuceneBackend):
 
 def test_lucene_filter_not_or_null(lucene_backend: LuceneBackend):
     """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -308,7 +360,8 @@ def test_lucene_filter_not_or_null(lucene_backend: LuceneBackend):
                 filter_2:
                     FieldB: ''
                 condition: selection and not 1 of filter_*
-        """)
+        """
+    )
 
     assert lucene_backend.convert(rule) == [
         'FieldA:*valueA AND (NOT ((NOT _exists_:FieldB) OR FieldB:""))'
@@ -317,7 +370,8 @@ def test_lucene_filter_not_or_null(lucene_backend: LuceneBackend):
 
 def test_lucene_filter_not(lucene_backend: LuceneBackend):
     """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -327,16 +381,16 @@ def test_lucene_filter_not(lucene_backend: LuceneBackend):
                 filter:
                     Field: null
                 condition: not filter
-        """)
+        """
+    )
 
-    assert lucene_backend.convert(rule) == [
-        '_exists_:Field'
-    ]
+    assert lucene_backend.convert(rule) == ["_exists_:Field"]
 
 
 def test_lucene_angle_brackets(lucene_backend: LuceneBackend):
     """Test for DSL output with < or > in the values"""
-    rule = SigmaCollection.from_yaml(r"""
+    rule = SigmaCollection.from_yaml(
+        r"""
             title: Test
             status: test
             logsource:
@@ -350,16 +404,18 @@ def test_lucene_angle_brackets(lucene_backend: LuceneBackend):
                     - CommandLine|contains: '<'
                     - CommandLine|contains: '>'
                 condition: all of selection_*
-        """)
+        """
+    )
 
     assert lucene_backend.convert(rule) == [
-        r'(OriginalFileName:Cmd.exe OR Image:*\\cmd.exe) AND (CommandLine:(*\<* OR *\>*))'
+        r"(OriginalFileName:Cmd.exe OR Image:*\\cmd.exe) AND (CommandLine:(*\<* OR *\>*))"
     ]
 
 
 def test_elasticsearch_ndjson_lucene(lucene_backend: LuceneBackend):
     """Test for NDJSON output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -370,36 +426,37 @@ def test_elasticsearch_ndjson_lucene(lucene_backend: LuceneBackend):
                     fieldA: valueA
                     fieldB: valueB
                 condition: sel
-        """)
+        """
+    )
     result = lucene_backend.convert(rule, output_format="kibana_ndjson")
     assert result[0] == {
         "id": "None",
         "type": "search",
         "attributes": {
-                "title": "SIGMA - Test",
-                "description": None,
-                "hits": 0,
-                "columns": [],
-                "sort": [
-                    "@timestamp",
-                    "desc"
-                ],
+            "title": "SIGMA - Test",
+            "description": None,
+            "hits": 0,
+            "columns": [],
+            "sort": ["@timestamp", "desc"],
             "version": 1,
             "kibanaSavedObjectMeta": {
-                    "searchSourceJSON": "{\"index\": \"beats-*\", \"filter\": [], \"highlight\": {\"pre_tags\": [\"@kibana-highlighted-field@\"], \"post_tags\": [\"@/kibana-highlighted-field@\"], \"fields\": {\"*\": {}}, \"require_field_match\": false, \"fragment_size\": 2147483647}, \"query\": {\"query_string\": {\"query\": \"fieldA:valueA AND fieldB:valueB\", \"analyze_wildcard\": true}}}"
-                }
+                "searchSourceJSON": '{"index": "beats-*", "filter": [], "highlight": {"pre_tags": ["@kibana-highlighted-field@"], "post_tags": ["@/kibana-highlighted-field@"], "fields": {"*": {}}, "require_field_match": false, "fragment_size": 2147483647}, "query": {"query_string": {"query": "fieldA:valueA AND fieldB:valueB", "analyze_wildcard": true}}}'
+            },
         },
-        "references": [{
-            "id": "beats-*",
-            "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
-            "type": "index-pattern"
-        }]
+        "references": [
+            {
+                "id": "beats-*",
+                "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+                "type": "index-pattern",
+            }
+        ],
     }
 
 
 def test_elasticsearch_siemrule_lucene(lucene_backend: LuceneBackend):
     """Test for NDJSON output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             id: c277adc0-f0c4-42e1-af9d-fab062992156
             status: test
@@ -411,7 +468,8 @@ def test_elasticsearch_siemrule_lucene(lucene_backend: LuceneBackend):
                     fieldA: valueA
                     fieldB: valueB
                 condition: sel
-        """)
+        """
+    )
     result = lucene_backend.convert(rule, output_format="siem_rule")
     assert result[0] == {
         "name": "SIGMA - Test",
@@ -419,9 +477,7 @@ def test_elasticsearch_siemrule_lucene(lucene_backend: LuceneBackend):
         "consumer": "siem",
         "enabled": True,
         "throttle": None,
-        "schedule": {
-                "interval": "5m"
-        },
+        "schedule": {"interval": "5m"},
         "params": {
             "author": [],
             "description": "No description",
@@ -432,7 +488,7 @@ def test_elasticsearch_siemrule_lucene(lucene_backend: LuceneBackend):
             "license": "DRL",
             "outputIndex": "",
             "meta": {
-                    "from": "1m",
+                "from": "1m",
             },
             "maxSignals": 100,
             "riskScore": 21,
@@ -450,28 +506,29 @@ def test_elasticsearch_siemrule_lucene(lucene_backend: LuceneBackend):
             "type": "query",
             "language": "lucene",
             "index": [
-                    "apm-*-transaction*",
-                    "auditbeat-*",
-                    "endgame-*",
-                    "filebeat-*",
-                    "logs-*",
-                    "packetbeat-*",
-                    "traces-apm*",
-                    "winlogbeat-*",
-                    "-*elastic-cloud-logs-*"
+                "apm-*-transaction*",
+                "auditbeat-*",
+                "endgame-*",
+                "filebeat-*",
+                "logs-*",
+                "packetbeat-*",
+                "traces-apm*",
+                "winlogbeat-*",
+                "-*elastic-cloud-logs-*",
             ],
             "query": "fieldA:valueA AND fieldB:valueB",
-            "filters": []
+            "filters": [],
         },
         "rule_type_id": "siem.queryRule",
         "notify_when": "onActiveAlert",
-        "actions": []
+        "actions": [],
     }
 
 
 def test_elasticsearch_siemrule_lucene_ndjson(lucene_backend: LuceneBackend):
     """Test for NDJSON output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             id: c277adc0-f0c4-42e1-af9d-fab062992156
             status: test
@@ -483,7 +540,8 @@ def test_elasticsearch_siemrule_lucene_ndjson(lucene_backend: LuceneBackend):
                     fieldA: valueA
                     fieldB: valueB
                 condition: sel
-        """)
+        """
+    )
     result = lucene_backend.convert(rule, output_format="siem_rule_ndjson")
     assert result[0] == {
         "id": "c277adc0-f0c4-42e1-af9d-fab062992156",
@@ -497,7 +555,7 @@ def test_elasticsearch_siemrule_lucene_ndjson(lucene_backend: LuceneBackend):
         "license": "DRL",
         "output_index": "",
         "meta": {
-                "from": "1m",
+            "from": "1m",
         },
         "author": [],
         "false_positives": [],
@@ -518,25 +576,29 @@ def test_elasticsearch_siemrule_lucene_ndjson(lucene_backend: LuceneBackend):
         "type": "query",
         "language": "lucene",
         "index": [
-                "apm-*-transaction*",
-                "auditbeat-*",
-                "endgame-*",
-                "filebeat-*",
-                "logs-*",
-                "packetbeat-*",
-                "traces-apm*",
-                "winlogbeat-*",
-                "-*elastic-cloud-logs-*"
+            "apm-*-transaction*",
+            "auditbeat-*",
+            "endgame-*",
+            "filebeat-*",
+            "logs-*",
+            "packetbeat-*",
+            "traces-apm*",
+            "winlogbeat-*",
+            "-*elastic-cloud-logs-*",
         ],
         "query": "fieldA:valueA AND fieldB:valueB",
         "filters": [],
         "throttle": "no_actions",
-        "actions": []
+        "actions": [],
     }
 
-def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: LuceneBackend):
+
+def test_elasticsearch_siemrule_lucene_ndjson_with_threat(
+    lucene_backend: LuceneBackend,
+):
     """Test for NDJSON output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             id: c277adc0-f0c4-42e1-af9d-fab062992156
             status: test
@@ -553,12 +615,13 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: Lucene
                 - attack.t1059.001
                 - attack.defense_evasion
                 - attack.t1027
-        """)
+        """
+    )
     result = lucene_backend.convert(rule, output_format="siem_rule_ndjson")
     assert result[0] == {
         "id": "c277adc0-f0c4-42e1-af9d-fab062992156",
         "name": "SIGMA - Test",
-        'tags': [],
+        "tags": [],
         "interval": "5m",
         "enabled": True,
         "description": "No description",
@@ -567,7 +630,7 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: Lucene
         "license": "DRL",
         "output_index": "",
         "meta": {
-                "from": "1m",
+            "from": "1m",
         },
         "author": [],
         "false_positives": [],
@@ -581,7 +644,7 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: Lucene
                 "tactic": {
                     "id": "TA0002",
                     "reference": "https://attack.mitre.org/tactics/TA0002",
-                    "name": "Execution"
+                    "name": "Execution",
                 },
                 "framework": "MITRE ATT&CK",
                 "technique": [
@@ -593,17 +656,17 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: Lucene
                             {
                                 "id": "T1059.001",
                                 "reference": "https://attack.mitre.org/techniques/T1059/001",
-                                "name": "PowerShell"
+                                "name": "PowerShell",
                             }
-                        ]
+                        ],
                     }
-                ]
+                ],
             },
             {
                 "tactic": {
                     "id": "TA0005",
                     "reference": "https://attack.mitre.org/tactics/TA0005",
-                    "name": "Defense Evasion"
+                    "name": "Defense Evasion",
                 },
                 "framework": "MITRE ATT&CK",
                 "technique": [
@@ -611,10 +674,10 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: Lucene
                         "id": "T1027",
                         "reference": "https://attack.mitre.org/techniques/T1027",
                         "name": "Obfuscated Files or Information",
-                        "subtechnique": []
+                        "subtechnique": [],
                     }
-                ]
-            }
+                ],
+            },
         ],
         "to": "now",
         "references": [],
@@ -627,26 +690,27 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(lucene_backend: Lucene
         "type": "query",
         "language": "lucene",
         "index": [
-                "apm-*-transaction*",
-                "auditbeat-*",
-                "endgame-*",
-                "filebeat-*",
-                "logs-*",
-                "packetbeat-*",
-                "traces-apm*",
-                "winlogbeat-*",
-                "-*elastic-cloud-logs-*"
+            "apm-*-transaction*",
+            "auditbeat-*",
+            "endgame-*",
+            "filebeat-*",
+            "logs-*",
+            "packetbeat-*",
+            "traces-apm*",
+            "winlogbeat-*",
+            "-*elastic-cloud-logs-*",
         ],
         "query": "fieldA:valueA AND fieldB:valueB",
         "filters": [],
         "throttle": "no_actions",
-        "actions": []
+        "actions": [],
     }
 
 
 def test_elasticsearch_dsl_lucene(lucene_backend: LuceneBackend):
     """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -657,25 +721,29 @@ def test_elasticsearch_dsl_lucene(lucene_backend: LuceneBackend):
                     fieldA: valueA
                     fieldB: valueB
                 condition: sel
-        """)
-    assert lucene_backend.convert(rule, output_format="dsl_lucene") == [{
-        "query": {
-            "bool": {
-                "must": [
-                    {
-                        "query_string": {
-                            "query": "fieldA:valueA AND fieldB:valueB",
-                            "analyze_wildcard": True
+        """
+    )
+    assert lucene_backend.convert(rule, output_format="dsl_lucene") == [
+        {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "query_string": {
+                                "query": "fieldA:valueA AND fieldB:valueB",
+                                "analyze_wildcard": True,
+                            }
                         }
-                    }
-                ]
+                    ]
+                }
             }
         }
-    }]
+    ]
 
 
 def test_es_dsl_lucene_space_value_text(lucene_backend: LuceneBackend):
-    rule = SigmaCollection.from_yaml("""
+    rule = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -685,22 +753,25 @@ def test_es_dsl_lucene_space_value_text(lucene_backend: LuceneBackend):
                 sel:
                     textFieldA: 'value with spaces'
                 condition: sel
-        """)
+        """
+    )
 
-    assert lucene_backend.convert(rule, output_format="dsl_lucene") == [{
-        "query": {
-            "bool": {
-                "must": [
-                    {
-                        "query_string": {
-                            "query": "textFieldA:value\\ with\\ spaces",
-                            "analyze_wildcard": True
+    assert lucene_backend.convert(rule, output_format="dsl_lucene") == [
+        {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "query_string": {
+                                "query": "textFieldA:value\\ with\\ spaces",
+                                "analyze_wildcard": True,
+                            }
                         }
-                    }
-                ]
+                    ]
+                }
             }
         }
-    }]
+    ]
 
 
 def test_elasticsearch_kibana_output(lucene_backend: LuceneBackend):
