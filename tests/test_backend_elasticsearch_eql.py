@@ -398,6 +398,7 @@ def test_eql_angle_brackets(eql_backend: EqlBackend):
         r'any where (OriginalFileName:"Cmd.exe" or Image:"*\\cmd.exe") and (CommandLine like~ ("*<*", "*>*"))'
     ]
 
+
 def test_elasticsearch_eqlapi(eql_backend: EqlBackend):
     """Test for NDJSON output with embedded query string query."""
     rule = SigmaCollection.from_yaml(
@@ -416,9 +417,8 @@ def test_elasticsearch_eqlapi(eql_backend: EqlBackend):
         """
     )
     result = eql_backend.convert(rule, output_format="eqlapi")
-    assert result[0] == {
-        "query": "any where fieldA:\"valueA\" and fieldB:\"valueB\""
-    }
+    assert result[0] == {"query": 'any where fieldA:"valueA" and fieldB:"valueB"'}
+
 
 def test_elasticsearch_siemrule_eql(eql_backend: EqlBackend):
     """Test for NDJSON output with embedded query string query."""
@@ -491,6 +491,7 @@ def test_elasticsearch_siemrule_eql(eql_backend: EqlBackend):
         "actions": [],
     }
 
+
 def test_elasticsearch_siemrule_eql_with_threatmodel(eql_backend: EqlBackend):
     """Test for NDJSON output with embedded query string query."""
     rule = SigmaCollection.from_yaml(
@@ -541,17 +542,17 @@ def test_elasticsearch_siemrule_eql_with_threatmodel(eql_backend: EqlBackend):
                     "tactic": {
                         "id": "TA0011",
                         "reference": "https://attack.mitre.org/tactics/TA0011",
-                        "name": "Command And Control"
+                        "name": "Command And Control",
                     },
                     "framework": "MITRE ATT&CK",
                     "technique": [
                         {
-                        "id": "T1568",
-                        "reference": "https://attack.mitre.org/techniques/T1568",
-                        "name": "Dynamic Resolution",
-                        "subtechnique": []
+                            "id": "T1568",
+                            "reference": "https://attack.mitre.org/techniques/T1568",
+                            "name": "Dynamic Resolution",
+                            "subtechnique": [],
                         }
-                    ]
+                    ],
                 }
             ],
             "to": "now",

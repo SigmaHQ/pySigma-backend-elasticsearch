@@ -15,9 +15,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: ankane/setup-elasticsearch@v1
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install Poetry
@@ -31,7 +31,7 @@ jobs:
         run: poetry run python print-coverage.py >> $GITHUB_ENV
       - name: Create coverage badge
         if: ${{ github.repository == 'SigmaHQ/pySigma-backend-elasticsearch' && github.event_name == 'push' && runner.os == 'Linux' }}
-        uses: schneegans/dynamic-badges-action@v1.6.0
+        uses: schneegans/dynamic-badges-action@v1.7.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 3c445ef26310e9f2d2ca09c697db1c71
