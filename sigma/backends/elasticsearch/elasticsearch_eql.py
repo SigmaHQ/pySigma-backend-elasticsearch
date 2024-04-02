@@ -103,7 +103,7 @@ class EqlBackend(TextQueryBackend):
 
     # Case sensitive string matching expression. String is quoted/escaped like a normal string.
     # Placeholders {field} and {value} are replaced with field name and quoted/escaped string.
-    case_sensitive_match_expression: ClassVar[Optional[str]] = '{field} == {value}'
+    case_sensitive_match_expression: ClassVar[Optional[str]] = "{field} == {value}"
 
     # cidr expressions
     # CIDR expression query as format string with placeholders {field} = {value}
@@ -272,32 +272,46 @@ class EqlBackend(TextQueryBackend):
         return {"query": f"any where {query}"}
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
-        attack_tags = [t for t in tags if t.namespace == 'attack']
+        attack_tags = [t for t in tags if t.namespace == "attack"]
         if not len(attack_tags) >= 2:
             return []
 
-        techniques = [tag.name.upper() for tag in attack_tags if re.match(r"[tT]\d{4}", tag.name)]
-        tactics = [tag.name.lower() for tag in attack_tags if not re.match(r"[tT]\d{4}", tag.name)]
+        techniques = [
+            tag.name.upper() for tag in attack_tags if re.match(r"[tT]\d{4}", tag.name)
+        ]
+        tactics = [
+            tag.name.lower()
+            for tag in attack_tags
+            if not re.match(r"[tT]\d{4}", tag.name)
+        ]
 
-        for (tactic, technique) in zip(tactics, techniques):
-            if not tactic or not technique:  # Only add threat if tactic and technique is known
+        for tactic, technique in zip(tactics, techniques):
+            if (
+                not tactic or not technique
+            ):  # Only add threat if tactic and technique is known
                 continue
 
             try:
-                if '.' in technique:  # Contains reference to Mitre Att&ck subtechnique
+                if "." in technique:  # Contains reference to Mitre Att&ck subtechnique
                     sub_technique = technique
-                    technique  = technique[0:5]
+                    technique = technique[0:5]
                     sub_technique_name = mitre_attack_techniques[sub_technique]
 
-                    sub_techniques = [{
-                        "id": sub_technique,
-                        "reference": f"https://attack.mitre.org/techniques/{sub_technique.replace('.', '/')}",
-                        "name": sub_technique_name,
-                    }]
+                    sub_techniques = [
+                        {
+                            "id": sub_technique,
+                            "reference": f"https://attack.mitre.org/techniques/{sub_technique.replace('.', '/')}",
+                            "name": sub_technique_name,
+                        }
+                    ]
                 else:
                     sub_techniques = []
 
-                tactic_id = [id for (id, name) in mitre_attack_tactics.items() if name == tactic.replace('_', '-')][0]
+                tactic_id = [
+                    id
+                    for (id, name) in mitre_attack_tactics.items()
+                    if name == tactic.replace("_", "-")
+                ][0]
                 technique_name = mitre_attack_techniques[technique]
             except (IndexError, KeyError):
                 # Occurs when Sigma Mitre Att&ck list is out of date
@@ -307,22 +321,21 @@ class EqlBackend(TextQueryBackend):
                 "tactic": {
                     "id": tactic_id,
                     "reference": f"https://attack.mitre.org/tactics/{tactic_id}",
-                    "name": tactic.title().replace('_', ' ')
+                    "name": tactic.title().replace("_", " "),
                 },
                 "framework": "MITRE ATT&CK",
                 "technique": [
                     {
-                    "id": technique,
-                    "reference": f"https://attack.mitre.org/techniques/{technique}",
-                    "name": technique_name,
-                    "subtechnique": sub_techniques
+                        "id": technique,
+                        "reference": f"https://attack.mitre.org/techniques/{technique}",
+                        "name": technique_name,
+                        "subtechnique": sub_techniques,
                     }
-                ]
+                ],
             }
 
         for tag in attack_tags:
             tags.remove(tag)
-
 
     def finalize_output_eqlapi(self, queries: List[str]) -> Any:
         # TODO: implement the output finalization for all generated queries for the format {{ format }} here. Usually,
