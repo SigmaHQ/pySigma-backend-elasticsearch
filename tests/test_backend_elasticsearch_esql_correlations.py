@@ -33,7 +33,7 @@ correlation:
     )
     assert esql_backend.convert(correlation_rule) == [
         """from * | where fieldA=="value1" and fieldB=="value2"
-| stats event_count=count by fieldC, fieldD
+| eval timebucket=date_trunc(15minutes, @timestamp) | stats event_count=count by timebucket, fieldC, fieldD
 | where event_count >= 10"""
     ]
 
@@ -67,7 +67,7 @@ correlation:
     )
     assert esql_backend.convert(correlation_rule) == [
         """from * | where fieldA=="value1" and fieldB=="value2"
-| stats value_count=count_distinct(fieldD) by fieldC
+| eval timebucket=date_trunc(15minutes, @timestamp) | stats value_count=count_distinct(fieldD) by timebucket, fieldC
 | where value_count < 10"""
     ]
 
@@ -111,6 +111,6 @@ correlation:
     assert esql_backend.convert(correlation_rule) == [
         """from * | where (fieldA=="value1" and fieldB=="value2") or (fieldA=="value3" and fieldB=="value4")
 | eval event_type=case(fieldA=="value1" and fieldB=="value2", "base_rule_1", fieldA=="value3" and fieldB=="value4", "base_rule_2")
-| stats event_type_count=count_distinct(event_type) by fieldC
+| eval timebucket=date_trunc(15minutes, @timestamp) | stats event_type_count=count_distinct(event_type) by timebucket, fieldC
 | where event_type_count >= 2"""
     ]
