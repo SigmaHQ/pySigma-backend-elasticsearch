@@ -112,7 +112,7 @@ def test_elasticsearch_esql_wildcard_expressions(esql_backend : ESQLBackend):
                         - "valueC*"
                 condition: sel
         """)
-    ) == ['from * | where fieldA like "val*A" or endswith(fieldA, "valueB") or startswith(fieldA, "valueC")']
+    ) == ['from * | where fieldA like "val*A" or ends_with(fieldA, "valueB") or starts_with(fieldA, "valueC")']
 
 def test_elasticsearch_esql_regex_query(esql_backend : ESQLBackend):
     assert esql_backend.convert(
