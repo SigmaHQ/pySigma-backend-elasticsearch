@@ -56,7 +56,7 @@ class ESQLBackend(TextQueryBackend):
     }
 
     # String matching operators. if none is appropriate eq_token is used.
-    startswith_expression : ClassVar[str] = "start_swith({field}, {value})"
+    startswith_expression : ClassVar[str] = "starts_with({field}, {value})"
     endswith_expression   : ClassVar[str] = "ends_with({field}, {value})"
     wildcard_match_expression : ClassVar[str] = "{field} like {value}"      # Special expression if wildcards can't be matched with the eq_token operator
 
