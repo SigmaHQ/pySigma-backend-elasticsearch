@@ -56,8 +56,8 @@ class ESQLBackend(TextQueryBackend):
     }
 
     # String matching operators. if none is appropriate eq_token is used.
-    startswith_expression : ClassVar[str] = "startswith({field}, {value})"
-    endswith_expression   : ClassVar[str] = "endswith({field}, {value})"
+    startswith_expression : ClassVar[str] = "start_swith({field}, {value})"
+    endswith_expression   : ClassVar[str] = "ends_with({field}, {value})"
     wildcard_match_expression : ClassVar[str] = "{field} like {value}"      # Special expression if wildcards can't be matched with the eq_token operator
 
     # Regular expressions
@@ -130,7 +130,7 @@ class ESQLBackend(TextQueryBackend):
     #correlation_search_field_normalization_expression_joiner: ClassVar[str] = ""
 
     event_count_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats event_count=count{groupby}"
+        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats event_count=count(){groupby}"
     }
     value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
         "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats value_count=count_distinct({field}){groupby}"
@@ -151,9 +151,10 @@ class ESQLBackend(TextQueryBackend):
     referenced_rules_expression: ClassVar[Dict[str, str]] = {"stats": "{ruleid}"}
     referenced_rules_expression_joiner: ClassVar[Dict[str, str]] = {"stats": ","}
 
-    groupby_expression: ClassVar[Dict[str, str]] = {"stats": " by timebucket, {fields}"}
-    groupby_field_expression: ClassVar[Dict[str, str]] = {"stats": "{field}"}
-    groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"stats": ", "}
+    groupby_expression_nofield: ClassVar = {"stats": " by timebucket"}
+    groupby_expression: ClassVar[Dict[str, str]] = {"stats": " by timebucket{fields}"}
+    groupby_field_expression: ClassVar[Dict[str, str]] = {"stats": ", {field}"}
+    groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"stats": ""}
 
     event_count_condition_expression: ClassVar[Dict[str, str]] = {
         "stats": "| where event_count {op} {count}"
