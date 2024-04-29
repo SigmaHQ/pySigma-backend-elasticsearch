@@ -204,8 +204,8 @@ class LuceneBackend(TextQueryBackend):
             return (
                 super()
                 .convert_condition_field_eq_val_cidr(cond, state)
-                .replace(":::", r":\:\:")
-                .replace(r"::\/", r"\:\:\/")
+                .replace(":", r"\:")
+                .replace(r"\:", ":", 1)
             )
         else:
             return super().convert_condition_field_eq_val_cidr(cond, state)
