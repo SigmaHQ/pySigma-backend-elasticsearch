@@ -219,11 +219,12 @@ def test_lucene_cidr_ipv6_query(lucene_backend: LuceneBackend):
                 sel:
                     field|cidr: 
                         - '::1/128'
-                        - 'fc00::/7'    
+                        - 'fc00::/7'
+                        - '2603:1080::/25'    
                 condition: sel
         """
     )
-    assert lucene_backend.convert(rule) == ["field:\:\:1\\/128 OR field:fc00\:\:\/7"]
+    assert lucene_backend.convert(rule) == ["field:\:\:1\\/128 OR field:fc00\:\:\/7 OR field:2603\:1080\:\:\/25"]
 
 
 def test_lucene_field_name_with_whitespace(lucene_backend: LuceneBackend):
