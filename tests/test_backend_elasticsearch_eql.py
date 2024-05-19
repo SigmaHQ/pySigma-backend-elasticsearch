@@ -470,8 +470,8 @@ def test_elasticsearch_siemrule_eql(eql_backend: EqlBackend):
             "relatedIntegrations": [],
             "requiredFields": [],
             "setup": "",
-            "type": "query",
-            "language": "lucene",
+            "type": "eql",
+            "language": "eql",
             "index": [
                 "apm-*-transaction*",
                 "auditbeat-*",
@@ -562,8 +562,8 @@ def test_elasticsearch_siemrule_eql_with_threatmodel(eql_backend: EqlBackend):
             "relatedIntegrations": [],
             "requiredFields": [],
             "setup": "",
-            "type": "query",
-            "language": "lucene",
+            "type": "eql",
+            "language": "eql",
             "index": [
                 "apm-*-transaction*",
                 "auditbeat-*",
@@ -632,8 +632,8 @@ def test_elasticsearch_siemrule_eql_ndjson(eql_backend: EqlBackend):
         "related_integrations": [],
         "required_fields": [],
         "setup": "",
-        "type": "query",
-        "language": "lucene",
+        "type": "eql",
+        "language": "eql",
         "index": [
             "apm-*-transaction*",
             "auditbeat-*",
