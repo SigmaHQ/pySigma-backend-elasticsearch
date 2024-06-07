@@ -107,6 +107,7 @@ def ecs_windows() -> ProcessingPipeline:
                         "ImageLoaded": "file.path",
                         "Signed": "file.code_signature.signed",
                         "SignatureStatus": "file.code_signature.status",
+                        "Imphash": "file.pe.imphash",
                         "SourceProcessGuid": "process.entity_id",
                         "SourceProcessId": "process.pid",
                         "SourceImage": "process.executable",
