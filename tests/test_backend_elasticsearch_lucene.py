@@ -415,6 +415,52 @@ def test_lucene_angle_brackets(lucene_backend: LuceneBackend):
     ]
 
 
+def test_lucene_windash(lucene_backend: LuceneBackend):
+    """Test for DSL output with < or > in the values"""
+    assert (
+        lucene_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldname|windash:
+                        - "-param-name"
+                condition: sel
+        """
+            )
+        )
+        == ["fieldname:(\\-param\\-name OR \\/param\\-name)"]
+    )
+
+
+def test_lucene_windash_contains(lucene_backend: LuceneBackend):
+    """Test for DSL output with < or > in the values"""
+    assert (
+        lucene_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldname|windash|contains:
+                        - " -param-name "
+                condition: sel
+        """
+            )
+        )
+        == ["fieldname:(*\\ \\-param\\-name\\ * OR *\\ \\/param\\-name\\ *)"]
+    )
+
+
 def test_elasticsearch_ndjson_lucene(lucene_backend: LuceneBackend):
     """Test for NDJSON output with embedded query string query."""
     rule = SigmaCollection.from_yaml(

@@ -85,12 +85,12 @@ class EqlBackend(TextQueryBackend):
     # Characters quoted in addition to wildcards and string quote
     # add_escaped: ClassVar[str] = '+-=&|!(){}[]<>^"~*?:\\/ '
     add_escaped: ClassVar[str] = '\n\r\t\\"'
-    bool_values: ClassVar[
-        Dict[bool, str]
-    ] = {  # Values to which boolean values are mapped.
-        True: "true",
-        False: "false",
-    }
+    bool_values: ClassVar[Dict[bool, str]] = (
+        {  # Values to which boolean values are mapped.
+            True: "true",
+            False: "false",
+        }
+    )
 
     # Regular expressions
     # Regular expression query as format string with placeholders {field} and {regex}
@@ -202,6 +202,25 @@ class EqlBackend(TextQueryBackend):
             return True
         except ValueError:
             return False
+
+    def convert_condition_field_eq_expansion(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Any:
+        """
+        Convert each value of the expansion with the field from the containing condition and OR-link
+        all converted subconditions.
+        """
+        or_cond = ConditionOR(
+            [
+                ConditionFieldEqualsValueExpression(cond.field, value)
+                for value in cond.value.values
+            ],
+            cond.source,
+        )
+        if self.decide_convert_condition_as_in_expression(or_cond, state):
+            return self.convert_condition_as_in_expression(or_cond, state)
+        else:
+            return self.convert_condition_or(cond, state)
 
     def convert_condition_field_eq_val_str(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
@@ -371,9 +390,11 @@ class EqlBackend(TextQueryBackend):
             },
             "params": {
                 "author": [rule.author] if rule.author is not None else [],
-                "description": rule.description
-                if rule.description is not None
-                else "No description",
+                "description": (
+                    rule.description
+                    if rule.description is not None
+                    else "No description"
+                ),
                 "ruleId": str(rule.id),
                 "falsePositives": rule.falsepositives,
                 "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
@@ -384,13 +405,15 @@ class EqlBackend(TextQueryBackend):
                     "from": "1m",
                 },
                 "maxSignals": 100,
-                "riskScore": self.severity_risk_mapping[rule.level.name]
-                if rule.level is not None
-                else 21,
+                "riskScore": (
+                    self.severity_risk_mapping[rule.level.name]
+                    if rule.level is not None
+                    else 21
+                ),
                 "riskScoreMapping": [],
-                "severity": str(rule.level.name).lower()
-                if rule.level is not None
-                else "low",
+                "severity": (
+                    str(rule.level.name).lower() if rule.level is not None else "low"
+                ),
                 "severityMapping": [],
                 "threat": list(self.finalize_output_threat_model(rule.tags)),
                 "to": "now",
@@ -432,9 +455,9 @@ class EqlBackend(TextQueryBackend):
             "throttle": "no_actions",
             "interval": f"{self.schedule_interval}{self.schedule_interval_unit}",
             "author": [rule.author] if rule.author is not None else [],
-            "description": rule.description
-            if rule.description is not None
-            else "No description",
+            "description": (
+                rule.description if rule.description is not None else "No description"
+            ),
             "rule_id": str(rule.id),
             "false_positives": rule.falsepositives,
             "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
@@ -445,13 +468,15 @@ class EqlBackend(TextQueryBackend):
                 "from": "1m",
             },
             "max_signals": 100,
-            "risk_score": self.severity_risk_mapping[rule.level.name]
-            if rule.level is not None
-            else 21,
+            "risk_score": (
+                self.severity_risk_mapping[rule.level.name]
+                if rule.level is not None
+                else 21
+            ),
             "risk_score_mapping": [],
-            "severity": str(rule.level.name).lower()
-            if rule.level is not None
-            else "low",
+            "severity": (
+                str(rule.level.name).lower() if rule.level is not None else "low"
+            ),
             "severity_mapping": [],
             "threat": list(self.finalize_output_threat_model(rule.tags)),
             "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],

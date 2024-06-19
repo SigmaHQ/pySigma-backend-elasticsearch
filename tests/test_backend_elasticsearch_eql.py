@@ -399,6 +399,50 @@ def test_eql_angle_brackets(eql_backend: EqlBackend):
     ]
 
 
+def test_elasticsearch_eql_windash(eql_backend: EqlBackend):
+    assert (
+        eql_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldname|windash:
+                        - "-param-name"
+                condition: sel
+        """
+            )
+        )
+        == ['any where fieldname like~ ("-param-name", "/param-name")']
+    )
+
+
+def test_elasticsearch_eql_windash_contains(eql_backend: EqlBackend):
+    assert (
+        eql_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldname|windash|contains:
+                        - "-param-name"
+                condition: sel
+        """
+            )
+        )
+        == ['any where fieldname like~ ("*-param-name*", "*/param-name*")']
+    )
+
+
 def test_elasticsearch_eqlapi(eql_backend: EqlBackend):
     """Test for NDJSON output with embedded query string query."""
     rule = SigmaCollection.from_yaml(
