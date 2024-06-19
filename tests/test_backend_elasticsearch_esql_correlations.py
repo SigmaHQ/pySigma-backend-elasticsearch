@@ -3,7 +3,8 @@ from sigma.collection import SigmaCollection
 from sigma.backends.elasticsearch.elasticsearch_esql import ESQLBackend
 from tests.test_backend_elasticsearch_esql import esql_backend
 
-def test_event_count_correlation_rule_stats_query(esql_backend : ESQLBackend):
+
+def test_event_count_correlation_rule_stats_query(esql_backend: ESQLBackend):
     correlation_rule = SigmaCollection.from_yaml(
         """
 title: Base rule
@@ -37,7 +38,10 @@ correlation:
 | where event_count >= 10"""
     ]
 
-def test_event_count_correlation_rule_stats_query_no_group_field(esql_backend : ESQLBackend):
+
+def test_event_count_correlation_rule_stats_query_no_group_field(
+    esql_backend: ESQLBackend,
+):
     correlation_rule = SigmaCollection.from_yaml(
         """
 title: Base rule
@@ -67,6 +71,7 @@ correlation:
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats event_count=count() by timebucket
 | where event_count >= 10"""
     ]
+
 
 def test_value_count_correlation_rule_stats_query(esql_backend):
     correlation_rule = SigmaCollection.from_yaml(
@@ -101,6 +106,7 @@ correlation:
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats value_count=count_distinct(fieldD) by timebucket, fieldC
 | where value_count < 10"""
     ]
+
 
 def test_temporal_correlation_rule_stats_query(esql_backend):
     correlation_rule = SigmaCollection.from_yaml(
