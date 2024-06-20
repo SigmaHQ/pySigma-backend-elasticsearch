@@ -416,7 +416,7 @@ def test_lucene_angle_brackets(lucene_backend: LuceneBackend):
 
 
 def test_lucene_windash(lucene_backend: LuceneBackend):
-    """Test for DSL output with < or > in the values"""
+    """Test for DSL output using windash modifier"""
     assert (
         lucene_backend.convert(
             SigmaCollection.from_yaml(
@@ -439,7 +439,7 @@ def test_lucene_windash(lucene_backend: LuceneBackend):
 
 
 def test_lucene_windash_contains(lucene_backend: LuceneBackend):
-    """Test for DSL output with < or > in the values"""
+    """Test for DSL output using windash + contains modifier"""
     assert (
         lucene_backend.convert(
             SigmaCollection.from_yaml(
