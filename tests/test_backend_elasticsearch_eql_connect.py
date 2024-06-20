@@ -220,6 +220,50 @@ def fixture_prepare_es_data():
             verify=False,
             auth=pytest.es_creds,
         )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "Image": "c:\\windows\\system32\\Sysmon.exe",
+                "Description": "System activity monitor",
+                "CommandLine": "Sysmon.exe -u",
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "Image": "c:\\windows\\system32\\Sysmon.exe",
+                "Description": "System activity monitor",
+                "CommandLine": "Sysmon.exe /u",
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "Image": "c:\\windows\\system32\\nonsysmon.exe",
+                "Description": "System idle monitor",
+                "CommandLine": "nonsysmon.exe -u",
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "Image": "c:\\windows\\system32\\nonsysmon.exe",
+                "Description": "System idle monitor",
+                "CommandLine": "nonsysmon.exe /u",
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
         # Wait a bit for Documents to be indexed
         time.sleep(1)
 
@@ -560,3 +604,34 @@ class TestConnectElasticsearch:
 
         result_dsl = eql_backend.convert(rule, output_format="eqlapi")[0]
         self.query_backend_hits(result_dsl, num_wanted=1)
+
+    def test_connect_eql_windash_double(
+        self, prepare_es_data, eql_backend: EqlBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    selection_pe:
+                        - Image|endswith: 
+                            - '\Sysmon64.exe'
+                            - '\Sysmon.exe'
+                        - Description: 'System activity monitor'
+                    selection_cli:
+                        CommandLine|contains|windash: '-u'
+                    condition: all of selection_*
+            """
+        )
+
+        result_dsl = eql_backend.convert(rule, output_format="eqlapi")[0]
+        result = self.query_backend_hits(result_dsl, num_wanted=2)
+
+        # Ensure we see only the searched Sysmon.exe Images.
+        assert all(
+            "Sysmon.exe" in entry["_source"]["Image"]
+            for entry in result["hits"]["events"]
+        )
