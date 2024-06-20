@@ -143,6 +143,20 @@ def fixture_prepare_es_data():
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
+            json={"ipfield": "fe80:0000:0000:0000:0000:0000:0000:beef"},
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={"ipfield": "2603:1080:beef::1"},
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
             json={"ipfield": "10.5.5.5"},
             timeout=120,
             verify=False,
@@ -461,7 +475,7 @@ class TestConnectElasticsearch:
         result_dsl = lucene_backend.convert(rule, output_format="dsl_lucene")[0]
         self.query_backend_hits(result_dsl, num_wanted=1)
 
-    def test_connect_lucene_cidr_query(
+    def test_connect_lucene_cidr_v4_query(
         self, prepare_es_data, lucene_backend: LuceneBackend
     ):
         rule = SigmaCollection.from_yaml(
@@ -480,6 +494,28 @@ class TestConnectElasticsearch:
 
         result_dsl = lucene_backend.convert(rule, output_format="dsl_lucene")[0]
         self.query_backend_hits(result_dsl, num_wanted=1)
+
+    def test_connect_lucene_cidr_v6_query(
+        self, prepare_es_data, lucene_backend: LuceneBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        ipfield|cidr:
+                            - 'fe80::/10'
+                            - '2603:1080::/25'
+                    condition: sel
+            """
+        )
+
+        result_dsl = lucene_backend.convert(rule, output_format="dsl_lucene")[0]
+        self.query_backend_hits(result_dsl, num_wanted=2)
 
     def test_connect_lucene_ip_query(
         self, prepare_es_data, lucene_backend: LuceneBackend
