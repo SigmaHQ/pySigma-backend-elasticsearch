@@ -5,3 +5,5 @@
 cov.xml
 dist/
 docs/_build
+.env
+
