@@ -13,8 +13,9 @@ from sigma.conditions import (
     ConditionNOT,
     ConditionFieldEqualsValueExpression,
 )
-from sigma.types import SigmaCompareExpression, SigmaNull, SpecialChars, SigmaNumber
+from sigma.types import SigmaCompareExpression, SigmaNull, SigmaFieldReference, SpecialChars, SigmaNumber
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import ipaddress
 import sigma
 
@@ -221,6 +222,13 @@ class EqlBackend(TextQueryBackend):
             return self.convert_condition_as_in_expression(or_cond, state)
         else:
             return self.convert_condition_or(cond, state)
+
+    def convert_condition_field_eq_field(
+        self, cond: SigmaFieldReference, state: ConversionState
+    ) -> Any:
+        raise SigmaFeatureNotSupportedByBackendError(
+            "ES Lucene backend can't handle field references."
+        )
 
     def convert_condition_field_eq_val_str(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState

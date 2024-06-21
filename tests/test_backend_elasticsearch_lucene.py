@@ -1,6 +1,7 @@
 import pytest
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 from sigma.collection import SigmaCollection
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 
 
 @pytest.fixture(name="lucene_backend")
@@ -460,6 +461,21 @@ def test_lucene_windash_contains(lucene_backend: LuceneBackend):
         == ["fieldname:(*\\ \\-param\\-name\\ * OR *\\ \\/param\\-name\\ *)"]
     )
 
+def test_lucene_reference_query(lucene_backend: LuceneBackend):
+    with pytest.raises(SigmaFeatureNotSupportedByBackendError, match="ES Lucene backend can't handle field references."):
+        lucene_backend.convert(
+            SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|fieldref: somefield
+                    condition: sel
+            """)
+        )
 
 def test_elasticsearch_ndjson_lucene(lucene_backend: LuceneBackend):
     """Test for NDJSON output with embedded query string query."""
