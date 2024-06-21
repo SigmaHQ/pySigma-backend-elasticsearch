@@ -1,6 +1,7 @@
 import pytest
 from sigma.backends.elasticsearch.elasticsearch_eql import EqlBackend
 from sigma.collection import SigmaCollection
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 
 
 @pytest.fixture(name="eql_backend")
@@ -462,6 +463,22 @@ def test_elasticsearch_eqlapi(eql_backend: EqlBackend):
     )
     result = eql_backend.convert(rule, output_format="eqlapi")
     assert result[0] == {"query": 'any where fieldA:"valueA" and fieldB:"valueB"'}
+
+def test_lucene_reference_query(eql_backend: EqlBackend):
+    with pytest.raises(SigmaFeatureNotSupportedByBackendError, match="ES Lucene backend can't handle field references."):
+        eql_backend.convert(
+            SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|fieldref: somefield
+                    condition: sel
+            """)
+        )
 
 
 def test_elasticsearch_siemrule_eql(eql_backend: EqlBackend):

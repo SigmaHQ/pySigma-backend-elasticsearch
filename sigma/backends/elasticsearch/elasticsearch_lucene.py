@@ -13,8 +13,9 @@ from sigma.conditions import (
     ConditionNOT,
     ConditionFieldEqualsValueExpression,
 )
-from sigma.types import SigmaCompareExpression, SigmaNull
+from sigma.types import SigmaCompareExpression, SigmaNull, SigmaFieldReference
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import sigma
 
 
@@ -186,6 +187,13 @@ class LuceneBackend(TextQueryBackend):
     def _is_field_null_condition(cond: ConditionItem) -> bool:
         return isinstance(cond, ConditionFieldEqualsValueExpression) and isinstance(
             cond.value, SigmaNull
+        )
+
+    def convert_condition_field_eq_field(
+        self, cond: SigmaFieldReference, state: ConversionState
+    ) -> Any:
+        raise SigmaFeatureNotSupportedByBackendError(
+            "ES Lucene backend can't handle field references."
         )
 
     def convert_condition_not(
