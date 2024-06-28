@@ -21,13 +21,13 @@ wrapt = [
 
 [[package]]
 name = "autopep8"
-version = "2.3.0"
+version = "2.3.1"
 description = "A tool that automatically formats Python code to conform to the PEP 8 style guide"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "autopep8-2.3.0-py2.py3-none-any.whl", hash = "sha256:b716efa70cbafbf4a2c9c5ec1cabfa037a68f9e30b04c74ffa5864dd49b8f7d2"},
-    {file = "autopep8-2.3.0.tar.gz", hash = "sha256:5cfe45eb3bef8662f6a3c7e28b7c0310c7310d340074b7f0f28f9810b44b7ef4"},
+    {file = "autopep8-2.3.1-py2.py3-none-any.whl", hash = "sha256:a203fe0fcad7939987422140ab17a930f684763bf7335bdb6709991dd7ef6c2d"},
+    {file = "autopep8-2.3.1.tar.gz", hash = "sha256:8d6c87eba648fdcfc83e29b788910b8643171c395d9c4bcf115ece035b9c9dda"},
 ]
 
 [package.dependencies]
@@ -537,13 +537,13 @@ diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pysigma"
-version = "0.11.7"
+version = "0.11.8"
 description = "Sigma rule processing and conversion tools"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "pysigma-0.11.7-py3-none-any.whl", hash = "sha256:0bbcbd63bf696ffb6f0d127681c6db95141f9d9047d9f5e735e907de1748d8fd"},
-    {file = "pysigma-0.11.7.tar.gz", hash = "sha256:0414db911bdb8aea11967e64a53da4288b869374135ee81a0e5e3658c7a79eb6"},
+    {file = "pysigma-0.11.8-py3-none-any.whl", hash = "sha256:b8a811c36ea97a66ceaff158de92b054b5531d1a2fe3c4317133101c624ad97e"},
+    {file = "pysigma-0.11.8.tar.gz", hash = "sha256:08ae6d134567960c39a1907c9111504a1a4cdbabe71555c1f62f7d67a6228298"},
 ]
 
 [package.dependencies]
