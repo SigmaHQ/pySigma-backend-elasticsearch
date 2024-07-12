@@ -271,6 +271,36 @@ def fixture_prepare_es_data():
             verify=False,
             auth=pytest.es_creds,
         )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "Image": "c:\\windows\\system32\\bitsadmin.exe",
+                "CommandLine": "bitsadmin.exe /transfer https://sigmahq.io/",
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "Image": "c:\\windows\\system32\\bitsadmin.exe",
+                "CommandLine": "bitsadmin.exe /create https://sigmahq.io/ /addfile testdata2",
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "Image": "c:\\windows\\system32\\bitsadmin.exe",
+                "CommandLine": "bitsadmin.exe /create smbfs://testdatashouldnotmatch",
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
         # Wait a bit for Documents to be indexed
         time.sleep(1)
 
@@ -691,5 +721,40 @@ class TestConnectElasticsearch:
         # Ensure we see only the searched Sysmon.exe Images.
         assert all(
             "Sysmon.exe" in entry["_source"]["Image"]
+            for entry in result["hits"]["hits"]
+        )
+
+    def test_connect_lucene_advanced_quotetest(
+        self, prepare_es_data, lucene_backend: LuceneBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    selection_img:
+                        - Image|endswith: '\bitsadmin.exe'
+                        - OriginalFileName: 'bitsadmin.exe'
+                    selection_cmd:
+                        CommandLine|contains: ' /transfer '
+                    selection_cli_1:
+                        CommandLine|contains:
+                            - ' /create '
+                            - ' /addfile '
+                    selection_cli_2:
+                        CommandLine|contains: 'http'
+                    condition: selection_img and (selection_cmd or all of selection_cli_*)
+            """
+        )
+
+        result_dsl = lucene_backend.convert(rule, output_format="dsl_lucene")[0]
+        result = self.query_backend_hits(result_dsl, num_wanted=2)
+
+        # Ensure we see only the searched Sysmon.exe Images.
+        assert all(
+            "bitsadmin.exe" in entry["_source"]["Image"]
             for entry in result["hits"]["hits"]
         )
