@@ -1,12 +1,13 @@
 from sigma.conversion.state import ConversionState
-from sigma.rule import SigmaRule
+from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.correlations import SigmaCorrelationRule
 from sigma.conversion.base import TextQueryBackend
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
 from sigma.types import SigmaCompareExpression, SigmaRegularExpression, SigmaRegularExpressionFlag
+from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 import sigma
 import re
-from typing import ClassVar, Dict, Tuple, Pattern, List, Any
+from typing import ClassVar, Dict, Tuple, Pattern, List, Iterable, Optional, Any
 
 class ESQLBackend(TextQueryBackend):
     """ES|QL backend."""
@@ -19,7 +20,8 @@ class ESQLBackend(TextQueryBackend):
     name : ClassVar[str] = "ES|QL backend"
     formats : Dict[str, str] = {
         "default": "Plain ES|QL queries",
-        
+        "siem_rule": "Elasticsearch ES|QL queries as SIEM Rule in JSON Format.",    
+        "siem_rule_ndjson": "Elasticsearch ES|QL Query as SIEM Rules in NDJSON Format."
     }
     requires_pipeline : bool = True
 
@@ -166,6 +168,27 @@ class ESQLBackend(TextQueryBackend):
         "stats": "| where event_type_count {op} {count}"
     }
 
+    def __init__(
+        self,
+        processing_pipeline: Optional[
+            "sigma.processing.pipeline.ProcessingPipeline"
+        ] = None,
+        collect_errors: bool = False,
+        schedule_interval: int = 5,
+        schedule_interval_unit: str = "m",
+        **kwargs,
+    ):
+        super().__init__(processing_pipeline, collect_errors, **kwargs)
+        self.schedule_interval = schedule_interval or 5
+        self.schedule_interval_unit = schedule_interval_unit or "m"
+        self.severity_risk_mapping = {
+            "INFORMATIONAL": 1,
+            "LOW": 21,
+            "MEDIUM": 47,
+            "HIGH": 73,
+            "CRITICAL": 99,
+        }
+
     def convert_correlation_search(
         self,
         rule: SigmaCorrelationRule,
@@ -186,4 +209,201 @@ class ESQLBackend(TextQueryBackend):
     
     def convert_correlation_typing_query_postprocess(self, query: str) -> str:
         return self.convert_correlation_search_multi_rule_query_postprocess(query)
+
     ### Correlation end ###
+
+    def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
+        attack_tags = [t for t in tags if t.namespace == "attack"]
+        if not len(attack_tags) >= 2:
+            return []
+
+        techniques = [
+            tag.name.upper() for tag in attack_tags if re.match(r"[tT]\d{4}", tag.name)
+        ]
+        tactics = [
+            tag.name.lower()
+            for tag in attack_tags
+            if not re.match(r"[tT]\d{4}", tag.name)
+        ]
+
+        for tactic, technique in zip(tactics, techniques):
+            if (
+                not tactic or not technique
+            ):  # Only add threat if tactic and technique is known
+                continue
+
+            try:
+                if "." in technique:  # Contains reference to Mitre Att&ck subtechnique
+                    sub_technique = technique
+                    technique = technique[0:5]
+                    sub_technique_name = mitre_attack_techniques[sub_technique]
+
+                    sub_techniques = [
+                        {
+                            "id": sub_technique,
+                            "reference": f"https://attack.mitre.org/techniques/{sub_technique.replace('.', '/')}",
+                            "name": sub_technique_name,
+                        }
+                    ]
+                else:
+                    sub_techniques = []
+
+                tactic_id = [
+                    id
+                    for (id, name) in mitre_attack_tactics.items()
+                    if name == tactic.replace("_", "-")
+                ][0]
+                technique_name = mitre_attack_techniques[technique]
+            except (IndexError, KeyError):
+                # Occurs when Sigma Mitre Att&ck list is out of date
+                continue
+
+            yield {
+                "tactic": {
+                    "id": tactic_id,
+                    "reference": f"https://attack.mitre.org/tactics/{tactic_id}",
+                    "name": tactic.title().replace("_", " "),
+                },
+                "framework": "MITRE ATT&CK",
+                "technique": [
+                    {
+                        "id": technique,
+                        "reference": f"https://attack.mitre.org/techniques/{technique}",
+                        "name": technique_name,
+                        "subtechnique": sub_techniques,
+                    }
+                ],
+            }
+
+        for tag in attack_tags:
+            tags.remove(tag)
+
+
+    def finalize_query_siem_rule(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> Dict:
+        """
+        Create SIEM Rules in JSON Format. These rules could be imported into Kibana using the
+        Create Rule API https://www.elastic.co/guide/en/kibana/8.6/create-rule-api.html
+        This API (and generated data) is NOT the same like importing Detection Rules via:
+        Kibana -> Security -> Alerts -> Manage Rules -> Import
+        If you want to have a nice importable NDJSON File for the Security Rule importer
+        use pySigma Format 'siem_rule_ndjson' instead.
+        """
+
+        siem_rule = {
+            "name": f"SIGMA - {rule.title}",
+            "consumer": "siem",
+            "enabled": True,
+            "throttle": None,
+            "schedule": {
+                "interval": f"{self.schedule_interval}{self.schedule_interval_unit}"
+            },
+            "params": {
+                "author": [rule.author] if rule.author is not None else [],
+                "description": (
+                    rule.description
+                    if rule.description is not None
+                    else "No description"
+                ),
+                "ruleId": str(rule.id),
+                "falsePositives": rule.falsepositives,
+                "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+                "immutable": False,
+                "license": "DRL",
+                "outputIndex": "",
+                "meta": {
+                    "from": "1m",
+                },
+                "maxSignals": 100,
+                "riskScore": (
+                    self.severity_risk_mapping[rule.level.name]
+                    if rule.level is not None
+                    else 21
+                ),
+                "riskScoreMapping": [],
+                "severity": (
+                    str(rule.level.name).lower() if rule.level is not None else "low"
+                ),
+                "severityMapping": [],
+                "threat": list(self.finalize_output_threat_model(rule.tags)),
+                "to": "now",
+                "references": rule.references,
+                "version": 1,
+                "exceptionsList": [],
+                "relatedIntegrations": [],
+                "requiredFields": [],
+                "setup": "",
+                "type": "esql",
+                "language": "esql",
+                "query": query,
+                "filters": [],
+            },
+            "rule_type_id": "siem.esqlRule",
+            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
+            "notify_when": "onActiveAlert",
+            "actions": [],
+        }
+        return siem_rule
+
+    def finalize_output_siem_rule(self, queries: List[Dict]) -> Dict:
+        return list(queries)
+
+    def finalize_query_siem_rule_ndjson(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> Dict:
+        """
+        Generating SIEM/Detection Rules in NDJSON Format. Compatible with
+
+        https://www.elastic.co/guide/en/security/8.6/rules-ui-management.html#import-export-rules-ui
+        """
+
+        siem_rule = {
+            "id": str(rule.id),
+            "name": f"SIGMA - {rule.title}",
+            "enabled": True,
+            "throttle": "no_actions",
+            "interval": f"{self.schedule_interval}{self.schedule_interval_unit}",
+            "author": [rule.author] if rule.author is not None else [],
+            "description": (
+                rule.description if rule.description is not None else "No description"
+            ),
+            "rule_id": str(rule.id),
+            "false_positives": rule.falsepositives,
+            "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+            "immutable": False,         
+            "license": "DRL",
+            "output_index": "",
+            "meta": {
+                "from": "1m",
+            },
+            "max_signals": 100,
+            "risk_score": (
+                self.severity_risk_mapping[rule.level.name]
+                if rule.level is not None
+                else 21
+            ),
+            "risk_score_mapping": [],
+            "severity": (
+                str(rule.level.name).lower() if rule.level is not None else "low"
+            ),
+            "severity_mapping": [],
+            "threat": list(self.finalize_output_threat_model(rule.tags)),
+            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
+            "to": "now",
+            "references": rule.references,
+            "version": 1,
+            "exceptions_list": [],
+            "related_integrations": [],
+            "required_fields": [],
+            "setup": "",
+            "type": "esql",
+            "language": "esql",
+            "query": query,
+            "filters": [],
+            "actions": [],
+        }
+        return siem_rule
+
+    def finalize_output_siem_rule_ndjson(self, queries: List[Dict]) -> Dict:
+        return list(queries)
