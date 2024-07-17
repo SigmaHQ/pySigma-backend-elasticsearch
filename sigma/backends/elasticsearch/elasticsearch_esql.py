@@ -21,8 +21,9 @@ class ESQLBackend(TextQueryBackend):
     name : ClassVar[str] = "ES|QL backend"
     formats : Dict[str, str] = {
         "default": "Plain ES|QL queries",
-        "siem_rule": "Elasticsearch ES|QL queries as SIEM Rule in JSON Format.",    
-        "siem_rule_ndjson": "Elasticsearch ES|QL Query as SIEM Rules in NDJSON Format."
+        "kibana_ndjson": "Kibana ES|QL queries in NDJSON Format.",
+        "siem_rule": "Elastic Security ES|QL queries as SIEM Rules in JSON Format.",    
+        "siem_rule_ndjson": "Elastic Security ES|QL queries as SIEM Rules in NDJSON Format."
     }
     requires_pipeline : bool = True
 
