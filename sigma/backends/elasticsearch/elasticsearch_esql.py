@@ -25,7 +25,7 @@ class ESQLBackend(TextQueryBackend):
     }
     requires_pipeline : bool = True
 
-    query_expression : ClassVar[str] = "from {state[index]} | where {query}"
+    #query_expression : ClassVar[str] = "from {state[index]} | where {query}"
     state_defaults : ClassVar[Dict[str, str]] = { "index": "*" }
 
     precedence : ClassVar[Tuple[ConditionItem, ConditionItem, ConditionItem]] = (ConditionNOT, ConditionAND, ConditionOR)
@@ -277,6 +277,12 @@ class ESQLBackend(TextQueryBackend):
 
         for tag in attack_tags:
             tags.remove(tag)
+    
+
+    def finalize_query_default(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> Any:
+        return f"from {state.processing_state['index']} | where {query}"
 
 
     def finalize_query_siem_rule(
@@ -293,8 +299,9 @@ class ESQLBackend(TextQueryBackend):
 
         siem_rule = {
             "name": f"SIGMA - {rule.title}",
-            "consumer": "siem",
+            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "enabled": True,
+            "consumer": "siem",
             "throttle": None,
             "schedule": {
                 "interval": f"{self.schedule_interval}{self.schedule_interval_unit}"
@@ -316,12 +323,15 @@ class ESQLBackend(TextQueryBackend):
                     "from": "1m",
                 },
                 "maxSignals": 100,
+                "relatedIntegrations": [],
+                "requiredFields": [],
                 "riskScore": (
                     self.severity_risk_mapping[rule.level.name]
                     if rule.level is not None
                     else 21
                 ),
                 "riskScoreMapping": [],
+                "setup": "",
                 "severity": (
                     str(rule.level.name).lower() if rule.level is not None else "low"
                 ),
@@ -331,16 +341,11 @@ class ESQLBackend(TextQueryBackend):
                 "references": rule.references,
                 "version": 1,
                 "exceptionsList": [],
-                "relatedIntegrations": [],
-                "requiredFields": [],
-                "setup": "",
                 "type": "esql",
                 "language": "esql",
-                "query": query,
-                "filters": [],
+                "query": f"from {state.processing_state['index']} [metadata _id, _index, _version] | where {query}",
             },
             "rule_type_id": "siem.esqlRule",
-            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "notify_when": "onActiveAlert",
             "actions": [],
         }
@@ -361,46 +366,46 @@ class ESQLBackend(TextQueryBackend):
         siem_rule = {
             "id": str(rule.id),
             "name": f"SIGMA - {rule.title}",
-            "enabled": True,
-            "throttle": "no_actions",
+            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "interval": f"{self.schedule_interval}{self.schedule_interval_unit}",
-            "author": [rule.author] if rule.author is not None else [],
+            "enabled": True,
             "description": (
                 rule.description if rule.description is not None else "No description"
             ),
-            "rule_id": str(rule.id),
-            "false_positives": rule.falsepositives,
-            "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
-            "immutable": False,         
-            "license": "DRL",
-            "output_index": "",
-            "meta": {
-                "from": "1m",
-            },
-            "max_signals": 100,
             "risk_score": (
                 self.severity_risk_mapping[rule.level.name]
                 if rule.level is not None
                 else 21
             ),
-            "risk_score_mapping": [],
             "severity": (
                 str(rule.level.name).lower() if rule.level is not None else "low"
             ),
+            "note": "",
+            "license": "DRL",
+            "output_index": "",
+            "meta": {
+                "from": "1m",
+            },
+            "investigation_fields": {},
+            "author": [rule.author] if rule.author is not None else [],
+            "false_positives": rule.falsepositives,
+            "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+            "rule_id": str(rule.id),
+            "max_signals": 100,
+            "risk_score_mapping": [],
             "severity_mapping": [],
             "threat": list(self.finalize_output_threat_model(rule.tags)),
-            "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "to": "now",
             "references": rule.references,
             "version": 1,
             "exceptions_list": [],
+            "immutable": False,
             "related_integrations": [],
             "required_fields": [],
             "setup": "",
             "type": "esql",
             "language": "esql",
-            "query": query,
-            "filters": [],
+            "query": f"from {state.processing_state['index']} [metadata _id, _index, _version] | where {query}",
             "actions": [],
         }
         return siem_rule
