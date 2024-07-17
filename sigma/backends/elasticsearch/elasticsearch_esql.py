@@ -7,6 +7,7 @@ from sigma.types import SigmaCompareExpression, SigmaRegularExpression, SigmaReg
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 import sigma
 import re
+import json
 from typing import ClassVar, Dict, Tuple, Pattern, List, Iterable, Optional, Any
 
 class ESQLBackend(TextQueryBackend):
@@ -199,6 +200,10 @@ class ESQLBackend(TextQueryBackend):
             for rule_reference in rule.rules
             for state in rule_reference.rule.get_conversion_states()
         ]
+
+        # Deduplicate sources using via set
+        sources = list(set(sources))
+
         if "*" in sources:
             return super().convert_correlation_search(rule, sources="*", **kwargs)
         else:
@@ -211,6 +216,66 @@ class ESQLBackend(TextQueryBackend):
         return self.convert_correlation_search_multi_rule_query_postprocess(query)
 
     ### Correlation end ###
+
+    def finalize_query_default(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> str:
+        return f"from {state.processing_state['index']} | where {query}"    
+
+    def finalize_query_kibana_ndjson(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> Dict:
+        # TODO: implement the per-query output for the output format kibana here. Usually, the
+        # generated query is embedded into a template, e.g. a JSON format with additional
+        # information from the Sigma rule.
+        ndjson = {
+            "attributes": {
+                "columns": [],
+                "description": rule.description if rule.description is not None else "No description",
+                "grid": {},
+                "hideChart": False,
+                "isTextBasedQuery": True,
+                "kibanaSavedObjectMeta": {
+                    "searchSourceJSON": str(
+                        json.dumps(
+                            {
+                                "query": {
+                                    "esql": f"from {state.processing_state['index']} | where {query}"
+                                },
+                                "index": {
+                                    "title": state.processing_state["index"],
+                                    "timeFieldName": "@timestamp",
+                                    "sourceFilters": [],
+                                    "type": "esql",
+                                    "fieldFormats": {},
+                                    "runtimeFieldMap": {},
+                                    "allowNoIndex": False,
+                                    "name": state.processing_state["index"],
+                                    "allowHidden": False,
+                                },
+                                "filter": [],
+                            }
+                        )
+                    ),
+                },
+                "sort": [["@timestamp", "desc"]],
+                "timeRestore": False,
+                "title": f"SIGMA - {rule.title}",
+                "usesAdHocDataView": False
+            },
+            "id": str(rule.id),
+            "managed": False,
+            "references": [],
+            "type": "search",
+            "typeMigrationVersion": "10.2.0",
+        }
+        return ndjson
+
+    def finalize_output_kibana_ndjson(self, queries: List[Dict]) -> List[List[Dict]]:
+        # TODO: implement the output finalization for all generated queries for the format kibana
+        # here. Usually, the single generated queries are embedded into a structure, e.g. some
+        # JSON or XML that can be imported into the SIEM.
+        return list(queries)
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
         attack_tags = [t for t in tags if t.namespace == "attack"]
@@ -277,13 +342,6 @@ class ESQLBackend(TextQueryBackend):
 
         for tag in attack_tags:
             tags.remove(tag)
-    
-
-    def finalize_query_default(
-        self, rule: SigmaRule, query: str, index: int, state: ConversionState
-    ) -> Any:
-        return f"from {state.processing_state['index']} | where {query}"
-
 
     def finalize_query_siem_rule(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
@@ -351,7 +409,7 @@ class ESQLBackend(TextQueryBackend):
         }
         return siem_rule
 
-    def finalize_output_siem_rule(self, queries: List[Dict]) -> Dict:
+    def finalize_output_siem_rule(self, queries: List[Dict]) -> List[List[Dict]]:
         return list(queries)
 
     def finalize_query_siem_rule_ndjson(
@@ -410,5 +468,5 @@ class ESQLBackend(TextQueryBackend):
         }
         return siem_rule
 
-    def finalize_output_siem_rule_ndjson(self, queries: List[Dict]) -> Dict:
+    def finalize_output_siem_rule_ndjson(self, queries: List[Dict]) -> List[List[Dict]]:
         return list(queries)
