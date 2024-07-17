@@ -3,12 +3,12 @@ from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.correlations import SigmaCorrelationRule
 from sigma.conversion.base import TextQueryBackend
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
-from sigma.types import SigmaCompareExpression, SigmaRegularExpression, SigmaRegularExpressionFlag
+from sigma.types import SigmaCompareExpression
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 import sigma
 import re
 import json
-from typing import ClassVar, Dict, Tuple, Pattern, List, Iterable, Optional, Any
+from typing import ClassVar, Dict, Tuple, Pattern, List, Iterable, Optional
 
 class ESQLBackend(TextQueryBackend):
     """ES|QL backend."""
@@ -27,7 +27,6 @@ class ESQLBackend(TextQueryBackend):
     }
     requires_pipeline : bool = True
 
-    #query_expression : ClassVar[str] = "from {state[index]} | where {query}"
     state_defaults : ClassVar[Dict[str, str]] = { "index": "*" }
 
     precedence : ClassVar[Tuple[ConditionItem, ConditionItem, ConditionItem]] = (ConditionNOT, ConditionAND, ConditionOR)
@@ -181,8 +180,8 @@ class ESQLBackend(TextQueryBackend):
         **kwargs,
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
-        self.schedule_interval = schedule_interval or 5
-        self.schedule_interval_unit = schedule_interval_unit or "m"
+        self.schedule_interval = schedule_interval
+        self.schedule_interval_unit = schedule_interval_unit
         self.severity_risk_mapping = {
             "INFORMATIONAL": 1,
             "LOW": 21,
@@ -349,7 +348,7 @@ class ESQLBackend(TextQueryBackend):
     ) -> Dict:
         """
         Create SIEM Rules in JSON Format. These rules could be imported into Kibana using the
-        Create Rule API https://www.elastic.co/guide/en/kibana/8.6/create-rule-api.html
+        Create Rule API https://www.elastic.co/guide/en/kibana/current/create-rule-api.html 
         This API (and generated data) is NOT the same like importing Detection Rules via:
         Kibana -> Security -> Alerts -> Manage Rules -> Import
         If you want to have a nice importable NDJSON File for the Security Rule importer
@@ -419,7 +418,7 @@ class ESQLBackend(TextQueryBackend):
         """
         Generating SIEM/Detection Rules in NDJSON Format. Compatible with
 
-        https://www.elastic.co/guide/en/security/8.6/rules-ui-management.html#import-export-rules-ui
+        https://www.elastic.co/guide/en/security/current/rules-ui-management.html#import-export-rules-ui
         """
 
         siem_rule = {
