@@ -27,8 +27,6 @@ class ESQLBackend(TextQueryBackend):
     }
     requires_pipeline : bool = True
 
-    state_defaults : ClassVar[Dict[str, str]] = { "index": "*" }
-
     precedence : ClassVar[Tuple[ConditionItem, ConditionItem, ConditionItem]] = (ConditionNOT, ConditionAND, ConditionOR)
     group_expression : ClassVar[str] = "({expr})"   # Expression for precedence override grouping as format string with {expr} placeholder
 
@@ -220,7 +218,7 @@ class ESQLBackend(TextQueryBackend):
     def finalize_query_default(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> str:
-        return f"from {state.processing_state['index']} | where {query}"    
+        return f"from {state.processing_state.get('index', '*')} | where {query}"
 
     def finalize_query_kibana_ndjson(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
@@ -228,7 +226,8 @@ class ESQLBackend(TextQueryBackend):
         # TODO: implement the per-query output for the output format kibana here. Usually, the
         # generated query is embedded into a template, e.g. a JSON format with additional
         # information from the Sigma rule.
-        ndjson = {
+        index = state.processing_state.get("index", "*")
+        return {
             "attributes": {
                 "columns": [],
                 "description": rule.description if rule.description is not None else "No description",
@@ -240,17 +239,17 @@ class ESQLBackend(TextQueryBackend):
                         json.dumps(
                             {
                                 "query": {
-                                    "esql": f"from {state.processing_state['index']} | where {query}"
+                                    "esql": f"from {index} | where {query}"
                                 },
                                 "index": {
-                                    "title": state.processing_state["index"],
+                                    "title": index,
                                     "timeFieldName": "@timestamp",
                                     "sourceFilters": [],
                                     "type": "esql",
                                     "fieldFormats": {},
                                     "runtimeFieldMap": {},
                                     "allowNoIndex": False,
-                                    "name": state.processing_state["index"],
+                                    "name": index,
                                     "allowHidden": False,
                                 },
                                 "filter": [],
@@ -269,7 +268,6 @@ class ESQLBackend(TextQueryBackend):
             "type": "search",
             "typeMigrationVersion": "10.2.0",
         }
-        return ndjson
 
     def finalize_output_kibana_ndjson(self, queries: List[Dict]) -> List[List[Dict]]:
         # TODO: implement the output finalization for all generated queries for the format kibana
@@ -355,7 +353,7 @@ class ESQLBackend(TextQueryBackend):
         use pySigma Format 'siem_rule_ndjson' instead.
         """
 
-        siem_rule = {
+        return {
             "name": f"SIGMA - {rule.title}",
             "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
             "enabled": True,
@@ -401,13 +399,12 @@ class ESQLBackend(TextQueryBackend):
                 "exceptionsList": [],
                 "type": "esql",
                 "language": "esql",
-                "query": f"from {state.processing_state['index']} [metadata _id, _index, _version] | where {query}",
+                "query": f"from {state.processing_state.get('index', '*')} [metadata _id, _index, _version] | where {query}",
             },
             "rule_type_id": "siem.esqlRule",
             "notify_when": "onActiveAlert",
             "actions": [],
         }
-        return siem_rule
 
     def finalize_output_siem_rule(self, queries: List[Dict]) -> List[List[Dict]]:
         return list(queries)
@@ -421,7 +418,7 @@ class ESQLBackend(TextQueryBackend):
         https://www.elastic.co/guide/en/security/current/rules-ui-management.html#import-export-rules-ui
         """
 
-        siem_rule = {
+        return {
             "id": str(rule.id),
             "name": f"SIGMA - {rule.title}",
             "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
@@ -463,10 +460,9 @@ class ESQLBackend(TextQueryBackend):
             "setup": "",
             "type": "esql",
             "language": "esql",
-            "query": f"from {state.processing_state['index']} [metadata _id, _index, _version] | where {query}",
+            "query": f"from {state.processing_state.get('index', '*')} [metadata _id, _index, _version] | where {query}",
             "actions": [],
         }
-        return siem_rule
 
     def finalize_output_siem_rule_ndjson(self, queries: List[Dict]) -> List[List[Dict]]:
         return list(queries)
