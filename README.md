@@ -21,6 +21,7 @@ Further, it contains the following processing pipelines in `sigma.pipelines.elas
 * ecs_zeek_beats in zeek submodule: Zeek ECS mapping from Elastic.
 * ecs_zeek_corelight in zeek submodule: Zeek ECS mapping from Corelight.
 * zeek_raw in zeek submodule: Zeek raw JSON log field naming.
+* ecs_kubernetes in kubernetes submodule: ECS mapping for Kubernetes audit logs ingested with Kubernetes integration
 
 This backend is currently maintained by:
 
