@@ -455,10 +455,12 @@ class EqlBackend(TextQueryBackend):
 
         https://www.elastic.co/guide/en/security/8.6/rules-ui-management.html#import-export-rules-ui
         """
-        if isinstance(state.processing_state["index_names"], list):
-            self.index_names = state.processing_state["index_names"]
-        if isinstance(state.processing_state["index_names"], str):
-            self.index_names = [state.processing_state["index_names"]]
+        if "index_names" in state.processing_state:
+            index_names = state.processing_state["index_names"]
+            if isinstance(index_names, list):
+                self.index_names = index_names
+            if isinstance(index_names, str):
+                self.index_names = [index_names]
         siem_rule = {
             "id": str(rule.id),
             "name": f"SIGMA - {rule.title}",
