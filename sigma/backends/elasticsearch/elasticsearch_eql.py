@@ -170,7 +170,7 @@ class EqlBackend(TextQueryBackend):
         **kwargs,
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
-        self.index_names = index_names or [
+        self.index_names = "{state[index_names]}" or [
             "apm-*-transaction*",
             "auditbeat-*",
             "endgame-*",
