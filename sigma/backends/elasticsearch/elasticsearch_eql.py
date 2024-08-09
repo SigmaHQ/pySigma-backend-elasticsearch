@@ -387,7 +387,12 @@ class EqlBackend(TextQueryBackend):
         If you want to have a nice importable NDJSON File for the Security Rule importer
         use pySigma Format 'siem_rule_ndjson' instead.
         """
-
+        if "index" in state.processing_state:
+            index = state.processing_state["index"]
+            if isinstance(index, list):
+                self.index_names = index
+            if isinstance(index, str):
+                self.index_names = [index]
         siem_rule = {
             "name": f"SIGMA - {rule.title}",
             "consumer": "siem",
