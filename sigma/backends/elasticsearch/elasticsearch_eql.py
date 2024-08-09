@@ -457,6 +457,8 @@ class EqlBackend(TextQueryBackend):
         """
         if isinstance(state.processing_state["index_names"], list):
             self.index_names = state.processing_state["index_names"]
+        if isinstance(state.processing_state["index_names"], str):
+            self.index_names = [state.processing_state["index_names"]]
         siem_rule = {
             "id": str(rule.id),
             "name": f"SIGMA - {rule.title}",
