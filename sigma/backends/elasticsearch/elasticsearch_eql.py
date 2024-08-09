@@ -170,7 +170,7 @@ class EqlBackend(TextQueryBackend):
         **kwargs,
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
-        self.index_names = "{state[index_names]}" or [
+        self.index_names = index_names or [
             "apm-*-transaction*",
             "auditbeat-*",
             "endgame-*",
@@ -455,7 +455,8 @@ class EqlBackend(TextQueryBackend):
 
         https://www.elastic.co/guide/en/security/8.6/rules-ui-management.html#import-export-rules-ui
         """
-
+        if isinstance(state.processing_state["index_names"], list):
+            self.index_names = state.processing_state["index_names"]
         siem_rule = {
             "id": str(rule.id),
             "name": f"SIGMA - {rule.title}",
