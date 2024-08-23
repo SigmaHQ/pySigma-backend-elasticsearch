@@ -37,7 +37,7 @@ correlation:
         gt: 10
             """
     )
-    assert elastalert_backend.convert(correlation_rule)[0] == (
+    assert elastalert_backend.convert(correlation_rule) == [
         """description: 
 index: *
 filter:
@@ -51,7 +51,7 @@ query_key:
 - fieldD
 num_events: 10
 type: frequency"""
-    )
+    ]
 
 
 def test_value_count_correlation_rule_query(elastalert_backend: ElastalertBackend):
@@ -82,7 +82,7 @@ correlation:
         gt: 10
             """
     )
-    assert elastalert_backend.convert(correlation_rule)[0] == (
+    assert elastalert_backend.convert(correlation_rule) == [
         """description: 
 index: *
 filter:
@@ -99,7 +99,7 @@ metric_agg_type: cardinality
 metric_agg_key: fieldD
 max_threshold: 10
 type: metric_aggregation"""
-    )
+    ]
 
 
 def test_elastalert_and_expression(elastalert_backend: ElastalertBackend):

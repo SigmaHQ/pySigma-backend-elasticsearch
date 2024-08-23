@@ -1,11 +1,11 @@
-from typing import ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from sigma.rule import SigmaRule
 from sigma.conversion.state import ConversionState
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.correlations import SigmaCorrelationConditionOperator
-from sigma.correlations import SigmaCorrelationRule, SigmaCorrelationTimespan
-from sigma.exceptions import SigmaFeatureNotSupportedByBackendError, SigmaTimespanError
+from sigma.correlations import SigmaCorrelationTimespan
+from sigma.exceptions import SigmaTimespanError
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 
 
@@ -38,7 +38,7 @@ class ElastalertBackend(LuceneBackend):
         "default": "Elastalert correlation rule",
     }
     default_correlation_query: ClassVar[Dict[str, str]] = {
-        "default": ("{search}\n" "{aggregate}\n" "{condition}")
+        "default": "{search}\n{aggregate}\n{condition}"
     }
 
     correlation_search_single_rule_expression: ClassVar[str] = "{query}"
@@ -48,22 +48,18 @@ class ElastalertBackend(LuceneBackend):
     }
 
     event_count_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "default": ("timeframe:\n" "  {timespan}\n" "{groupby}")
+        "default": "timeframe:\n  {timespan}\n{groupby}"
     }
     value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "default": (
-            "relalert:\n" "  {timespan}\n" "buffer_time:\n" "  {timespan}\n" "{groupby}"
-        )
+        "default": "relalert:\n  {timespan}\nbuffer_time:\n  {timespan}\n{groupby}"
     }
 
-    groupby_expression: ClassVar[Dict[str, str]] = {
-        "default": ("query_key:\n" "{fields}")
-    }
+    groupby_expression: ClassVar[Dict[str, str]] = {"default": "query_key:\n{fields}"}
     groupby_field_expression: ClassVar[Dict[str, str]] = {"default": "- {field}"}
     groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"default": "\n"}
 
     event_count_condition_expression: ClassVar[Dict[str, str]] = {
-        "default": ("num_events: {count}\n" "type: frequency")
+        "default": "num_events: {count}\ntype: frequency"
     }
     value_count_condition_expression: ClassVar[Dict[str, str]] = {
         "default": (
@@ -94,6 +90,11 @@ class ElastalertBackend(LuceneBackend):
         raise SigmaTimespanError(
             f"Invalid timespan unit '{timespan.unit}' for Elastalert backend"
         )
+
+    def convert_rule(
+        self, rule: SigmaRule, output_format: str | None = None
+    ) -> List[Any]:
+        return super().convert_rule(rule, output_format)
 
     def finalize_query_default(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
