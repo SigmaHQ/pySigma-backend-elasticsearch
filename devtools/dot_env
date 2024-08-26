@@ -11,7 +11,7 @@ KIBANA_PASSWORD=changeme
 
 
 # Version of Elastic products
-STACK_VERSION=8.7.1
+STACK_VERSION=8.15.0
 
 
 # Set the cluster name
@@ -32,9 +32,9 @@ KIBANA_PORT=5601
 
 
 # Increase or decrease based on the available host memory (in bytes)
-ES_MEM_LIMIT=1073741824
-KB_MEM_LIMIT=1073741824
-LS_MEM_LIMIT=1073741824
+ES_MEM_LIMIT=2147483648
+KB_MEM_LIMIT=2147483648
+LS_MEM_LIMIT=2147483648
 
 
 # SAMPLE Predefined Key only to be used in POC environments
