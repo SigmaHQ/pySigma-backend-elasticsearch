@@ -8,6 +8,7 @@ from sigma.correlations import SigmaCorrelationRule, SigmaCorrelationTimespan
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError, SigmaTimespanError
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 
+
 class ElastalertBackend(LuceneBackend):
     """
     Elastalert backend for Sigma. Converts Sigma rule into Elastalert rule, including correlation rules.
@@ -90,11 +91,11 @@ class ElastalertBackend(LuceneBackend):
         **kwargs,
     ) -> str:
         if len(rule.rules) == 1:
-            return super().convert_correlation_search(rule, **kwargs,)
-        else:
             raise SigmaFeatureNotSupportedByBackendError(
                 "Multiple rule queries is not supported by backend."
             )
+
+        return super().convert_correlation_search(rule, **kwargs)
 
     def convert_timespan(
         self,
@@ -102,12 +103,12 @@ class ElastalertBackend(LuceneBackend):
         output_format: str | None = None,
         method: str | None = None,
     ) -> str:
-        if timespan.unit in self.timespan_mapping:
-            return f"{self.timespan_mapping[timespan.unit]}: {timespan.count}"
+        if timespan.unit not in self.timespan_mapping:
+            raise SigmaTimespanError(
+                f"Invalid timespan unit '{timespan.unit}' for Elastalert backend"
+            )
 
-        raise SigmaTimespanError(
-            f"Invalid timespan unit '{timespan.unit}' for Elastalert backend"
-        )
+        return f"{self.timespan_mapping[timespan.unit]}: {timespan.count}"
 
     def finalize_query_default(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
