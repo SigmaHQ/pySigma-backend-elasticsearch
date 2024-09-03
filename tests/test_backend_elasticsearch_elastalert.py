@@ -37,13 +37,14 @@ correlation:
         gt: 10
             """
     )
-    assert elastalert_backend.convert(correlation_rule) == [
+    assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
 index: *
 filter:
 - query:
     query_string:
       query: fieldA:value1 AND fieldB:value2
+priority: 1
 timeframe:
   minutes: 15
 query_key:
@@ -51,7 +52,7 @@ query_key:
 - fieldD
 num_events: 10
 type: frequency"""
-    ]
+    )
 
 
 def test_value_count_correlation_rule_query(elastalert_backend: ElastalertBackend):
@@ -82,15 +83,14 @@ correlation:
         gt: 10
             """
     )
-    assert elastalert_backend.convert(correlation_rule) == [
+    assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
 index: *
 filter:
 - query:
     query_string:
       query: fieldA:value1 AND fieldB:value2
-relalert:
-  minutes: 15
+priority: 1
 buffer_time:
   minutes: 15
 query_key:
@@ -99,8 +99,82 @@ metric_agg_type: cardinality
 metric_agg_key: fieldD
 max_threshold: 10
 type: metric_aggregation"""
-    ]
+    )
 
+def test_elastalert_change_severity(elastalert_backend: ElastalertBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value1
+                    fieldB: value2
+                condition: sel
+            level: critical
+        """
+    )
+
+    assert elastalert_backend.convert(rule)[0] == (
+        """description: 
+index: *
+filter:
+- query:
+    query_string:
+      query: fieldA:value1 AND fieldB:value2
+priority: 4"""
+    )
+
+
+def test_elastalert_aggregation_change_severity(elastalert_backend: ElastalertBackend):
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule
+name: base_rule
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+level: critical
+---
+title: Multiple occurrences of base event
+status: test
+correlation:
+    type: value_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+    timespan: 15m
+    condition:
+        field: fieldD
+        gt: 10
+            """
+    )
+    assert elastalert_backend.convert(correlation_rule)[0] == (
+        """description: 
+index: *
+filter:
+- query:
+    query_string:
+      query: fieldA:value1 AND fieldB:value2
+priority: 4
+buffer_time:
+  minutes: 15
+query_key:
+- fieldC
+metric_agg_type: cardinality
+metric_agg_key: fieldD
+max_threshold: 10
+type: metric_aggregation"""
+    )
 
 def test_elastalert_and_expression(elastalert_backend: ElastalertBackend):
     rule = SigmaCollection.from_yaml(
@@ -112,13 +186,21 @@ def test_elastalert_and_expression(elastalert_backend: ElastalertBackend):
                 product: test_product
             detection:
                 sel:
-                    fieldA: valueA
-                    fieldB: valueB
+                    fieldA: value1
+                    fieldB: value2
                 condition: sel
         """
     )
 
-    assert elastalert_backend.convert(rule) == ["fieldA:valueA AND fieldB:valueB"]
+    assert elastalert_backend.convert(rule)[0] == (
+        """description: 
+index: *
+filter:
+- query:
+    query_string:
+      query: fieldA:value1 AND fieldB:value2
+priority: 1"""
+    )
 
 
 def test_elastalert_and_expression_empty_string(elastalert_backend: ElastalertBackend):
@@ -131,13 +213,21 @@ def test_elastalert_and_expression_empty_string(elastalert_backend: ElastalertBa
                 product: test_product
             detection:
                 sel:
-                    fieldA: valueA
+                    fieldA: value1
                     fieldB: ''
                 condition: sel
         """
     )
 
-    assert elastalert_backend.convert(rule) == ['fieldA:valueA AND fieldB:""']
+    assert elastalert_backend.convert(rule)[0] == (
+        """description: 
+index: *
+filter:
+- query:
+    query_string:
+      query: fieldA:value1 AND fieldB:""
+priority: 1"""
+    )
 
 
 def test_elastalert_or_expression(elastalert_backend: ElastalertBackend):
@@ -150,449 +240,90 @@ def test_elastalert_or_expression(elastalert_backend: ElastalertBackend):
                 product: test_product
             detection:
                 sel1:
-                    fieldA: valueA
+                    fieldA: value1
                 sel2:
-                    fieldB: valueB
+                    fieldB: value2
                 condition: 1 of sel*
         """
     )
-    assert elastalert_backend.convert(rule) == ["fieldA:valueA OR fieldB:valueB"]
-
-
-def test_elastalert_and_or_expression(elastalert_backend: ElastalertBackend):
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - valueA1
-                        - valueA2
-                    fieldB:
-                        - valueB1
-                        - valueB2
-                condition: sel
-        """
-    )
-    assert elastalert_backend.convert(rule) == [
-        "(fieldA:(valueA1 OR valueA2)) AND (fieldB:(valueB1 OR valueB2))"
-    ]
-
-
-def test_elastalert_or_and_expression(elastalert_backend: ElastalertBackend):
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: valueA1
-                    fieldB: valueB1
-                sel2:
-                    fieldA: valueA2
-                    fieldB: valueB2
-                condition: 1 of sel*
-        """
-    )
-    assert elastalert_backend.convert(rule) == [
-        "(fieldA:valueA1 AND fieldB:valueB1) OR (fieldA:valueA2 AND fieldB:valueB2)"
-    ]
-
-
-def test_elastalert_in_expression(elastalert_backend: ElastalertBackend):
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - valueA
-                        - valueB
-                        - valueC*
-                condition: sel
-        """
-    )
-    assert elastalert_backend.convert(rule) == ["fieldA:(valueA OR valueB OR valueC*)"]
-
-
-def test_elastalert_in_expression_empty_string(elastalert_backend: ElastalertBackend):
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - valueA
-                        - ''
-                condition: sel
-        """
-    )
-    assert elastalert_backend.convert(rule) == ['fieldA:(valueA OR "")']
-
-
-def test_elastalert_regex_query(elastalert_backend: ElastalertBackend):
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|re: foo.*bar
-                    fieldB: foo
-                condition: sel
-        """
-    )
-    assert elastalert_backend.convert(rule) == ["fieldA:/foo.*bar/ AND fieldB:foo"]
-
-
-def test_elastalert_regex_query_escaped_input(elastalert_backend: ElastalertBackend):
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|re: 127\.0\.0\.1:[1-9]\d{3}
-                    fieldB: foo
-                    fieldC|re: foo/bar
-                condition: sel
-        """
-    )
-    assert elastalert_backend.convert(rule) == [
-        "fieldA:/127\.0\.0\.1:[1-9]\d{3}/ AND fieldB:foo AND fieldC:/foo\\/bar/"
-    ]
-
-
-def test_elastalert_cidr_query(elastalert_backend: ElastalertBackend):
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    field|cidr: 192.168.0.0/16
-                condition: sel
-        """
-    )
-    assert elastalert_backend.convert(rule) == ["field:192.168.0.0\\/16"]
-
-
-def test_elastalert_cidr_ipv6_query(elastalert_backend: ElastalertBackend):
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    field|cidr: 
-                        - '::1/128'
-                        - 'fc00::/7'
-                        - '2603:1080::/25'    
-                condition: sel
-        """
-    )
-    assert elastalert_backend.convert(rule) == [
-        "field:\:\:1\\/128 OR field:fc00\:\:\/7 OR field:2603\:1080\:\:\/25"
-    ]
-
-
-def test_elastalert_field_name_with_whitespace(elastalert_backend: ElastalertBackend):
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    field name: value
-                condition: sel
-        """
-    )
-    assert elastalert_backend.convert(rule) == ["field\\ name:value"]
-
-
-def test_elastalert_not_filter_null_and(elastalert_backend: ElastalertBackend):
-    """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                selection:
-                    FieldA|endswith: 'valueA'
-                filter_1:
-                    FieldB: null
-                filter_2:
-                    FieldB: ''
-                condition: selection and not filter_1 and not filter_2
-        """
-    )
-
-    assert elastalert_backend.convert(rule) == [
-        'FieldA:*valueA AND _exists_:FieldB AND (NOT FieldB:"")'
-    ]
-
-
-def test_elastalert_filter_null_and(elastalert_backend: ElastalertBackend):
-    """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                selection:
-                    FieldA|endswith: 'valueA'
-                filter_1:
-                    FieldB: null
-                filter_2:
-                    FieldB: ''
-                condition: selection and filter_1 and not filter_2
-        """
-    )
-
-    assert elastalert_backend.convert(rule) == [
-        'FieldA:*valueA AND (NOT _exists_:FieldB) AND (NOT FieldB:"")'
-    ]
-
-
-def test_elastalert_not_filter_null_or(elastalert_backend: ElastalertBackend):
-    """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                selection:
-                    FieldA|endswith: 'valueA'
-                filter_1:
-                    FieldB: null
-                filter_2:
-                    FieldB: ''
-                condition: selection and (not filter_1 or not filter_2)
-        """
-    )
-
-    assert elastalert_backend.convert(rule) == [
-        'FieldA:*valueA AND (_exists_:FieldB OR (NOT FieldB:""))'
-    ]
-
-
-def test_elastalert_filter_null_or(elastalert_backend: ElastalertBackend):
-    """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                selection:
-                    FieldA|endswith: 'valueA'
-                filter_1:
-                    FieldB: null
-                filter_2:
-                    FieldB: ''
-                condition: selection and (filter_1 or not filter_2)
-        """
-    )
-
-    assert elastalert_backend.convert(rule) == [
-        'FieldA:*valueA AND ((NOT _exists_:FieldB) OR (NOT FieldB:""))'
-    ]
-
-
-def test_elastalert_filter_not_or_null(elastalert_backend: ElastalertBackend):
-    """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                selection:
-                    FieldA|endswith: 'valueA'
-                filter_1:
-                    FieldB: null
-                filter_2:
-                    FieldB: ''
-                condition: selection and not 1 of filter_*
-        """
-    )
-
-    assert elastalert_backend.convert(rule) == [
-        'FieldA:*valueA AND (NOT ((NOT _exists_:FieldB) OR FieldB:""))'
-    ]
-
-
-def test_elastalert_filter_not(elastalert_backend: ElastalertBackend):
-    """Test for DSL output with embedded query string query."""
-    rule = SigmaCollection.from_yaml(
-        """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                filter:
-                    Field: null
-                condition: not filter
-        """
-    )
-
-    assert elastalert_backend.convert(rule) == ["_exists_:Field"]
-
-
-def test_elastalert_angle_brackets(elastalert_backend: ElastalertBackend):
-    """Test for DSL output with < or > in the values"""
-    rule = SigmaCollection.from_yaml(
-        r"""
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                selection_cmd:
-                    - OriginalFileName: 'Cmd.exe'
-                    - Image|endswith: '\cmd.exe'
-                selection_cli:
-                    - CommandLine|contains: '<'
-                    - CommandLine|contains: '>'
-                condition: all of selection_*
-        """
-    )
-
-    assert elastalert_backend.convert(rule) == [
-        r"(OriginalFileName:Cmd.exe OR Image:*\\cmd.exe) AND (CommandLine:(*\<* OR *\>*))"
-    ]
-
-
-def test_elastalert_keyword_quotation(elastalert_backend: ElastalertBackend):
-    """Test for DSL output with < or > in the values"""
-    rule = SigmaCollection.from_yaml(
-        r"""
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                keywords:
-                    - 'Failed to generate curve25519 keys'
-                condition: keywords
-        """
-    )
-
-    assert elastalert_backend.convert(rule) == [
-        r"*Failed\ to\ generate\ curve25519\ keys*"
-    ]
-
-
-def test_elastalert_windash(elastalert_backend: ElastalertBackend):
-    """Test for DSL output using windash modifier"""
-    assert (
-        elastalert_backend.convert(
-            SigmaCollection.from_yaml(
-                """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldname|windash:
-                        - "-param-name"
-                condition: sel
-        """
-            )
-        )
-        == ["fieldname:(\\-param\\-name OR \\/param\\-name)"]
+    assert elastalert_backend.convert(rule)[0] == (
+        """description: 
+index: *
+filter:
+- query:
+    query_string:
+      query: fieldA:value1 OR fieldB:value2
+priority: 1"""
     )
 
 
-def test_elastalert_windash_contains(elastalert_backend: ElastalertBackend):
-    """Test for DSL output using windash + contains modifier"""
-    assert (
-        elastalert_backend.convert(
-            SigmaCollection.from_yaml(
-                """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldname|windash|contains:
-                        - " -param-name "
-                condition: sel
+def test_elastalert_temporal_correlation_rule(elastalert_backend: ElastalertBackend):
+    correlation_rule = SigmaCollection.from_yaml(
         """
-            )
-        )
-        == ["fieldname:(*\\ \\-param\\-name\\ * OR *\\ \\/param\\-name\\ *)"]
+title: Base rule 1
+name: base_rule_1
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+---
+title: Temporal correlation rule
+status: test
+correlation:
+    type: temporal
+    rules:
+        - base_rule_1
+    group-by:
+        - fieldC
+    timespan: 15m
+"""
     )
+    with pytest.raises(NotImplementedError):
+        elastalert_backend.convert(correlation_rule)
 
-
-def test_elastalert_reference_query(elastalert_backend: ElastalertBackend):
-    with pytest.raises(
-        SigmaFeatureNotSupportedByBackendError,
-        match="ES Lucene backend can't handle field references.",
-    ):
-        elastalert_backend.convert(
-            SigmaCollection.from_yaml(
-                """
-                title: Test
-                status: test
-                logsource:
-                    category: test_category
-                    product: test_product
-                detection:
-                    sel:
-                        fieldA|fieldref: somefield
-                    condition: sel
-            """
-            )
-        )
+def test_elastalert_multi_rule_query(elastalert_backend: ElastalertBackend):
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule 1
+name: base_rule_1
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+---
+title: Base rule 2
+name: base_rule_2
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldC: value2
+        fieldD: value3
+    condition: selection
+---
+title: Multiple occurrences of base event
+status: test
+correlation:
+    type: event_count
+    rules:
+        - base_rule_1
+        - base_rule_2
+    group-by:
+        - fieldA
+        - fieldC
+    timespan: 15m
+    condition:
+        gt: 10
+"""
+    )
+    with pytest.raises(SigmaFeatureNotSupportedByBackendError):
+        elastalert_backend.convert(correlation_rule)

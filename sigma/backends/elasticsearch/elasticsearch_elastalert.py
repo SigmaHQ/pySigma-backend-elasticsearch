@@ -1,13 +1,12 @@
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 
 from sigma.rule import SigmaRule
 from sigma.conversion.state import ConversionState
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.correlations import SigmaCorrelationConditionOperator
-from sigma.correlations import SigmaCorrelationTimespan
-from sigma.exceptions import SigmaTimespanError
+from sigma.correlations import SigmaCorrelationRule, SigmaCorrelationTimespan
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError, SigmaTimespanError
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
-
 
 class ElastalertBackend(LuceneBackend):
     """
@@ -51,7 +50,7 @@ class ElastalertBackend(LuceneBackend):
         "default": "timeframe:\n  {timespan}\n{groupby}"
     }
     value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "default": "relalert:\n  {timespan}\nbuffer_time:\n  {timespan}\n{groupby}"
+        "default": "buffer_time:\n  {timespan}\n{groupby}"
     }
 
     groupby_expression: ClassVar[Dict[str, str]] = {"default": "query_key:\n{fields}"}
@@ -77,6 +76,25 @@ class ElastalertBackend(LuceneBackend):
         **kwargs,
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
+        self.severity_risk_mapping = {
+            "INFORMATIONAL": 0,
+            "LOW": 1,
+            "MEDIUM": 2,
+            "HIGH": 3,
+            "CRITICAL": 4,
+        }
+
+    def convert_correlation_search(
+        self,
+        rule: SigmaCorrelationRule,
+        **kwargs,
+    ) -> str:
+        if len(rule.rules) == 1:
+            return super().convert_correlation_search(rule, **kwargs,)
+        else:
+            raise SigmaFeatureNotSupportedByBackendError(
+                "Multiple rule queries is not supported by backend."
+            )
 
     def convert_timespan(
         self,
@@ -91,11 +109,6 @@ class ElastalertBackend(LuceneBackend):
             f"Invalid timespan unit '{timespan.unit}' for Elastalert backend"
         )
 
-    def convert_rule(
-        self, rule: SigmaRule, output_format: str | None = None
-    ) -> List[Any]:
-        return super().convert_rule(rule, output_format)
-
     def finalize_query_default(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> Dict:
@@ -106,7 +119,8 @@ class ElastalertBackend(LuceneBackend):
             "filter:\n"
             "- query:\n"
             "    query_string:\n"
-            f"      query: {query}"
+            f"      query: {query}\n"
+            f"priority: {self.severity_risk_mapping[rule.level.name] if rule.level is not None else 1}"
         )
 
     def finalize_output_default(self, queries: List[str]) -> List[Dict]:
