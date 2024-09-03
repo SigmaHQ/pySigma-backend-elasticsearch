@@ -1,7 +1,7 @@
 import pytest
 from sigma.backends.elasticsearch.elasticsearch_elastalert import ElastalertBackend
 from sigma.collection import SigmaCollection
-from sigma.exceptions import SigmaFeatureNotSupportedByBackendError, SigmaTimespanError
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 
 
 @pytest.fixture(name="elastalert_backend")

@@ -5,7 +5,7 @@ from sigma.conversion.state import ConversionState
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.correlations import SigmaCorrelationConditionOperator
 from sigma.correlations import SigmaCorrelationRule, SigmaCorrelationTimespan
-from sigma.exceptions import SigmaFeatureNotSupportedByBackendError, SigmaTimespanError
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 
 
@@ -112,7 +112,7 @@ class ElastalertBackend(LuceneBackend):
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> str:
         index = state.processing_state.get("index", "*")
-        alert_type = '\ntype: any' if not self._has_backreference(rule) else ''
+        alert_type = "\ntype: any" if not self._has_backreference(rule) else ""
 
         return (
             f"description: {rule.description if rule.description else ''}\n"
