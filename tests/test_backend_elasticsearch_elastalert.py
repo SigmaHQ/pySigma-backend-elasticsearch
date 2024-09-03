@@ -126,8 +126,8 @@ filter:
 - query:
     query_string:
       query: fieldA:value1 AND fieldB:value2
-priority: 4
-type: any"""
+type: any
+priority: 4"""
     )
 
 

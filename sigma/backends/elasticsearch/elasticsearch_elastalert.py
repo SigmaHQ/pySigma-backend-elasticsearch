@@ -112,7 +112,7 @@ class ElastalertBackend(LuceneBackend):
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> str:
         index = state.processing_state.get("index", "*")
-        alert_type = "\ntype: any" if not self._has_backreference(rule) else ""
+        alert_type = "type: any\n" if not self._has_backreference(rule) else ""
 
         return (
             f"description: {rule.description if rule.description else ''}\n"
@@ -121,8 +121,8 @@ class ElastalertBackend(LuceneBackend):
             "- query:\n"
             "    query_string:\n"
             f"      query: {query}\n"
-            f"priority: {self.severity_risk_mapping[rule.level.name] if rule.level is not None else 1}"
             f"{alert_type}"
+            f"priority: {self.severity_risk_mapping[rule.level.name] if rule.level is not None else 1}"
         )
 
     def finalize_output_default(self, queries: List[str]) -> List[str]:
