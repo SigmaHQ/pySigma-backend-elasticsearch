@@ -1,7 +1,7 @@
 import pytest
 from sigma.backends.elasticsearch.elasticsearch_elastalert import ElastalertBackend
 from sigma.collection import SigmaCollection
-from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError, SigmaTimespanError
 
 
 @pytest.fixture(name="elastalert_backend")
@@ -207,7 +207,9 @@ correlation:
         elastalert_backend.convert(correlation_rule)
 
 
-def test_elastalert_temporal_ordered_correlation_rule(elastalert_backend: ElastalertBackend):
+def test_elastalert_temporal_ordered_correlation_rule(
+    elastalert_backend: ElastalertBackend,
+):
     correlation_rule = SigmaCollection.from_yaml(
         """
 title: Base rule 1
@@ -236,7 +238,7 @@ correlation:
         elastalert_backend.convert(correlation_rule)
 
 
-def test_elastalert_multi_rule_query(elastalert_backend: ElastalertBackend):
+def test_elastalert_multi_correlation_rules(elastalert_backend: ElastalertBackend):
     correlation_rule = SigmaCollection.from_yaml(
         """
 title: Base rule 1

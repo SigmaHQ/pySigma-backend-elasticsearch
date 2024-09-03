@@ -92,7 +92,7 @@ class ElastalertBackend(LuceneBackend):
     ) -> str:
         if len(rule.rules) != 1:
             raise SigmaFeatureNotSupportedByBackendError(
-                "Multiple rule queries is not supported by backend."
+                "Multiple correlation rules are not supported by Elastalert backend"
             )
 
         return super().convert_correlation_search(rule, **kwargs)
@@ -103,11 +103,6 @@ class ElastalertBackend(LuceneBackend):
         output_format: str | None = None,
         method: str | None = None,
     ) -> str:
-        if timespan.unit not in self.timespan_mapping:
-            raise SigmaTimespanError(
-                f"Invalid timespan unit '{timespan.unit}' for Elastalert backend"
-            )
-
         return f"{self.timespan_mapping[timespan.unit]}: {timespan.count}"
 
     def finalize_query_default(
