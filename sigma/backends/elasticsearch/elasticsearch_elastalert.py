@@ -112,7 +112,7 @@ class ElastalertBackend(LuceneBackend):
 
     def finalize_query_default(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
-    ) -> Dict:
+    ) -> str:
         index = state.processing_state.get("index", "*")
         return (
             f"description: {rule.description if rule.description else ''}\n"
@@ -124,5 +124,5 @@ class ElastalertBackend(LuceneBackend):
             f"priority: {self.severity_risk_mapping[rule.level.name] if rule.level is not None else 1}"
         )
 
-    def finalize_output_default(self, queries: List[str]) -> List[Dict]:
+    def finalize_output_default(self, queries: List[str]) -> List[str]:
         return list(queries)
