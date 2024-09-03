@@ -90,7 +90,7 @@ class ElastalertBackend(LuceneBackend):
         rule: SigmaCorrelationRule,
         **kwargs,
     ) -> str:
-        if len(rule.rules) == 1:
+        if len(rule.rules) != 1:
             raise SigmaFeatureNotSupportedByBackendError(
                 "Multiple rule queries is not supported by backend."
             )
