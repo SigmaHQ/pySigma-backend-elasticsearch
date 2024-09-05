@@ -40,7 +40,7 @@ correlation:
     assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
 name: Base rule
-index: *
+index: "*"
 filter:
 - query:
     query_string:
@@ -87,7 +87,7 @@ correlation:
     assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
 name: Base rule
-index: *
+index: "*"
 filter:
 - query:
     query_string:
@@ -124,7 +124,7 @@ def test_elastalert_change_severity(elastalert_backend: ElastalertBackend):
     assert elastalert_backend.convert(rule)[0] == (
         """description: 
 name: Test
-index: *
+index: "*"
 filter:
 - query:
     query_string:
@@ -166,7 +166,7 @@ correlation:
     assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
 name: Base rule
-index: *
+index: "*"
 filter:
 - query:
     query_string:

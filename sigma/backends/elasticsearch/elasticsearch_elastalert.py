@@ -111,7 +111,7 @@ class ElastalertBackend(LuceneBackend):
     def finalize_query_default(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> str:
-        index = state.processing_state.get("index", "*")
+        index = state.processing_state.get("index", '"*"')
         alert_type = "type: any\n" if not self._has_backreference(rule) else ""
 
         return (
