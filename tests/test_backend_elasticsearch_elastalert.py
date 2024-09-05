@@ -39,6 +39,7 @@ correlation:
     )
     assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
+name: Base rule
 index: *
 filter:
 - query:
@@ -85,6 +86,7 @@ correlation:
     )
     assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
+name: Base rule
 index: *
 filter:
 - query:
@@ -121,6 +123,7 @@ def test_elastalert_change_severity(elastalert_backend: ElastalertBackend):
 
     assert elastalert_backend.convert(rule)[0] == (
         """description: 
+name: Test
 index: *
 filter:
 - query:
@@ -162,6 +165,7 @@ correlation:
     )
     assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
+name: Base rule
 index: *
 filter:
 - query:
@@ -182,8 +186,8 @@ type: metric_aggregation"""
 def test_elastalert_temporal_correlation_rule(elastalert_backend: ElastalertBackend):
     correlation_rule = SigmaCollection.from_yaml(
         """
-title: Base rule 1
-name: base_rule_1
+title: Base rule
+name: base_rule
 status: test
 logsource:
     category: test
@@ -198,7 +202,7 @@ status: test
 correlation:
     type: temporal
     rules:
-        - base_rule_1
+        - base_rule
     group-by:
         - fieldC
     timespan: 15m
@@ -213,8 +217,8 @@ def test_elastalert_temporal_ordered_correlation_rule(
 ):
     correlation_rule = SigmaCollection.from_yaml(
         """
-title: Base rule 1
-name: base_rule_1
+title: Base rule
+name: base_rule
 status: test
 logsource:
     category: test
@@ -229,7 +233,7 @@ status: test
 correlation:
     type: temporal_ordered
     rules:
-        - base_rule_1
+        - base_rule
     group-by:
         - fieldC
     timespan: 15m

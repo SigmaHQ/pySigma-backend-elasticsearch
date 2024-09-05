@@ -116,6 +116,7 @@ class ElastalertBackend(LuceneBackend):
 
         return (
             f"description: {rule.description if rule.description else ''}\n"
+            f"name: {rule.title if rule.title else ''}\n"
             f"index: {index}\n"
             "filter:\n"
             "- query:\n"
