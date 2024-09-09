@@ -13,7 +13,13 @@ from sigma.conditions import (
     ConditionNOT,
     ConditionFieldEqualsValueExpression,
 )
-from sigma.types import SigmaCompareExpression, SigmaNull, SigmaFieldReference, SpecialChars, SigmaNumber
+from sigma.types import (
+    SigmaCompareExpression,
+    SigmaNull,
+    SigmaFieldReference,
+    SpecialChars,
+    SigmaNumber,
+)
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import ipaddress

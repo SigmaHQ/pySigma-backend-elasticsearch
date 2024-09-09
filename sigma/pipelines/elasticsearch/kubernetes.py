@@ -35,8 +35,12 @@ def ecs_kubernetes() -> ProcessingPipeline:
                         "resource": ["kubernetes.audit.objectRef.resource"],
                         "subresource": ["kubernetes.audit.objectRef.subresource"],
                         "namespace": ["kubernetes.audit.objectRef.namespace"],
+                        "username": ["kubernetes.audit.user.username"],
                         "capabilities": [
                             "kubernetes.audit.requestObject.spec.containers.securityContext.capabilities.add"
+                        ],
+                        "privileged": [
+                            "kubernetes.audit.responseObject.spec.containers.securityContext.privileged"
                         ],
                         "hostPath": [
                             "kubernetes.audit.requestObject.spec.volumes.hostPath"
