@@ -202,8 +202,13 @@ class ESQLBackend(TextQueryBackend):
         if len(indices) == 1:
             return indices[0]
 
-        # Deduplicate sources using a set and join them with a comma
-        return ",".join(list(set(indices)))
+        # Deduplicate sources using a set
+        indices = list(set(indices))
+
+        # Sort the indices to ensure a consistent order as sets are arbitrary ordered
+        indices.sort()
+        
+        return ",".join(indices)
 
     def convert_correlation_search(
         self,

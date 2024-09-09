@@ -295,6 +295,82 @@ def test_elasticsearch_esql_set_state_index_list(esql_backend: ESQLBackend):
         == ['from logs-test1-*,logs-test2-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"']
     )
 
+
+def test_elasticsearch_esql_set_state_index_list_single(esql_backend: ESQLBackend):
+    assert (
+        ESQLBackend(
+            processing_pipeline=ProcessingPipeline.from_yaml(
+                """
+                name: test
+                priority: 30
+                transformations:
+                  - id: set_state_index
+                    type: set_state
+                    key: index
+                    val:
+                      - logs-test-*
+                    rule_conditions:
+                      - type: logsource
+                        category: test_category
+                        product: test_product
+        """
+        )).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+        """
+            )
+        )
+        == ['from logs-test-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"']
+    )
+
+def test_elasticsearch_esql_set_state_index_list_deduplicate(esql_backend: ESQLBackend):
+    assert (
+        ESQLBackend(
+            processing_pipeline=ProcessingPipeline.from_yaml(
+                """
+                name: test
+                priority: 30
+                transformations:
+                  - id: set_state_index
+                    type: set_state
+                    key: index
+                    val:
+                      - logs-test-*
+                      - logs-test-*
+                    rule_conditions:
+                      - type: logsource
+                        category: test_category
+                        product: test_product
+        """
+        )).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+        """
+            )
+        )
+        == ['from logs-test-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"']
+    )
+
 def test_elasticsearch_esql_set_state_index_list_wildcard(esql_backend: ESQLBackend):
     assert (
         ESQLBackend(
