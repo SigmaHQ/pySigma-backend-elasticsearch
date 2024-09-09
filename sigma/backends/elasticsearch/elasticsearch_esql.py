@@ -1,3 +1,4 @@
+from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.correlations import SigmaCorrelationRule
@@ -26,6 +27,12 @@ class ESQLBackend(TextQueryBackend):
         "siem_rule_ndjson": "Elastic Security ES|QL queries as SIEM Rules in NDJSON Format."
     }
     requires_pipeline : bool = True
+
+    query_expression : ClassVar[str] = "from {state[index]} metadata {state[metadata]} | where {query}"
+    state_defaults : ClassVar[Dict[str, str]] = {
+        "index": "*",
+        "metadata": "_id, _index, _version",
+    }
 
     precedence : ClassVar[Tuple[ConditionItem, ConditionItem, ConditionItem]] = (ConditionNOT, ConditionAND, ConditionOR)
     group_expression : ClassVar[str] = "({expr})"   # Expression for precedence override grouping as format string with {expr} placeholder
@@ -188,25 +195,29 @@ class ESQLBackend(TextQueryBackend):
             "CRITICAL": 99,
         }
 
+    def preprocess_indices(self, indices: List[str]) -> str:
+        if not indices or "*" in indices:
+            return "*"
+        
+        if len(indices) == 1:
+            return indices[0]
+
+        # Deduplicate sources using a set and join them with a comma
+        return ",".join(list(set(indices)))
+
     def convert_correlation_search(
         self,
         rule: SigmaCorrelationRule,
         **kwargs,
     ) -> str:
-        sources = [
-            state.processing_state.get("index", "*")
+        sources = self.preprocess_indices([
+            state.processing_state.get("index", self.state_defaults["index"])
             for rule_reference in rule.rules
             for state in rule_reference.rule.get_conversion_states()
-        ]
+        ])
 
-        # Deduplicate sources using via set
-        sources = list(set(sources))
+        return super().convert_correlation_search(rule, sources=sources, **kwargs)
 
-        if "*" in sources:
-            return super().convert_correlation_search(rule, sources="*", **kwargs)
-        else:
-            return super().convert_correlation_search(rule, sources=",".join(sources), **kwargs)
-    
     def convert_correlation_search_multi_rule_query_postprocess(self, query: str) -> str:
         return query.split(" | where ")[1]
     
@@ -215,18 +226,20 @@ class ESQLBackend(TextQueryBackend):
 
     ### Correlation end ###
 
-    def finalize_query_default(
-        self, rule: SigmaRule, query: str, index: int, state: ConversionState
-    ) -> str:
-        return f"from {state.processing_state.get('index', '*')} | where {query}"
+    def finalize_query(self, rule: SigmaRule, query: str | DeferredQueryExpression, index: int, state: ConversionState, output_format: str) -> str | DeferredQueryExpression:
+        # If set, load the index from the processing state
+        index_state = state.processing_state.get("index", self.state_defaults["index"])
+        # If the non-default index is not a string, preprocess it
+        if not isinstance(index_state, str):
+            index_state = self.preprocess_indices(index_state)
+
+        # Save the processed index back to the processing state
+        state.processing_state["index"] = index_state
+        return  super().finalize_query(rule, query, index, state, output_format)
 
     def finalize_query_kibana_ndjson(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> Dict:
-        # TODO: implement the per-query output for the output format kibana here. Usually, the
-        # generated query is embedded into a template, e.g. a JSON format with additional
-        # information from the Sigma rule.
-        index = state.processing_state.get("index", "*")
         return {
             "attributes": {
                 "columns": [],
@@ -239,17 +252,17 @@ class ESQLBackend(TextQueryBackend):
                         json.dumps(
                             {
                                 "query": {
-                                    "esql": f"from {index} | where {query}"
+                                    "esql": query
                                 },
                                 "index": {
-                                    "title": index,
+                                    "title": state.processing_state["index"],
                                     "timeFieldName": "@timestamp",
                                     "sourceFilters": [],
                                     "type": "esql",
                                     "fieldFormats": {},
                                     "runtimeFieldMap": {},
                                     "allowNoIndex": False,
-                                    "name": index,
+                                    "name": state.processing_state["index"],
                                     "allowHidden": False,
                                 },
                                 "filter": [],
@@ -270,9 +283,6 @@ class ESQLBackend(TextQueryBackend):
         }
 
     def finalize_output_kibana_ndjson(self, queries: List[Dict]) -> List[List[Dict]]:
-        # TODO: implement the output finalization for all generated queries for the format kibana
-        # here. Usually, the single generated queries are embedded into a structure, e.g. some
-        # JSON or XML that can be imported into the SIEM.
         return list(queries)
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
@@ -399,7 +409,7 @@ class ESQLBackend(TextQueryBackend):
                 "exceptionsList": [],
                 "type": "esql",
                 "language": "esql",
-                "query": f"from {state.processing_state.get('index', '*')} [metadata _id, _index, _version] | where {query}",
+                "query": query,
             },
             "rule_type_id": "siem.esqlRule",
             "notify_when": "onActiveAlert",
@@ -460,7 +470,7 @@ class ESQLBackend(TextQueryBackend):
             "setup": "",
             "type": "esql",
             "language": "esql",
-            "query": f"from {state.processing_state.get('index', '*')} [metadata _id, _index, _version] | where {query}",
+            "query": query,
             "actions": [],
         }
 
