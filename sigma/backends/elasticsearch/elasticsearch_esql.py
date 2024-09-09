@@ -9,7 +9,7 @@ from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_technique
 import sigma
 import re
 import json
-from typing import ClassVar, Dict, Tuple, Pattern, List, Iterable, Optional
+from typing import ClassVar, Dict, Tuple, Pattern, List, Iterable, Optional, Union
 
 class ESQLBackend(TextQueryBackend):
     """ES|QL backend."""
@@ -226,7 +226,7 @@ class ESQLBackend(TextQueryBackend):
 
     ### Correlation end ###
 
-    def finalize_query(self, rule: SigmaRule, query: str | DeferredQueryExpression, index: int, state: ConversionState, output_format: str) -> str | DeferredQueryExpression:
+    def finalize_query(self, rule: SigmaRule, query: Union[str, DeferredQueryExpression], index: int, state: ConversionState, output_format: str) -> Union[str, DeferredQueryExpression]:
         # If set, load the index from the processing state
         index_state = state.processing_state.get("index", self.state_defaults["index"])
         # If the non-default index is not a string, preprocess it
