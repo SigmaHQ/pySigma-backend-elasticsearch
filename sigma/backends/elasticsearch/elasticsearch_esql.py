@@ -196,8 +196,11 @@ class ESQLBackend(TextQueryBackend):
         }
 
     def preprocess_indices(self, indices: List[str]) -> str:
-        if not indices or "*" in indices:
-            return "*"
+        if not indices:
+            return self.state_defaults["index"]
+
+        if self.wildcard_multi in indices:
+            return self.wildcard_multi
         
         if len(indices) == 1:
             return indices[0]
