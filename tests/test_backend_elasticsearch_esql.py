@@ -1,7 +1,7 @@
 import pytest
 from sigma.collection import SigmaCollection
 from sigma.backends.elasticsearch.elasticsearch_esql import ESQLBackend
-
+from sigma.processing.pipeline import ProcessingPipeline
 
 @pytest.fixture
 def esql_backend():
@@ -26,7 +26,7 @@ def test_elasticsearch_esql_and_expression(esql_backend: ESQLBackend):
         """
             )
         )
-        == ['from * | where fieldA=="valueA" and fieldB=="valueB"']
+        == ['from * metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"']
     )
 
 
@@ -49,7 +49,7 @@ def test_elasticsearch_esql_or_expression(esql_backend: ESQLBackend):
         """
             )
         )
-        == ['from * | where fieldA=="valueA" or fieldB=="valueB"']
+        == ['from * metadata _id, _index, _version | where fieldA=="valueA" or fieldB=="valueB"']
     )
 
 
@@ -76,7 +76,7 @@ def test_elasticsearch_esql_and_or_expression(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * | where (fieldA in ("valueA1", "valueA2")) and (fieldB in ("valueB1", "valueB2"))'
+            'from * metadata _id, _index, _version | where (fieldA in ("valueA1", "valueA2")) and (fieldB in ("valueB1", "valueB2"))'
         ]
     )
 
@@ -103,7 +103,7 @@ def test_elasticsearch_esql_or_and_expression(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * | where fieldA=="valueA1" and fieldB=="valueB1" or fieldA=="valueA2" and fieldB=="valueB2"'
+            'from * metadata _id, _index, _version | where fieldA=="valueA1" and fieldB=="valueB1" or fieldA=="valueA2" and fieldB=="valueB2"'
         ]
     )
 
@@ -128,7 +128,7 @@ def test_elasticsearch_esql_in_expression(esql_backend: ESQLBackend):
         """
             )
         )
-        == ['from * | where fieldA in ("valueA", "valueB", "valueC")']
+        == ['from * metadata _id, _index, _version | where fieldA in ("valueA", "valueB", "valueC")']
     )
 
 
@@ -153,7 +153,7 @@ def test_elasticsearch_esql_wildcard_expressions(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * | where fieldA like "val*A" or ends_with(fieldA, "valueB") or starts_with(fieldA, "valueC")'
+            'from * metadata _id, _index, _version | where fieldA like "val*A" or ends_with(fieldA, "valueB") or starts_with(fieldA, "valueC")'
         ]
     )
 
@@ -176,7 +176,7 @@ def test_elasticsearch_esql_regex_query(esql_backend: ESQLBackend):
         """
             )
         )
-        == ['from * | where fieldA rlike "foo.*bar" and fieldB=="foo"']
+        == ['from * metadata _id, _index, _version | where fieldA rlike "foo.*bar" and fieldB=="foo"']
     )
 
 
@@ -197,7 +197,7 @@ def test_elasticsearch_esql_cidr_query(esql_backend: ESQLBackend):
         """
             )
         )
-        == ['from * | where cidr_match(field, "192.168.0.0/16")']
+        == ['from * metadata _id, _index, _version | where cidr_match(field, "192.168.0.0/16")']
     )
 
 
@@ -218,7 +218,195 @@ def test_elasticsearch_esql_field_name_with_whitespace(esql_backend: ESQLBackend
         """
             )
         )
-        == ['from * | where `field name`=="value"']
+        == ['from * metadata _id, _index, _version | where `field name`=="value"']
+    )
+
+def test_elasticsearch_esql_set_state_index_string(esql_backend: ESQLBackend):
+    assert (
+        ESQLBackend(
+            processing_pipeline=ProcessingPipeline.from_yaml(
+                """
+                name: test
+                priority: 30
+                transformations:
+                  - id: set_state_index
+                    type: set_state
+                    key: index
+                    val: logs-test-*
+                    rule_conditions:
+                      - type: logsource
+                        category: test_category
+                        product: test_product
+        """
+        )).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+        """
+            )
+        )
+        == ['from logs-test-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"']
+    )
+
+def test_elasticsearch_esql_set_state_index_list(esql_backend: ESQLBackend):
+    assert (
+        ESQLBackend(
+            processing_pipeline=ProcessingPipeline.from_yaml(
+                """
+                name: test
+                priority: 30
+                transformations:
+                  - id: set_state_index
+                    type: set_state
+                    key: index
+                    val:
+                      - logs-test1-*
+                      - logs-test2-*
+                    rule_conditions:
+                      - type: logsource
+                        category: test_category
+                        product: test_product
+        """
+        )).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+        """
+            )
+        )
+        == ['from logs-test1-*,logs-test2-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"']
+    )
+
+
+def test_elasticsearch_esql_set_state_index_list_single(esql_backend: ESQLBackend):
+    assert (
+        ESQLBackend(
+            processing_pipeline=ProcessingPipeline.from_yaml(
+                """
+                name: test
+                priority: 30
+                transformations:
+                  - id: set_state_index
+                    type: set_state
+                    key: index
+                    val:
+                      - logs-test-*
+                    rule_conditions:
+                      - type: logsource
+                        category: test_category
+                        product: test_product
+        """
+        )).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+        """
+            )
+        )
+        == ['from logs-test-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"']
+    )
+
+def test_elasticsearch_esql_set_state_index_list_deduplicate(esql_backend: ESQLBackend):
+    assert (
+        ESQLBackend(
+            processing_pipeline=ProcessingPipeline.from_yaml(
+                """
+                name: test
+                priority: 30
+                transformations:
+                  - id: set_state_index
+                    type: set_state
+                    key: index
+                    val:
+                      - logs-test-*
+                      - logs-test-*
+                    rule_conditions:
+                      - type: logsource
+                        category: test_category
+                        product: test_product
+        """
+        )).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+        """
+            )
+        )
+        == ['from logs-test-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"']
+    )
+
+def test_elasticsearch_esql_set_state_index_list_wildcard(esql_backend: ESQLBackend):
+    assert (
+        ESQLBackend(
+            processing_pipeline=ProcessingPipeline.from_yaml(
+                """
+                name: test
+                priority: 30
+                transformations:
+                  - id: set_state_index
+                    type: set_state
+                    key: index
+                    val:
+                      - logs-test-*
+                      - "*"
+                    rule_conditions:
+                      - type: logsource
+                        category: test_category
+                        product: test_product
+        """
+        )).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+        """
+            )
+        )
+        == ['from * metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"']
     )
 
 def test_elasticsearch_esql_ndjson(esql_backend: ESQLBackend):
@@ -246,7 +434,7 @@ def test_elasticsearch_esql_ndjson(esql_backend: ESQLBackend):
             'hideChart': False,
             'isTextBasedQuery': True,
             'kibanaSavedObjectMeta': {
-                'searchSourceJSON': '{"query": {"esql": "from * | where fieldA==\\"valueA\\" and fieldB==\\"valueB\\""}, "index": {"title": "*", "timeFieldName": "@timestamp", "sourceFilters": [], "type": "esql", "fieldFormats": {}, "runtimeFieldMap": {}, "allowNoIndex": false, "name": "*", "allowHidden": false}, "filter": []}'
+                'searchSourceJSON': '{"query": {"esql": "from * metadata _id, _index, _version | where fieldA==\\"valueA\\" and fieldB==\\"valueB\\""}, "index": {"title": "*", "timeFieldName": "@timestamp", "sourceFilters": [], "type": "esql", "fieldFormats": {}, "runtimeFieldMap": {}, "allowNoIndex": false, "name": "*", "allowHidden": false}, "filter": []}'
             },
             'sort': [['@timestamp', 'desc']],
             'timeRestore': False,
@@ -315,7 +503,7 @@ def test_elasticsearch_esql_siemrule(esql_backend: ESQLBackend):
             'exceptionsList': [],
             'type': 'esql',
             'language': 'esql',
-            'query': 'from * [metadata _id, _index, _version] | where fieldA=="valueA" and fieldB=="valueB"'
+            'query': 'from * metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"'
         },
         'rule_type_id': 'siem.esqlRule',
         'notify_when': 'onActiveAlert',
@@ -375,7 +563,7 @@ def test_elasticsearch_esql_siemrule_ndjson(esql_backend: ESQLBackend):
         'setup': '',
         'type': 'esql',
         'language': 'esql',
-        'query': 'from * [metadata _id, _index, _version] | where fieldA=="valueA" and fieldB=="valueB"',
+        'query': 'from * metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"',
         'actions': []
     }
 
@@ -476,6 +664,6 @@ def test_elasticsearch_esql_siemrule_ndjson_with_threat(esql_backend: ESQLBacken
         "setup": "",
         "type": "esql",
         "language": "esql",
-        "query": 'from * [metadata _id, _index, _version] | where fieldA=="valueA" and fieldB=="valueB"',
+        "query": 'from * metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"',
         "actions": [],
     }

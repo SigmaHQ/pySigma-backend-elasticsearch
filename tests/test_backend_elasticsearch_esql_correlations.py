@@ -33,7 +33,7 @@ correlation:
             """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * | where fieldA=="value1" and fieldB=="value2"
+        """from * metadata _id, _index, _version | where fieldA=="value1" and fieldB=="value2"
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats event_count=count() by timebucket, fieldC, fieldD
 | where event_count >= 10"""
     ]
@@ -67,7 +67,7 @@ correlation:
             """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * | where fieldA=="value1" and fieldB=="value2"
+        """from * metadata _id, _index, _version | where fieldA=="value1" and fieldB=="value2"
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats event_count=count() by timebucket
 | where event_count >= 10"""
     ]
@@ -102,7 +102,7 @@ correlation:
             """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * | where fieldA=="value1" and fieldB=="value2"
+        """from * metadata _id, _index, _version | where fieldA=="value1" and fieldB=="value2"
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats value_count=count_distinct(fieldD) by timebucket, fieldC
 | where value_count < 10"""
     ]
