@@ -41,7 +41,7 @@ def ecs_kubernetes() -> ProcessingPipeline:
                         ],
                         "privileged": [
                             "kubernetes.audit.responseObject.spec.containers.securityContext.privileged"
-                        ]
+                        ],
                         "hostPath": [
                             "kubernetes.audit.requestObject.spec.volumes.hostPath"
                         ],
