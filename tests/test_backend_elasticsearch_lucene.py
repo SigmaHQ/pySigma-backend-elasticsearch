@@ -454,7 +454,9 @@ def test_lucene_windash(lucene_backend: LuceneBackend):
         """
             )
         )
-        == ["fieldname:(\\-param\\-name OR \\/param\\-name)"]
+        == [
+            "fieldname:(\\-param\\-name OR \\/param\\-name OR –param\\-name OR —param\\-name OR ―param\\-name)"
+        ]
     )
 
 
@@ -477,7 +479,9 @@ def test_lucene_windash_contains(lucene_backend: LuceneBackend):
         """
             )
         )
-        == ["fieldname:(*\\ \\-param\\-name\\ * OR *\\ \\/param\\-name\\ *)"]
+        == [
+            "fieldname:(*\\ \\-param\\-name\\ * OR *\\ \\/param\\-name\\ * OR *\\ –param\\-name\\ * OR *\\ —param\\-name\\ * OR *\\ ―param\\-name\\ *)"
+        ]
     )
 
 

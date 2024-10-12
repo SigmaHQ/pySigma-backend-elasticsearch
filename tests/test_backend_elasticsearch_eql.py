@@ -418,7 +418,9 @@ def test_elasticsearch_eql_windash(eql_backend: EqlBackend):
         """
             )
         )
-        == ['any where fieldname like~ ("-param-name", "/param-name")']
+        == [
+            'any where fieldname like~ ("-param-name", "/param-name", "–param-name", "—param-name", "―param-name")'
+        ]
     )
 
 
@@ -440,7 +442,7 @@ def test_elasticsearch_eql_windash_contains(eql_backend: EqlBackend):
         """
             )
         )
-        == ['any where fieldname like~ ("*-param-name*", "*/param-name*")']
+        == ['any where fieldname like~ ("*-param-name*", "*/param-name*", "*–param-name*", "*—param-name*", "*―param-name*")']
     )
 
 
@@ -464,10 +466,15 @@ def test_elasticsearch_eqlapi(eql_backend: EqlBackend):
     result = eql_backend.convert(rule, output_format="eqlapi")
     assert result[0] == {"query": 'any where fieldA:"valueA" and fieldB:"valueB"'}
 
+
 def test_lucene_reference_query(eql_backend: EqlBackend):
-    with pytest.raises(SigmaFeatureNotSupportedByBackendError, match="ES Lucene backend can't handle field references."):
+    with pytest.raises(
+        SigmaFeatureNotSupportedByBackendError,
+        match="ES Lucene backend can't handle field references.",
+    ):
         eql_backend.convert(
-            SigmaCollection.from_yaml("""
+            SigmaCollection.from_yaml(
+                """
                 title: Test
                 status: test
                 logsource:
@@ -477,7 +484,8 @@ def test_lucene_reference_query(eql_backend: EqlBackend):
                     sel:
                         fieldA|fieldref: somefield
                     condition: sel
-            """)
+            """
+            )
         )
 
 
