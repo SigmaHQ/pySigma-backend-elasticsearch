@@ -146,7 +146,7 @@ correlation:
 """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * | where (fieldA=="value1" and fieldB=="value2") or (fieldA=="value3" and fieldB=="value4")
+        """from * metadata _id, _index, _version | where from * | where (fieldA=="value1" and fieldB=="value2") or (fieldA=="value3" and fieldB=="value4")
 | eval event_type=case(fieldA=="value1" and fieldB=="value2", "base_rule_1", fieldA=="value3" and fieldB=="value4", "base_rule_2")
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats event_type_count=count_distinct(event_type) by timebucket, fieldC
 | where event_type_count >= 2"""

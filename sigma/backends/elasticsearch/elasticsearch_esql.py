@@ -227,7 +227,10 @@ class ESQLBackend(TextQueryBackend):
         return super().convert_correlation_search(rule, sources=sources, **kwargs)
 
     def convert_correlation_search_multi_rule_query_postprocess(self, query: str) -> str:
-        return query.split(" | where ")[1]
+        if " | where " in query:
+            return query.split(" | where ")[1]
+        else:
+            return query
     
     def convert_correlation_typing_query_postprocess(self, query: str) -> str:
         return self.convert_correlation_search_multi_rule_query_postprocess(query)
