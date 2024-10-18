@@ -700,9 +700,19 @@ pyparsing = [
     {file = "pyparsing-3.1.4-py3-none-any.whl", hash = "sha256:a6a7ee4235a3f944aa1fa2249307708f893fe5717dc603503c6c7969c070fb7c"},
     {file = "pyparsing-3.1.4.tar.gz", hash = "sha256:f86ec8d1a83f11977c9a6ea7598e8c27fc5cddfa5b07ea2241edbbde1d7bc032"},
 ]
-pysigma = [
-    {file = "pysigma-0.11.16-py3-none-any.whl", hash = "sha256:f4c703f568443f4a696e515cf189ec164dcb1040e02867d15d400a877a2e51ac"},
-    {file = "pysigma-0.11.16.tar.gz", hash = "sha256:dd98d105276efa1d082d96798009f859da3de8d4c8a968b7da46ba2dd7745872"},
+
+[package.extras]
+diagrams = ["jinja2", "railroad-diagrams"]
+
+[[package]]
+name = "pysigma"
+version = "0.11.17"
+description = "Sigma rule processing and conversion tools"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "pysigma-0.11.17-py3-none-any.whl", hash = "sha256:07687b60058705a7fdf2b1b0a77f3040298c90b2e936855185cec639131cf6c1"},
+    {file = "pysigma-0.11.17.tar.gz", hash = "sha256:b0663ce9fd09bf8cfa36db83b146e6d8e68ff2a1671917e0eb54a562743a918b"},
 ]
 pytest = [
     {file = "pytest-7.4.4-py3-none-any.whl", hash = "sha256:b090cdf5ed60bf4c45261be03239c2c1c22df034fbffe691abe93cd80cea01d8"},
@@ -859,3 +869,8 @@ wrapt = [
     {file = "wrapt-1.16.0-py3-none-any.whl", hash = "sha256:6906c4100a8fcbf2fa735f6059214bb13b97f75b1a61777fcf6432121ef12ef1"},
     {file = "wrapt-1.16.0.tar.gz", hash = "sha256:5f370f952971e7d17c7d1ead40e49f32345a7f7a5373571ef44d800d06b1899d"},
 ]
+
+[metadata]
+lock-version = "2.0"
+python-versions = "^3.9"
+content-hash = "7eb8baa69cc26d811a9620682061adb742ed721e7547380f0b64eafc412bdf96"
