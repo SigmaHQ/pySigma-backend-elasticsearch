@@ -1,7 +1,6 @@
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
-from sigma.correlations import SigmaCorrelationRule
 from sigma.conversion.base import TextQueryBackend
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
 from sigma.types import SigmaCompareExpression
@@ -145,10 +144,10 @@ class ESQLBackend(TextQueryBackend):
 
     # Field existence condition expressions.
     field_exists_expression: ClassVar[str] = (
-        "{field} is null"  # Expression for field existence as format string with {field} placeholder for field name
+        "{field} is not null"  # Expression for field existence as format string with {field} placeholder for field name
     )
     field_not_exists_expression: ClassVar[str] = (
-        "{field} is not null"  # Expression for field non-existence as format string with {field} placeholder for field name. If not set, field_exists_expression is negated with boolean NOT.
+        "{field} is null"  # Expression for field non-existence as format string with {field} placeholder for field name. If not set, field_exists_expression is negated with boolean NOT.
     )
 
     # Field value in list, e.g. "field in (value list)" or "field containsall (value list)"
@@ -178,9 +177,7 @@ class ESQLBackend(TextQueryBackend):
     }
 
     correlation_search_single_rule_expression: ClassVar[str] = "{query}"
-    correlation_search_multi_rule_expression: ClassVar[str] = (
-        "from {sources} | where {queries}"
-    )
+    correlation_search_multi_rule_expression: ClassVar[str] = "{queries}"
     correlation_search_multi_rule_query_expression: ClassVar[str] = "({query})"
     correlation_search_multi_rule_query_expression_joiner: ClassVar[str] = " or "
 
@@ -268,34 +265,6 @@ class ESQLBackend(TextQueryBackend):
 
         return ",".join(indices)
 
-    def convert_correlation_search(
-        self,
-        rule: SigmaCorrelationRule,
-        **kwargs,
-    ) -> str:
-        sources = self.preprocess_indices(
-            [
-                state.processing_state.get("index", self.state_defaults["index"])
-                for rule_reference in rule.rules
-                for state in rule_reference.rule.get_conversion_states()
-            ]
-        )
-
-        return super().convert_correlation_search(rule, sources=sources, **kwargs)
-
-    def convert_correlation_search_multi_rule_query_postprocess(
-        self, query: str
-    ) -> str:
-        if " | where " in query:
-            return query.split(" | where ")[1]
-        else:
-            return query
-
-    def convert_correlation_typing_query_postprocess(self, query: str) -> str:
-        return self.convert_correlation_search_multi_rule_query_postprocess(query)
-
-    ### Correlation end ###
-
     def finalize_query(
         self,
         rule: SigmaRule,
@@ -305,7 +274,11 @@ class ESQLBackend(TextQueryBackend):
         output_format: str,
     ) -> Union[str, DeferredQueryExpression]:
         # If set, load the index from the processing state
-        index_state = state.processing_state.get("index", self.state_defaults["index"])
+        index_state = state.processing_state.get("index", self.state_defaults["index"]) if isinstance(rule, SigmaRule) else [
+            state.processing_state.get("index", self.state_defaults["index"])
+            for rule_reference in rule.rules
+            for state in rule_reference.rule.get_conversion_states()
+        ]
         # If the non-default index is not a string, preprocess it
         if not isinstance(index_state, str):
             index_state = self.preprocess_indices(index_state)
