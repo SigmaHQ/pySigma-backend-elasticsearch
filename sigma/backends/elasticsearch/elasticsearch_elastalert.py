@@ -1,7 +1,8 @@
-from typing import ClassVar, Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional, Union
 
 from sigma.rule import SigmaRule
 from sigma.conversion.state import ConversionState
+from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.correlations import SigmaCorrelationConditionOperator
 from sigma.correlations import SigmaCorrelationRule, SigmaCorrelationTimespan
@@ -23,6 +24,10 @@ class ElastalertBackend(LuceneBackend):
     }
     # Does the backend requires that a processing pipeline is provided?
     requires_pipeline: ClassVar[bool] = True
+
+    state_defaults: ClassVar[Dict[str, str]] = {
+        "index": "*",
+    }
 
     timespan_mapping: ClassVar[Dict[str, str]] = {
         "s": "seconds",
@@ -108,16 +113,59 @@ class ElastalertBackend(LuceneBackend):
     ) -> str:
         return f"{self.timespan_mapping[timespan.unit]}: {timespan.count}"
 
+    def preprocess_indices(self, indices: List[str]) -> str:
+        if not indices:
+            return self.state_defaults["index"]
+
+        if self.wildcard_multi in indices:
+            return self.wildcard_multi
+
+        if len(indices) == 1:
+            return indices[0]
+
+        # Deduplicate sources using a set
+        indices = list(set(indices))
+
+        # Sort the indices to ensure a consistent order as sets are arbitrary ordered
+        indices.sort()
+
+        return ",".join(indices)
+
+    def finalize_query(
+        self,
+        rule: SigmaRule,
+        query: Union[str, DeferredQueryExpression],
+        index: int,
+        state: ConversionState,
+        output_format: str,
+    ) -> Union[str, DeferredQueryExpression]:
+        # If set, load the index from the processing state
+        index_state = (
+            state.processing_state.get("index", self.state_defaults["index"])
+            if isinstance(rule, SigmaRule)
+            else [
+                state.processing_state.get("index", self.state_defaults["index"])
+                for rule_reference in rule.rules
+                for state in rule_reference.rule.get_conversion_states()
+            ]
+        )
+        # If the non-default index is not a string, preprocess it
+        if not isinstance(index_state, str):
+            index_state = self.preprocess_indices(index_state)
+
+        # Save the processed index back to the processing state
+        state.processing_state["index"] = index_state
+        return super().finalize_query(rule, query, index, state, output_format)
+
     def finalize_query_default(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> str:
-        index = state.processing_state.get("index", '"*"')
-        alert_type = "type: any\n" if not self._has_backreference(rule) else ""
+        alert_type = "type: any\n" if not isinstance(rule, SigmaCorrelationRule) else ""
 
         return (
             f"description: {rule.description if rule.description else ''}\n"
             f"name: {rule.title if rule.title else ''}\n"
-            f"index: {index}\n"
+            f"index: \"{state.processing_state['index']}\"\n"
             "filter:\n"
             "- query:\n"
             "    query_string:\n"

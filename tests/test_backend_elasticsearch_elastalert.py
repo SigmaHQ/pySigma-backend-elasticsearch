@@ -39,20 +39,20 @@ correlation:
     )
     assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
-name: Base rule
+name: Multiple occurrences of base event
 index: "*"
 filter:
 - query:
     query_string:
       query: fieldA:value1 AND fieldB:value2
-priority: 1
 timeframe:
   minutes: 15
 query_key:
 - fieldC
 - fieldD
 num_events: 10
-type: frequency"""
+type: frequency
+priority: 1"""
     )
 
 
@@ -86,13 +86,12 @@ correlation:
     )
     assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
-name: Base rule
+name: Multiple occurrences of base event
 index: "*"
 filter:
 - query:
     query_string:
       query: fieldA:value1 AND fieldB:value2
-priority: 1
 buffer_time:
   minutes: 15
 query_key:
@@ -100,7 +99,8 @@ query_key:
 metric_agg_type: cardinality
 metric_agg_key: fieldD
 max_threshold: 10
-type: metric_aggregation"""
+type: metric_aggregation
+priority: 1"""
     )
 
 
@@ -147,7 +147,6 @@ detection:
         fieldA: value1
         fieldB: value2
     condition: selection
-level: critical
 ---
 title: Multiple occurrences of base event
 status: test
@@ -161,17 +160,17 @@ correlation:
     condition:
         field: fieldD
         gt: 10
+level: critical
             """
     )
     assert elastalert_backend.convert(correlation_rule)[0] == (
         """description: 
-name: Base rule
+name: Multiple occurrences of base event
 index: "*"
 filter:
 - query:
     query_string:
       query: fieldA:value1 AND fieldB:value2
-priority: 4
 buffer_time:
   minutes: 15
 query_key:
@@ -179,7 +178,8 @@ query_key:
 metric_agg_type: cardinality
 metric_agg_key: fieldD
 max_threshold: 10
-type: metric_aggregation"""
+type: metric_aggregation
+priority: 4"""
     )
 
 
