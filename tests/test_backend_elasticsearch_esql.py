@@ -544,7 +544,6 @@ def test_elasticsearch_esql_siemrule_ndjson(esql_backend: ESQLBackend):
         'meta': {
             'from': '1m'
         },
-        'investigation_fields': {},
         'author': [],
         'false_positives': [],
         'from': 'now-5m',
@@ -606,7 +605,6 @@ def test_elasticsearch_esql_siemrule_ndjson_with_threat(esql_backend: ESQLBacken
         "meta": {
             "from": "1m"
         },
-        "investigation_fields": {},
         "author": [],
         "false_positives": [],
         "from": "now-5m",
