@@ -503,7 +503,6 @@ class ESQLBackend(TextQueryBackend):
             "meta": {
                 "from": "1m",
             },
-            "investigation_fields": {},
             "author": [rule.author] if rule.author is not None else [],
             "false_positives": rule.falsepositives,
             "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
