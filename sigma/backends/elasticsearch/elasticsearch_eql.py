@@ -150,7 +150,7 @@ class EqlBackend(TextQueryBackend):
 
     # Value not bound to a field
     # Expression for string value not bound to a field as format string with placeholder {value}
-    unbound_value_str_expression: ClassVar[str] = '"{value}"'
+    unbound_value_str_expression: ClassVar[str] = '{value}'
     # Expression for number value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression: ClassVar[str] = "{value}"
 

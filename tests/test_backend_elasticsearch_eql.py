@@ -442,7 +442,37 @@ def test_elasticsearch_eql_windash_contains(eql_backend: EqlBackend):
         """
             )
         )
-        == ['any where fieldname like~ ("*-param-name*", "*/param-name*", "*–param-name*", "*—param-name*", "*―param-name*")']
+        == [
+            'any where fieldname like~ ("*-param-name*", "*/param-name*", "*–param-name*", "*—param-name*", "*―param-name*")'
+        ]
+    )
+
+
+def test_eql_keyword_quotes(eql_backend: EqlBackend):
+    """Test for NDJSON output with embedded query string query."""
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            id: c277adc0-f0c4-42e1-af9d-fab062992156
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                keywords:
+                    - keywordA
+                    - keywordB
+                sel:
+                    Field: 
+                      - 1234
+                      - 5678
+                condition: sel and keywords
+        """
+    )
+    result = eql_backend.convert(rule)
+    assert (
+        result[0]
+        == 'any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")'
     )
 
 
@@ -465,6 +495,33 @@ def test_elasticsearch_eqlapi(eql_backend: EqlBackend):
     )
     result = eql_backend.convert(rule, output_format="eqlapi")
     assert result[0] == {"query": 'any where fieldA:"valueA" and fieldB:"valueB"'}
+
+
+def test_eql_keyword_quotes_eqlapi(eql_backend: EqlBackend):
+    """Test for NDJSON output with embedded query string query."""
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            id: c277adc0-f0c4-42e1-af9d-fab062992156
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                keywords:
+                    - keywordA
+                    - keywordB
+                sel:
+                    Field: 
+                      - 1234
+                      - 5678
+                condition: sel and keywords
+        """
+    )
+    result = eql_backend.convert(rule, output_format="eqlapi")
+    assert result[0] == {
+        "query": 'any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")'
+    }
 
 
 def test_lucene_reference_query(eql_backend: EqlBackend):
