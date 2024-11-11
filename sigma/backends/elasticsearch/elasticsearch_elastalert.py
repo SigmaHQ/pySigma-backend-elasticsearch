@@ -90,9 +90,6 @@ class ElastalertBackend(LuceneBackend):
             "CRITICAL": 4,
         }
 
-    def _has_backreference(self, rule: SigmaRule) -> bool:
-        return len(rule._backreferences) > 0
-
     def convert_correlation_search(
         self,
         rule: SigmaCorrelationRule,

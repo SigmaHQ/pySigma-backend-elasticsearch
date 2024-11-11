@@ -2,7 +2,7 @@ import pytest
 from sigma.backends.elasticsearch.elasticsearch_elastalert import ElastalertBackend
 from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
-
+from sigma.processing.pipeline import ProcessingPipeline
 
 @pytest.fixture(name="elastalert_backend")
 def fixture_elastalert_backend():
@@ -132,6 +132,138 @@ filter:
 type: any
 priority: 4"""
     )
+
+
+def test_elastalert_single_index():
+    assert(
+        ElastalertBackend(processing_pipeline=ProcessingPipeline.from_yaml(
+                """
+                name: test
+                priority: 30
+                transformations:
+                  - id: set_state_index
+                    type: set_state
+                    key: index
+                    val: 
+                      - logs-test
+                    rule_conditions:
+                      - type: logsource
+                        category: test_category
+                        product: test_product
+        """)).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value1
+                    fieldB: value2
+                condition: sel
+            level: critical"""
+            )
+        )
+        == [
+            """description: 
+name: Test
+index: "logs-test"
+filter:
+- query:
+    query_string:
+      query: fieldA:value1 AND fieldB:value2
+type: any
+priority: 4"""])
+
+
+def test_elastalert_multiple_indexes():
+    assert(
+        ElastalertBackend(processing_pipeline=ProcessingPipeline.from_yaml(
+                """
+                name: test
+                priority: 30
+                transformations:
+                  - id: set_state_index
+                    type: set_state
+                    key: index
+                    val: 
+                      - logs-test1-*
+                      - logs-test2-*
+                    rule_conditions:
+                      - type: logsource
+                        category: test_category
+                        product: test_product
+        """)).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value1
+                    fieldB: value2
+                condition: sel
+            level: critical"""
+            )
+        )
+        == [
+            """description: 
+name: Test
+index: "logs-test1-*,logs-test2-*"
+filter:
+- query:
+    query_string:
+      query: fieldA:value1 AND fieldB:value2
+type: any
+priority: 4"""])
+
+
+def test_elastalert_empty_list_of_indexes():
+    assert(
+        ElastalertBackend(processing_pipeline=ProcessingPipeline.from_yaml(
+                """
+                name: test
+                priority: 30
+                transformations:
+                  - id: set_state_index
+                    type: set_state
+                    key: index
+                    val:
+                    rule_conditions:
+                      - type: logsource
+                        category: test_category
+                        product: test_product
+        """)).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value1
+                    fieldB: value2
+                condition: sel
+            level: critical"""
+            )
+        )
+        == [
+            """description: 
+name: Test
+index: "*"
+filter:
+- query:
+    query_string:
+      query: fieldA:value1 AND fieldB:value2
+type: any
+priority: 4"""])
 
 
 def test_elastalert_aggregation_change_severity(elastalert_backend: ElastalertBackend):
