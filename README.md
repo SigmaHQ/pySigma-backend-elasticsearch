@@ -196,7 +196,7 @@ postprocessing:
       {{ rule_data | tojson }}
 ```
 Use this pipeline with: `-t esql -p esql-siemrule-ndjson.yml` but now without `-f siem_rule_ndjson`.
-The ouput can be imported directly into Kibana as a Detection Rule.
+The output can be imported directly into Kibana as a Detection Rule.
 
 ### Lucene siem_rule_ndjson
 
