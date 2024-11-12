@@ -142,41 +142,38 @@ postprocessing:
 Use this pipeline with: `-t lucene -p lucene-kibana-siemrule.yml` but now without `-f kibana_ndjson`.
 
 ### ESQL siem_rule_ndjson
-```
+```yaml
 vars:
   schedule_interval: 5
   schedule_interval_unit: m
 postprocessing:
   - type: template
     template: |+
-      {
-        "name": "SIGMA - {{ rule.title }}",
-        "id": "{{ rule.id }}",
-        "description": "{{ rule.description }}",
-        "references": {{ rule.references |tojson(indent=6)}},
+      {%- set tags = [] -%}
+      {% for n in rule.tags %}
+        {%- set tag_string = n.namespace ~ '-' ~ n.name -%}
+        {%- set tags=tags.append(tag_string) -%}
+      {% endfor %}
+      {%- set rule_data = {
+        "name": rule.title,
+        "id": rule.id | lower,
+        "author": [rule.author] if rule.author is string else rule.author,
+        "description": rule.description,
+        "references": rule.references,
         "enabled": true,
-        "interval": "{{ pipeline.vars.schedule_interval|string~pipeline.vars.schedule_interval_unit }}",
-        "from": "now-{{ pipeline.vars.schedule_interval|string~pipeline.vars.schedule_interval_unit }}",
-        "author": [
-          {% if rule.author is string -%}
-            "{{rule.author}}"
-          {% else %}
-          {% for a in rule.author -%}
-            "{{ a }}"{% if not loop.last %},{%endif%}
-          {% endfor -%}
-          {% endif -%} 
-        ],
-        "rule_id": "{{ rule.id }}",
-        "false_positives": {{ rule.falsepositives | list | tojson }},
+        "interval": pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
+        "from": "now-" ~ pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
+        "rule_id": rule.id | lower,
+        "false_positives": rule.falsepositives,
         "immutable": false,
         "output_index": "",
         "meta": {
           "from": "1m"
         },
-        "risk_score": {{ backend.severity_risk_mapping[rule.level.name] if rule.level is not none else 21 }}, 
-        "severity": "{{ rule.level.name | string | lower if rule.level is not none else "low" }}",
+        "risk_score": backend.severity_risk_mapping[rule.level.name] if rule.level is not none else 21, 
+        "severity": rule.level.name | string | lower if rule.level is not none else "low",
         "severity_mapping": [],
-        "threat": {{ backend.finalize_output_threat_model(rule.tags) | list | tojson}},
+        "threat": backend.finalize_output_threat_model(rule.tags) | list,
         "to": "now",
         "version": 1,
         "max_signals": 100,
@@ -186,21 +183,20 @@ postprocessing:
         "note": "",
         "license": "DRL",
         "language": "esql",
-        "index": {{ pipeline.vars.index_names | list | tojson(indent=6)}},
-      "query": {{ query | tojson}},
-      "tags": [
-        {% for n in rule.tags -%}
-        "{{ n.namespace }}-{{ n.name }}"{% if not loop.last %},{%endif%}
-      {% endfor -%}
-      ],
+        "index": pipeline.vars.index_names | list,
+      "query": query,
+      "tags": tags,
       "actions": [],
       "related_integrations": [],
       "required_fields": [],
       "risk_score_mapping": []
       }
+      -%}
+      
+      {{ rule_data | tojson }}
 ```
-Use this pipeline with: `-t esql -p esql-siemrule.yml` but now without `-f siem_rule_ndjson`.
-To import the translated rule into Kibana, pipe the output through `jq -c` to create a `ndjson`, since Kibana does not accept regular `json`.
+Use this pipeline with: `-t esql -p esql-siemrule-ndjson.yml` but now without `-f siem_rule_ndjson`.
+The ouput can be imported directly into Kibana as a Detection Rule.
 
 ### Lucene siem_rule_ndjson
 
