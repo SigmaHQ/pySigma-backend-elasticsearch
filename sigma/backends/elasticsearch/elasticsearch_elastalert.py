@@ -105,8 +105,8 @@ class ElastalertBackend(LuceneBackend):
     def convert_timespan(
         self,
         timespan: SigmaCorrelationTimespan,
-        output_format: str | None = None,
-        method: str | None = None,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
     ) -> str:
         return f"{self.timespan_mapping[timespan.unit]}: {timespan.count}"
 
