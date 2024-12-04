@@ -493,14 +493,22 @@ class EqlBackend(TextQueryBackend):
             },
             "max_signals": 100,
             "risk_score": (
-                self.severity_risk_mapping[rule.level.name]
+                0
                 if rule.level is not None
-                else 21
+                and str(rule.level.name).lower() == "informational"
+                else (
+                    self.severity_risk_mapping[rule.level.name]
+                    if rule.level is not None
+                    else 21
+                )
+            ),
+            "severity": (
+                "low"
+                if rule.level is None
+                or str(rule.level.name).lower() == "informational"
+                else str(rule.level.name).lower()
             ),
             "risk_score_mapping": [],
-            "severity": (
-                str(rule.level.name).lower() if rule.level is not None else "low"
-            ),
             "severity_mapping": [],
             "threat": list(self.finalize_output_threat_model(rule.tags)),
             "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],

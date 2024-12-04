@@ -490,12 +490,20 @@ class ESQLBackend(TextQueryBackend):
                 rule.description if rule.description is not None else "No description"
             ),
             "risk_score": (
-                self.severity_risk_mapping[rule.level.name]
+                0
                 if rule.level is not None
-                else 21
+                and str(rule.level.name).lower() == "informational"
+                else (
+                    self.severity_risk_mapping[rule.level.name]
+                    if rule.level is not None
+                    else 21
+                )
             ),
             "severity": (
-                str(rule.level.name).lower() if rule.level is not None else "low"
+                "low"
+                if rule.level is None
+                or str(rule.level.name).lower() == "informational"
+                else str(rule.level.name).lower()
             ),
             "note": "",
             "license": "DRL",
