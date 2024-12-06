@@ -429,13 +429,21 @@ class LuceneBackend(TextQueryBackend):
                 },
                 "maxSignals": 100,
                 "riskScore": (
-                    self.severity_risk_mapping[rule.level.name]
+                    0
                     if rule.level is not None
-                    else 21
+                    and str(rule.level.name).lower() == "informational"
+                    else (
+                        self.severity_risk_mapping[rule.level.name]
+                        if rule.level is not None
+                        else 21
+                    )
                 ),
                 "riskScoreMapping": [],
                 "severity": (
-                    str(rule.level.name).lower() if rule.level is not None else "low"
+                    "low"
+                    if rule.level is None
+                    or str(rule.level.name).lower() == "informational"
+                    else str(rule.level.name).lower()
                 ),
                 "severityMapping": [],
                 "threat": list(self.finalize_output_threat_model(rule.tags)),
