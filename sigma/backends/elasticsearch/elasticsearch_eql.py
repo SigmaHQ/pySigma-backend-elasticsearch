@@ -150,7 +150,7 @@ class EqlBackend(TextQueryBackend):
 
     # Value not bound to a field
     # Expression for string value not bound to a field as format string with placeholder {value}
-    unbound_value_str_expression: ClassVar[str] = '{value}'
+    unbound_value_str_expression: ClassVar[str] = "{value}"
     # Expression for number value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression: ClassVar[str] = "{value}"
 
@@ -275,6 +275,24 @@ class EqlBackend(TextQueryBackend):
             return False
 
         return super().compare_precedence(outer, inner)
+
+    def finalize_query(
+        self,
+        rule: SigmaRule,
+        query: Union[str, DeferredQueryExpression],
+        index: int,
+        state: ConversionState,
+        output_format: str,
+    ) -> Union[str, DeferredQueryExpression]:
+        # Save the processed index back to the processing state
+        index_state = state.processing_state.get("index")
+        if not index_state:
+            index_state = self.index_names
+        if not isinstance(index_state, list):
+            index_state = [index_state]
+        # Save the processed index back to the processing state
+        state.processing_state["index"] = index_state
+        return super().finalize_query(rule, query, index, state, output_format)
 
     def finalize_query_default(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
