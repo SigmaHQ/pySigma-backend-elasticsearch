@@ -141,6 +141,65 @@ postprocessing:
 
 Use this pipeline with: `-t lucene -p lucene-kibana-siemrule.yml` but now without `-f kibana_ndjson`.
 
+### EQL siem_rule_ndjson
+```yaml
+vars:
+  schedule_interval: 5
+  schedule_interval_unit: m
+postprocessing:
+  - type: template
+    template: |+
+      {%- set tags = [] -%}
+      {% for n in rule.tags %}
+        {%- set tag_string = n.namespace ~ '-' ~ n.name -%}
+        {%- set tags=tags.append(tag_string) -%}
+      {% endfor %}
+
+      {%- set rule_data = {
+        "name": rule.title,
+        "id": rule.id | lower,
+        "author": [rule.author] if rule.author is string else rule.author or "",
+        "description": rule.description if rule.description else "empty description",
+        "references": rule.references,
+        "enabled": true,
+        "interval": pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
+        "from": "now-" ~ pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
+        "rule_id": rule.id | lower,
+        "false_positives": rule.falsepositives,
+        "immutable": false,
+        "output_index": "",
+        "meta": {
+          "from": "1m"
+        },
+        "risk_score": rule.custom_attributes.risk_score | default(21),
+        "severity": rule.level.name | string | lower if rule.level is not none else 'low',
+        "threat": rule.custom_attributes.threat | default([]),
+        "severity_mapping": [],
+        "to": "now",
+        "version": 1,
+        "max_signals": 100,
+        "exceptions_list": [],
+        "setup": "",
+        "type": "eql",
+        "note": "",
+        "license": "DRL",
+        "language": "eql",
+        "query": query,
+        "tags": tags,
+        "index": pipeline.state.index,
+        "actions": [],
+        "related_integrations": [],
+        "required_fields": [],
+        "risk_score_mapping": []
+      }
+      -%}
+      
+      {{ rule_data | tojson }}
+```
+Use this pipeline with: `-t eql -p eql-siemrule-ndjson.yml` but now without `-f siem_rule_ndjson`.
+The output can be imported directly into Kibana as a Detection Rule.
+
+
 ### ESQL siem_rule_ndjson
 ```yaml
 vars:
