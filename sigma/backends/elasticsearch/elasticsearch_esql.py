@@ -3,7 +3,7 @@ from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.conversion.base import TextQueryBackend
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
-from sigma.types import SigmaCompareExpression
+from sigma.types import CompareOperators
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 import sigma
 import re
@@ -121,11 +121,11 @@ class ESQLBackend(TextQueryBackend):
         "{field}{operator}{value}"  # Compare operation query as format string with placeholders {field}, {operator} and {value}
     )
     # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
-    compare_operators: ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
-        SigmaCompareExpression.CompareOperators.LT: "<",
-        SigmaCompareExpression.CompareOperators.LTE: "<=",
-        SigmaCompareExpression.CompareOperators.GT: ">",
-        SigmaCompareExpression.CompareOperators.GTE: ">=",
+    compare_operators: ClassVar[Dict[CompareOperators, str]] = {
+        CompareOperators.LT: "<",
+        CompareOperators.LTE: "<=",
+        CompareOperators.GT: ">",
+        CompareOperators.GTE: ">=",
     }
 
     # Expression for comparing two event fields
@@ -274,17 +274,31 @@ class ESQLBackend(TextQueryBackend):
         output_format: str,
     ) -> Union[str, DeferredQueryExpression]:
         # If set, load the index from the processing state
-        index_state = state.processing_state.get("index", self.state_defaults["index"]) if isinstance(rule, SigmaRule) else [
+        index_state = (
             state.processing_state.get("index", self.state_defaults["index"])
-            for rule_reference in rule.rules
-            for state in rule_reference.rule.get_conversion_states()
-        ]
+            if isinstance(rule, SigmaRule)
+            else [
+                state.processing_state.get("index", self.state_defaults["index"])
+                for rule_reference in rule.rules
+                for state in rule_reference.rule.get_conversion_states()
+            ]
+        )
         # If the non-default index is not a string, preprocess it
         if not isinstance(index_state, str):
             index_state = self.preprocess_indices(index_state)
 
         # Save the processed index back to the processing state
         state.processing_state["index"] = index_state
+
+        # make "risk_score" and "threat" accessible for the jinja postprocessing template
+        rule.custom_attributes["risk_score"] = (
+            self.severity_risk_mapping[rule.level.name]
+            if rule.level is not None
+            else 21
+        )
+        rule.custom_attributes["threat"] = list(
+            self.finalize_output_threat_model(rule.tags)
+        )
         return super().finalize_query(rule, query, index, state, output_format)
 
     def finalize_query_kibana_ndjson(

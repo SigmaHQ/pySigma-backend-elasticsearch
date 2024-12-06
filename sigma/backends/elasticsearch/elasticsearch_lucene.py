@@ -13,7 +13,7 @@ from sigma.conditions import (
     ConditionNOT,
     ConditionFieldEqualsValueExpression,
 )
-from sigma.types import SigmaCompareExpression, SigmaNull, SigmaFieldReference
+from sigma.types import SigmaNull, SigmaFieldReference, CompareOperators
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import sigma
@@ -107,11 +107,11 @@ class LuceneBackend(TextQueryBackend):
     compare_op_expression: ClassVar[str] = "{field}:{operator}{value}"
     # Mapping between CompareOperators elements and strings used as replacement
     # for {operator} in compare_op_expression
-    compare_operators: ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
-        SigmaCompareExpression.CompareOperators.LT: "<",
-        SigmaCompareExpression.CompareOperators.LTE: "<=",
-        SigmaCompareExpression.CompareOperators.GT: ">",
-        SigmaCompareExpression.CompareOperators.GTE: ">=",
+    compare_operators: ClassVar[Dict[CompareOperators, str]] = {
+        CompareOperators.LT: "<",
+        CompareOperators.LTE: "<=",
+        CompareOperators.GT: ">",
+        CompareOperators.GTE: ">=",
     }
 
     # Null/None expressions
