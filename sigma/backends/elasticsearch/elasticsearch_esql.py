@@ -247,6 +247,19 @@ class ESQLBackend(TextQueryBackend):
             "CRITICAL": 99,
         }
 
+    def flatten_list_of_indices(
+        self, nested_list: List[Union[str, List[str]]]
+    ) -> List[str]:
+        flat_list = []
+        for item in nested_list:
+            if isinstance(item, list):
+                flat_list.extend(
+                    self.flatten_list_of_indices(item)
+                )  # Recursively flatten the sublist
+            else:
+                flat_list.append(item)  # Append the string
+        return flat_list
+
     def preprocess_indices(self, indices: List[str]) -> str:
         if not indices:
             return self.state_defaults["index"]
@@ -254,11 +267,11 @@ class ESQLBackend(TextQueryBackend):
         if self.wildcard_multi in indices:
             return self.wildcard_multi
 
+        indices = self.flatten_list_of_indices(nested_list=indices)
         if len(indices) == 1:
             return indices[0]
 
-        # Deduplicate sources using a set
-        indices = list(set(indices))
+        indices = list(set(indices))  # Deduplicate
 
         # Sort the indices to ensure a consistent order as sets are arbitrary ordered
         indices.sort()
@@ -274,11 +287,15 @@ class ESQLBackend(TextQueryBackend):
         output_format: str,
     ) -> Union[str, DeferredQueryExpression]:
         # If set, load the index from the processing state
-        index_state = state.processing_state.get("index", self.state_defaults["index"]) if isinstance(rule, SigmaRule) else [
+        index_state = (
             state.processing_state.get("index", self.state_defaults["index"])
-            for rule_reference in rule.rules
-            for state in rule_reference.rule.get_conversion_states()
-        ]
+            if isinstance(rule, SigmaRule)
+            else [
+                state.processing_state.get("index", self.state_defaults["index"])
+                for rule_reference in rule.rules
+                for state in rule_reference.rule.get_conversion_states()
+            ]
+        )
         # If the non-default index is not a string, preprocess it
         if not isinstance(index_state, str):
             index_state = self.preprocess_indices(index_state)
@@ -501,8 +518,7 @@ class ESQLBackend(TextQueryBackend):
             ),
             "severity": (
                 "low"
-                if rule.level is None
-                or str(rule.level.name).lower() == "informational"
+                if rule.level is None or str(rule.level.name).lower() == "informational"
                 else str(rule.level.name).lower()
             ),
             "note": "",
