@@ -60,7 +60,7 @@ def ecs_windows() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat from version 7",
         priority=20,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=generate_windows_logsource_items("winlog.channel", "{source}")
         + [  # Variable field mapping depending on category/service
             ProcessingItem(
@@ -180,7 +180,7 @@ def ecs_windows_old() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat up to version 6",
         priority=20,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=generate_windows_logsource_items("winlog.channel", "{source}")
         + [
             ProcessingItem(  # Field mappings
