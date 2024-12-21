@@ -92,7 +92,7 @@ class ESQLBackend(TextQueryBackend):
     startswith_expression: ClassVar[str] = "starts_with({field}, {value})"
     endswith_expression: ClassVar[str] = "ends_with({field}, {value})"
     wildcard_match_expression: ClassVar[str] = (
-        "{field} like {value}"  # Special expression if wildcards can't be matched with the eq_token operator
+        "{field} like \"\"{value}\"\""  # Special expression if wildcards can't be matched with the eq_token operator. Adding two quotes to get triple quotes in the output.
     )
 
     # Regular expressions
