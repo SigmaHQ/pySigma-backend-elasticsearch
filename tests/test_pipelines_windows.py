@@ -29,7 +29,7 @@ def test_ecs_windows():
         ]
     )
 
-def test_ecs_eventid_str():
+def test_ecs_values_to_str():
     assert (
         ESQLBackend(ecs_windows()).convert(
             SigmaCollection.from_yaml(
@@ -41,12 +41,14 @@ def test_ecs_eventid_str():
                 service: security
             detection:
                 sel:
-                    EventID: "123"
+                    EventID: 123
+                    DestinationIp|cidr: 192.168.0.0/16
+                    DestinationPort: 80
                 condition: sel
         """
             )
         ) == [
-            'from * metadata _id, _index, _version | where winlog.channel=="Security" and event.code=="123"'
+            'from * metadata _id, _index, _version | where winlog.channel=="Security" and event.code=="123" and cidr_match(destination.ip, "192.168.0.0/16") and destination.port==80'
         ]
     )
 
