@@ -152,15 +152,15 @@ def test_elasticsearch_esql_wildcard_expressions(esql_backend: ESQLBackend):
             detection:
                 sel:
                     fieldA:
-                        - "val*A"
-                        - "*valueB"
-                        - "valueC*"
+                        - "val*ue\\\\A"
+                        - "*value\\\\B"
+                        - "value\\\\C*"
                 condition: sel
         """
             )
         )
         == [
-            'from * metadata _id, _index, _version | where fieldA like "val*A" or ends_with(fieldA, "valueB") or starts_with(fieldA, "valueC")'
+            'from * metadata _id, _index, _version | where fieldA like "val*ue\\\\\\\\A" or ends_with(fieldA, "value\\\\B") or starts_with(fieldA, "value\\\\C")'
         ]
     )
 

@@ -246,6 +246,12 @@ class ESQLBackend(TextQueryBackend):
             "HIGH": 73,
             "CRITICAL": 99,
         }
+    
+    def convert_condition_field_eq_val_str(self, cond, state):
+        result = super().convert_condition_field_eq_val_str(cond, state)
+        if result.startswith(self.escape_and_quote_field(cond.field) + " like "):
+            result = result.replace("\\", "\\\\")
+        return result
 
     def flatten_list_of_indices(
         self, nested_list: List[Union[str, List[str]]]
