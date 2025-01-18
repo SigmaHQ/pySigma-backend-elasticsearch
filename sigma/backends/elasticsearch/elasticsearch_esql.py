@@ -250,7 +250,8 @@ class ESQLBackend(TextQueryBackend):
     def convert_condition_field_eq_val_str(self, cond, state):
         result = super().convert_condition_field_eq_val_str(cond, state)
         if result.startswith(self.escape_and_quote_field(cond.field) + " like "):
-            result = result.replace("\\", "\\\\")
+            re_escape = re.compile(r'\\(?!")')
+            result = re_escape.sub(r"\\\\", result)
         return result
 
     def flatten_list_of_indices(
