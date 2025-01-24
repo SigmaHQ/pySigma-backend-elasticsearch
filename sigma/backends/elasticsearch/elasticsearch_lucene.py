@@ -134,6 +134,10 @@ class LuceneBackend(TextQueryBackend):
     # List element separator
     list_separator: ClassVar[str] = " OR "
 
+    # Check if a field exists in the log not the value
+    field_exists_expression: ClassVar[str] = "_exists_:{field}"
+    field_not_exists_expression: ClassVar[str] = "NOT _exists_:{field}"
+    
     # Value not bound to a field
     # Expression for string value not bound to a field as format string with placeholder {value}
     unbound_value_str_expression: ClassVar[str] = "*{value}*"
