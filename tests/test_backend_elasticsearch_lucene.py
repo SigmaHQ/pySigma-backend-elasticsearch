@@ -484,6 +484,26 @@ def test_lucene_windash_contains(lucene_backend: LuceneBackend):
         ]
     )
 
+def test_elasticsearch_exists(lucene_backend: LuceneBackend):
+    assert (
+        lucene_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|exists: yes
+                        fieldB|exists: no
+                    condition: sel
+            """
+            )
+        )
+        == ['_exists_:fieldA AND NOT _exists_:fieldB']
+    )
 
 def test_lucene_reference_query(lucene_backend: LuceneBackend):
     with pytest.raises(
