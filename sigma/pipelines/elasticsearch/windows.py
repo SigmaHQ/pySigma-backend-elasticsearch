@@ -155,6 +155,7 @@ def ecs_windows() -> ProcessingPipeline:
                         "TargetDomainName": "user.domain",
                         "User": "user.name",
                         "WorkstationName": "source.domain",
+                        "Payload": "powershell.file.script_block_text",
                     }
                 ),
                 rule_conditions=[LogsourceCondition(product="windows")],
