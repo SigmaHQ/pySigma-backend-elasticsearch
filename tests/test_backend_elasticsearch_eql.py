@@ -375,6 +375,43 @@ def test_eql_filter_not(eql_backend: EqlBackend):
     assert eql_backend.convert(rule) == ["any where ?Field != null"]
 
 
+def test_eql_correlation(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        r"""
+title: Password Spraying via SChannelName
+id: dcb9bf7c-216b-4a22-80a2-3232284cda18
+name: password_spraying_schannel
+status: experimental
+description: Detecting Password Spraying via SChannelName
+correlation:
+    type: value_count
+    rules:
+        - ntlm_authentification
+    group-by:
+        - SChannelName
+    timespan: 15m
+    condition:
+        field: UserName
+        gt: 35
+---
+title: NTLM Authentification
+id: dcb9bf7c-216b-4a22-80a2-1232284cda18
+name: ntlm_authentification
+logsource:
+    product: windows
+    category: security
+detection:
+    selection:
+        EventID: 8004
+    condition: selection
+        """
+    )
+
+    assert eql_backend.convert(rule) == [
+        "sequence with maxspan=15m \n [any where EventID:8004] by UserName with runs=35"
+    ]
+
+
 def test_eql_angle_brackets(eql_backend: EqlBackend):
     """Test for DSL output with < or > in the values"""
     rule = SigmaCollection.from_yaml(
