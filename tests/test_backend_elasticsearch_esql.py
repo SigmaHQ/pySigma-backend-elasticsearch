@@ -680,7 +680,7 @@ def test_elasticsearch_esql_siemrule_ndjson_with_threat(esql_backend: ESQLBacken
                     fieldA: valueA
                     fieldB: valueB
                 condition: sel
-            tags:   
+            tags:
                 - attack.execution
                 - attack.t1059.001
                 - attack.defense_evasion
