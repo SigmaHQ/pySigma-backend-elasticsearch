@@ -4,6 +4,7 @@ from typing import Iterable, ClassVar, Dict, List, Optional, Pattern, Tuple, Uni
 
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
+from sigma.correlations import SigmaCorrelationRule
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import (
@@ -14,6 +15,7 @@ from sigma.conditions import (
     ConditionFieldEqualsValueExpression,
 )
 from sigma.types import (
+    CompareOperators,
     SigmaCompareExpression,
     SigmaNull,
     SigmaFieldReference,
@@ -121,11 +123,11 @@ class EqlBackend(TextQueryBackend):
     compare_op_expression: ClassVar[str] = "{field} {operator} {value}"
     # Mapping between CompareOperators elements and strings used as replacement
     # for {operator} in compare_op_expression
-    compare_operators: ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
-        SigmaCompareExpression.CompareOperators.LT: "<",
-        SigmaCompareExpression.CompareOperators.LTE: "<=",
-        SigmaCompareExpression.CompareOperators.GT: ">",
-        SigmaCompareExpression.CompareOperators.GTE: ">=",
+    compare_operators: ClassVar[Dict[CompareOperators, str]] = {
+        CompareOperators.LT: "<",
+        CompareOperators.LTE: "<=",
+        CompareOperators.GT: ">",
+        CompareOperators.GTE: ">=",
     }
 
     # Null/None expressions
@@ -147,6 +149,54 @@ class EqlBackend(TextQueryBackend):
     or_in_operator: ClassVar[str] = " like~ "
     # List element separator
     list_separator: ClassVar[str] = ", "
+
+    # Correlations
+    correlation_methods: ClassVar[Dict[str, str]] = {
+        "sequence": "Ordered Sequence",
+        "sample": "Unordered Sequence",
+    }
+
+    default_correlation_method: ClassVar[str] = "sequence"
+
+    correlation_search_single_rule_expression: ClassVar[str] = "any where {query}"
+    correlation_search_multi_rule_expression: ClassVar[str] = "{queries}"
+    correlation_search_multi_rule_query_expression: ClassVar[str] = "{query}"
+    correlation_search_multi_rule_query_expression_joiner: ClassVar[str] = " \n "
+
+    default_correlation_query: ClassVar[str] = {
+        "sequence": "sequence with maxspan={timespan} \n [{search}] {aggregate} {condition}",
+        "sample": "sample {condition} \n [{search}] {aggregate}",
+    }
+
+    value_count_condition_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "with runs={count}"
+    }
+    value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "by {field}"
+    }
+    temporal_aggregation_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "by {groupby}"
+    }
+    temporal_ordered_aggregation_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "{groupby}"
+    }
+    temporal_condition_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "where event_type_count {op} {count}"
+    }
+    event_count_aggregation_expression: ClassVar[Dict[str, str]] = {"sequence": ""}
+    event_count_condition_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "with runs={count}"
+    }
+    temporal_condition_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "with runs={count}"
+    }
+    temporal_ordered_condition_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "with runs={count}"
+    }
+    groupby_expression_nofield: ClassVar = {"sequence": ""}
+    groupby_expression: ClassVar[Dict[str, str]] = {"sequence": "by {fields}"}
+    groupby_field_expression: ClassVar[Dict[str, str]] = {"sequence": "{field},"}
+    groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"sequence": ""}
 
     # Value not bound to a field
     # Expression for string value not bound to a field as format string with placeholder {value}
@@ -300,6 +350,8 @@ class EqlBackend(TextQueryBackend):
         # TODO: implement the per-query output for the output format {{ format }} here. Usually, the generated query is
         # embedded into a template, e.g. a JSON format with additional information from the Sigma rule.
         # TODO: proper type annotation.
+        if isinstance(rule, SigmaCorrelationRule):
+            return f"{query}"
         return f"any where {query}"
 
     def finalize_output_default(self, queries: List[str]) -> Any:

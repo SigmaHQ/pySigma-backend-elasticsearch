@@ -21,7 +21,7 @@ def ecs_zeek_beats() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) for Zeek using filebeat >= 7.6.1",
         priority=20,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=[
             ProcessingItem(
                 identifier=f"zeek_mapping_category_{ category }_to_service_{ service }",
@@ -519,7 +519,7 @@ def ecs_zeek_corelight() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) mapping from Corelight",
         priority=20,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=[
             ProcessingItem(
                 identifier=f"zeek_mapping_category_{ category }_to_service_{ service }",
@@ -1017,7 +1017,7 @@ def zeek_raw() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Zeek raw JSON field naming",
         priority=20,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=[
             ProcessingItem(
                 identifier=f"zeek_mapping_category_{ category }_to_service_{ service }",

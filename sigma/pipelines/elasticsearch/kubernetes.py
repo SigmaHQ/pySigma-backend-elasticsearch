@@ -15,7 +15,7 @@ def ecs_kubernetes() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Kubernetes audit log mappings",
         priority=30,
-        allowed_backends=("elasticsearch", "eql", "lucene"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene"),
         items=[
             ProcessingItem(
                 identifier="index_condition",
