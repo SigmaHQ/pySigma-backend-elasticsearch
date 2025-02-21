@@ -158,14 +158,16 @@ class EqlBackend(TextQueryBackend):
 
     default_correlation_method: ClassVar[str] = "sequence"
 
-    correlation_search_single_rule_expression: ClassVar[str] = "any where {query}"
+    correlation_search_single_rule_expression: ClassVar[str] = "[any where {query}]"
     correlation_search_multi_rule_expression: ClassVar[str] = "{queries}"
-    correlation_search_multi_rule_query_expression: ClassVar[str] = "{query}"
+    correlation_search_multi_rule_query_expression: ClassVar[str] = (
+        "[any where {query}]"
+    )
     correlation_search_multi_rule_query_expression_joiner: ClassVar[str] = " \n "
 
     default_correlation_query: ClassVar[str] = {
-        "sequence": "sequence with maxspan={timespan} \n [{search}] {aggregate} {condition}",
-        "sample": "sample {condition} \n [{search}] {aggregate}",
+        "sequence": "sequence {groupby} with maxspan={timespan} \n {search} {aggregate} {condition}",
+        # "sample": "sample {condition} \n [{search}] {aggregate}",
     }
 
     value_count_condition_expression: ClassVar[Dict[str, str]] = {
@@ -174,14 +176,18 @@ class EqlBackend(TextQueryBackend):
     value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
         "sequence": "by {field}"
     }
+    temporal_correlation_query: ClassVar[Dict[str, str]] = {
+        "sequence": "sample {groupby} \n {search} "
+    }
+    temporal_ordered_correlation_query: ClassVar[Dict[str, str]] = {
+        "sequence": "sequence {groupby} with maxspan={timespan} \n {search} {aggregate} {condition}"
+    }
+
     temporal_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "sequence": "by {groupby}"
+        "sequence": "by {field}",
     }
     temporal_ordered_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "sequence": "{groupby}"
-    }
-    temporal_condition_expression: ClassVar[Dict[str, str]] = {
-        "sequence": "where event_type_count {op} {count}"
+        "sequence": "by {field}"
     }
     event_count_aggregation_expression: ClassVar[Dict[str, str]] = {"sequence": ""}
     event_count_condition_expression: ClassVar[Dict[str, str]] = {
@@ -195,8 +201,8 @@ class EqlBackend(TextQueryBackend):
     }
     groupby_expression_nofield: ClassVar = {"sequence": ""}
     groupby_expression: ClassVar[Dict[str, str]] = {"sequence": "by {fields}"}
-    groupby_field_expression: ClassVar[Dict[str, str]] = {"sequence": "{field},"}
-    groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"sequence": ""}
+    groupby_field_expression: ClassVar[Dict[str, str]] = {"sequence": "{field}"}
+    groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"sequence": ", "}
 
     # Value not bound to a field
     # Expression for string value not bound to a field as format string with placeholder {value}
@@ -563,22 +569,14 @@ class EqlBackend(TextQueryBackend):
             },
             "max_signals": 100,
             "risk_score": (
-                0
+                self.severity_risk_mapping[rule.level.name]
                 if rule.level is not None
-                and str(rule.level.name).lower() == "informational"
-                else (
-                    self.severity_risk_mapping[rule.level.name]
-                    if rule.level is not None
-                    else 21
-                )
-            ),
-            "severity": (
-                "low"
-                if rule.level is None
-                or str(rule.level.name).lower() == "informational"
-                else str(rule.level.name).lower()
+                else 21
             ),
             "risk_score_mapping": [],
+            "severity": (
+                str(rule.level.name).lower() if rule.level is not None else "low"
+            ),
             "severity_mapping": [],
             "threat": list(self.finalize_output_threat_model(rule.tags)),
             "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
