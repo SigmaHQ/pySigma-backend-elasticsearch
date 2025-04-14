@@ -1,4 +1,4 @@
-from typing import ClassVar, Dict, List, Optional, Union
+from typing import ClassVar, Dict, List, Optional, Union, Iterable
 
 from sigma.rule import SigmaRule
 from sigma.conversion.state import ConversionState
@@ -46,7 +46,9 @@ class ElastalertBackend(LuceneBackend):
 
     correlation_search_single_rule_expression: ClassVar[str] = "{query}"
     correlation_condition_mapping: ClassVar[Dict[str, str]] = {
+        SigmaCorrelationConditionOperator.GTE: "max_threshold",
         SigmaCorrelationConditionOperator.GT: "max_threshold",
+        SigmaCorrelationConditionOperator.LTE: "min_threshold",
         SigmaCorrelationConditionOperator.LT: "min_threshold",
     }
 
@@ -77,7 +79,25 @@ class ElastalertBackend(LuceneBackend):
 
         return super().convert_correlation_search(rule, **kwargs)
 
+    def _adjust_condition_count(
+        self,
+        rule: SigmaRule,
+        increase_ops: Iterable[SigmaCorrelationConditionOperator],
+        decrease_ops: Iterable[SigmaCorrelationConditionOperator]
+    ) -> None:
+        if rule.condition.op in increase_ops:
+            rule.condition.count += 1
+        elif rule.condition.op in decrease_ops:
+            rule.condition.count -= 1
+
     def convert_correlation_rule_from_template(self, rule, correlation_type, method):
+        method_name = f"convert_correlation_{correlation_type}_rule"
+
+        if method_name not in type(self).__dict__:
+            raise NotImplementedError(
+                f"Correlation rule type '{correlation_type}' is not supported by backend."
+            )
+
         elastalert_rule = {
             "filter": [
                 {
@@ -97,6 +117,13 @@ class ElastalertBackend(LuceneBackend):
 
     def convert_correlation_event_count_rule(self, rule, output_format = None, method = None):
         elastalert_rule = super().convert_correlation_event_count_rule(rule, output_format, method)
+
+        self._adjust_condition_count(
+            rule,
+            [SigmaCorrelationConditionOperator.GT],
+            [],
+        )
+
         elastalert_rule[0].update({
             "timeframe": {self.timespan_mapping[rule.timespan.unit]: rule.timespan.count},
             "num_events": rule.condition.count,
@@ -106,6 +133,13 @@ class ElastalertBackend(LuceneBackend):
     
     def convert_correlation_value_count_rule(self, rule, output_format = None, method = None):
         elastalert_rule = super().convert_correlation_value_count_rule(rule, output_format, method)
+
+        self._adjust_condition_count(
+            rule,
+            [],
+            [SigmaCorrelationConditionOperator.GTE, SigmaCorrelationConditionOperator.LTE],
+        )
+
         elastalert_rule[0].update({
             "metric_agg_type": "cardinality",
             "metric_agg_key": rule.condition.fieldref,
