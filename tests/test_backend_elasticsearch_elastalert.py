@@ -9,7 +9,7 @@ def fixture_elastalert_backend():
     return ElastalertBackend()
 
 
-def test_event_count_correlation_rule_query(elastalert_backend: ElastalertBackend):
+def test_elastalert_event_count_correlation_rule_query(elastalert_backend: ElastalertBackend):
     correlation_rule = SigmaCollection.from_yaml(
         """
 title: Base rule
@@ -57,7 +57,7 @@ type: frequency
     )
 
 
-def test_event_count_greater_and_equal_correlation_rule_query(elastalert_backend: ElastalertBackend):
+def test_elastalert_event_count_greater_equal_correlation_rule_query(elastalert_backend: ElastalertBackend):
     correlation_rule = SigmaCollection.from_yaml(
         """
 title: Base rule
@@ -105,7 +105,70 @@ type: frequency
     )
 
 
-def test_value_count_correlation_rule_query(elastalert_backend: ElastalertBackend):
+def test_elastalert_event_count_less_correlation_rule_query(elastalert_backend: ElastalertBackend):
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule
+name: base_rule
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+---
+title: Multiple occurrences of base event
+status: test
+correlation:
+    type: event_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+        - fieldD
+    timespan: 15m
+    condition:
+        lt: 10
+            """
+    )
+    with pytest.raises(SigmaFeatureNotSupportedByBackendError):
+        elastalert_backend.convert(correlation_rule)
+
+def test_elastalert_event_count_less_equal_correlation_rule_query(elastalert_backend: ElastalertBackend):
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule
+name: base_rule
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+---
+title: Multiple occurrences of base event
+status: test
+correlation:
+    type: event_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+        - fieldD
+    timespan: 15m
+    condition:
+        lte: 10
+            """
+    )
+    with pytest.raises(SigmaFeatureNotSupportedByBackendError):
+        elastalert_backend.convert(correlation_rule)
+
+
+def test_elastalert_value_count_correlation_rule_query(elastalert_backend: ElastalertBackend):
     correlation_rule = SigmaCollection.from_yaml(
         """
 title: Base rule
@@ -154,7 +217,7 @@ type: metric_aggregation
     )
 
 
-def test_value_count_greater_and_equal_correlation_rule_query(elastalert_backend: ElastalertBackend):
+def test_elastalert_value_count_greater_equal_correlation_rule_query(elastalert_backend: ElastalertBackend):
     correlation_rule = SigmaCollection.from_yaml(
         """
 title: Base rule
@@ -203,7 +266,7 @@ type: metric_aggregation
     )
 
 
-def test_value_count_lesser_and_equal_correlation_rule_query(elastalert_backend: ElastalertBackend):
+def test_elastalert_value_count_less_equal_correlation_rule_query(elastalert_backend: ElastalertBackend):
     correlation_rule = SigmaCollection.from_yaml(
         """
 title: Base rule

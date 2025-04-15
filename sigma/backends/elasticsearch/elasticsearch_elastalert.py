@@ -1,4 +1,4 @@
-from typing import ClassVar, Dict, List, Optional, Union, Iterable
+from typing import ClassVar, Dict, List, Optional, Union, Any
 
 from sigma.rule import SigmaRule
 from sigma.conversion.state import ConversionState
@@ -10,6 +10,7 @@ from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 
 import yaml as YAML
+
 
 class ElastalertBackend(LuceneBackend):
     """
@@ -79,21 +80,10 @@ class ElastalertBackend(LuceneBackend):
 
         return super().convert_correlation_search(rule, **kwargs)
 
-    def _adjust_condition_count(
-        self,
-        rule: SigmaRule,
-        increase_ops: Iterable[SigmaCorrelationConditionOperator],
-        decrease_ops: Iterable[SigmaCorrelationConditionOperator]
-    ) -> None:
-        if rule.condition.op in increase_ops:
-            rule.condition.count += 1
-        elif rule.condition.op in decrease_ops:
-            rule.condition.count -= 1
-
-    def convert_correlation_rule_from_template(self, rule, correlation_type, method):
-        method_name = f"convert_correlation_{correlation_type}_rule"
-
-        if method_name not in type(self).__dict__:
+    def convert_correlation_rule_from_template(
+        self, rule: SigmaCorrelationRule, correlation_type: str, method: str
+    ) -> List[Dict[str, Any]]:
+        if f"convert_correlation_{correlation_type}_rule" not in type(self).__dict__:
             raise NotImplementedError(
                 f"Correlation rule type '{correlation_type}' is not supported by backend."
             )
@@ -115,40 +105,73 @@ class ElastalertBackend(LuceneBackend):
 
         return [elastalert_rule]
 
-    def convert_correlation_event_count_rule(self, rule, output_format = None, method = None):
-        elastalert_rule = super().convert_correlation_event_count_rule(rule, output_format, method)
+    def convert_correlation_event_count_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        if rule.condition.op in [
+            SigmaCorrelationConditionOperator.LT,
+            SigmaCorrelationConditionOperator.LTE,
+        ]:
+            raise SigmaFeatureNotSupportedByBackendError(
+                f"Operator '{rule.condition.op}' is not supported by Elastalert backend for event count correlation rules."
+            )
 
-        self._adjust_condition_count(
-            rule,
-            [SigmaCorrelationConditionOperator.GT],
-            [],
+        elastalert_rule = super().convert_correlation_event_count_rule(
+            rule, output_format, method
         )
 
-        elastalert_rule[0].update({
-            "timeframe": {self.timespan_mapping[rule.timespan.unit]: rule.timespan.count},
-            "num_events": rule.condition.count,
-            "type": "frequency",
-        })
-        return elastalert_rule
-    
-    def convert_correlation_value_count_rule(self, rule, output_format = None, method = None):
-        elastalert_rule = super().convert_correlation_value_count_rule(rule, output_format, method)
-
-        self._adjust_condition_count(
-            rule,
-            [],
-            [SigmaCorrelationConditionOperator.GTE, SigmaCorrelationConditionOperator.LTE],
+        elastalert_rule[0].update(
+            {
+                "timeframe": {
+                    self.timespan_mapping[rule.timespan.unit]: rule.timespan.count
+                },
+                "num_events": rule.condition.count,
+                "type": "frequency",
+            }
         )
 
-        elastalert_rule[0].update({
-            "metric_agg_type": "cardinality",
-            "metric_agg_key": rule.condition.fieldref,
-            "buffer_time": {self.timespan_mapping[rule.timespan.unit]: rule.timespan.count},
-            self.correlation_condition_mapping[rule.condition.op]: rule.condition.count,
-            "type": "metric_aggregation",
-        })
+        if rule.condition.op == SigmaCorrelationConditionOperator.GT:
+            elastalert_rule[0]["num_events"] += 1
+
         return elastalert_rule
-    
+
+    def convert_correlation_value_count_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        elastalert_rule = super().convert_correlation_value_count_rule(
+            rule, output_format, method
+        )
+
+        elastalert_rule[0].update(
+            {
+                "metric_agg_type": "cardinality",
+                "metric_agg_key": rule.condition.fieldref,
+                "buffer_time": {
+                    self.timespan_mapping[rule.timespan.unit]: rule.timespan.count
+                },
+                self.correlation_condition_mapping[
+                    rule.condition.op
+                ]: rule.condition.count,
+                "type": "metric_aggregation",
+            }
+        )
+
+        if rule.condition.op in [
+            SigmaCorrelationConditionOperator.GTE,
+            SigmaCorrelationConditionOperator.LTE,
+        ]:
+            elastalert_rule[0][
+                self.correlation_condition_mapping[rule.condition.op]
+            ] -= 1
+
+        return elastalert_rule
+
     def preprocess_indices(self, indices: List[str]) -> str:
         if not indices:
             return self.state_defaults["index"]
@@ -159,8 +182,7 @@ class ElastalertBackend(LuceneBackend):
         if len(indices) == 1:
             return indices[0]
 
-        # Deduplicate sources using a set
-        indices = list(set(indices))
+        indices = list(set(indices))  # Deduplicate
 
         # Sort the indices to ensure a consistent order as sets are arbitrary ordered
         indices.sort()
@@ -170,11 +192,11 @@ class ElastalertBackend(LuceneBackend):
     def finalize_query(
         self,
         rule: SigmaRule,
-        query: Union[str, DeferredQueryExpression],
+        query: Union[str, Dict[str, Any], DeferredQueryExpression],
         index: int,
         state: ConversionState,
         output_format: str,
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str:
         # If set, load the index from the processing state
         index_state = (
             state.processing_state.get("index", self.state_defaults["index"])
@@ -203,12 +225,18 @@ class ElastalertBackend(LuceneBackend):
                 "type": "any",
             }
 
-        query.update({
-            "description": rule.description if rule.description else "",
-            "name": rule.title if rule.title else "",
-            "index": index_state,
-            "priority": self.severity_risk_mapping[rule.level.name] if rule.level is not None else 1,
-        })
+        query.update(
+            {
+                "description": rule.description if rule.description else "",
+                "name": rule.title if rule.title else "",
+                "index": index_state,
+                "priority": (
+                    self.severity_risk_mapping[rule.level.name]
+                    if rule.level is not None
+                    else 1
+                ),
+            }
+        )
 
         return YAML.dump(query)
 
