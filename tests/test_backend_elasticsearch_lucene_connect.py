@@ -4,6 +4,7 @@ import requests
 import urllib3
 from requests.auth import HTTPBasicAuth
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
+from sigma.pipelines.elasticsearch.windows import ecs_windows
 from sigma.collection import SigmaCollection
 
 urllib3.disable_warnings()
@@ -86,6 +87,8 @@ def fixture_prepare_es_data():
                         "fields": {"keyword": {"type": "keyword"}},
                     },
                     "keywordFieldA": {"type": "keyword"},
+                    "winlog": {"type": "object"},
+                    "event": {"type": "object"},
                 },
                 "dynamic_templates": [
                     {"default": {"match": "*", "mapping": {"type": "keyword"}}}
@@ -304,6 +307,26 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={"quotationMessage": "Failed to generate curve25519 keys"},
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "winlog": {"channel": "Microsoft-Windows-Sysmon/Operational"},
+                "event": {"code": 16},
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "winlog": {"channel": "Microsoft-Windows-SomeThingElse/Operational"},
+                "event": {"code": 16},
+            },
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
@@ -786,4 +809,25 @@ class TestConnectElasticsearch:
         )
 
         result_dsl = lucene_backend.convert(rule, output_format="dsl_lucene")[0]
+        self.query_backend_hits(result_dsl, num_wanted=1)
+
+    def test_connect_lucene_value_with_dash_expression(
+        self, prepare_es_data, lucene_backend: LuceneBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            """
+                title: Test
+                status: test
+                logsource:
+                    product: windows
+                    service: sysmon
+                detection:
+                    sel:
+                        EventID: 16
+                    condition: sel
+            """
+        )
+
+        #result_dsl = lucene_backend.convert(rule, output_format="dsl_lucene")[0]
+        result_dsl = LuceneBackend(ecs_windows()).convert(rule, output_format="dsl_lucene")[0]
         self.query_backend_hits(result_dsl, num_wanted=1)
