@@ -9,7 +9,12 @@ from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 
-import yaml as YAML
+import yaml
+
+try:
+    from yaml import CSafeDumper as Dumper
+except ImportError:
+    from yaml import SafeDumper as Dumper
 
 
 class ElastalertBackend(LuceneBackend):
@@ -238,7 +243,7 @@ class ElastalertBackend(LuceneBackend):
             }
         )
 
-        return YAML.dump(query)
+        return yaml.dump(query, Dumper=Dumper)
 
     def finalize_output_default(self, queries: List[str]) -> List[str]:
         return list(queries)
