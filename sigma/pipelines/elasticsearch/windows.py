@@ -167,7 +167,7 @@ def ecs_windows() -> ProcessingPipeline:
                     FieldNameProcessingItemAppliedCondition(
                         "ecs_windows_field_mapping"
                     ),
-                    IncludeFieldCondition(fields=["\\w+\\."], type="re"),
+                    IncludeFieldCondition(fields=["\\w+\\."], mode="re"),
                 ],
                 field_name_condition_negation=True,
                 field_name_condition_linking=any,
@@ -201,7 +201,7 @@ def ecs_windows_old() -> ProcessingPipeline:
                     FieldNameProcessingItemAppliedCondition(
                         "ecs_windows_field_mapping"
                     ),
-                    IncludeFieldCondition(fields=["\\w+\\."], type="re"),
+                    IncludeFieldCondition(fields=["\\w+\\."], mode="re"),
                 ],
                 field_name_condition_negation=True,
                 field_name_condition_linking=any,
