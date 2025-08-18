@@ -2,11 +2,14 @@ from sigma.pipelines.common import generate_windows_logsource_items
 from sigma.processing.transformations import (
     FieldMappingTransformation,
     AddFieldnamePrefixTransformation,
+    ConvertTypeTransformation,
+    SetValueTransformation,
 )
 from sigma.processing.conditions import (
     LogsourceCondition,
     IncludeFieldCondition,
     FieldNameProcessingItemAppliedCondition,
+    MatchValueCondition,
 )
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 
@@ -172,6 +175,42 @@ def ecs_windows() -> ProcessingPipeline:
                 field_name_condition_negation=True,
                 field_name_condition_linking=any,
                 rule_conditions=[LogsourceCondition(product="windows")],
+            ),
+            ProcessingItem(
+                identifier="network_direction_egress",
+                transformation=SetValueTransformation(value="egress"),
+                field_name_conditions=[
+                    IncludeFieldCondition(fields=["network.direction"]),
+                ],
+                detection_item_conditions=[
+                    MatchValueCondition(value=True, cond="all"),
+                ],
+            ),
+            ProcessingItem(
+                identifier="network_direction_ingress",
+                transformation=SetValueTransformation(value="ingress"),
+                field_name_conditions=[
+                    IncludeFieldCondition(fields=["network.direction"]),
+                ],
+                detection_item_conditions=[
+                    MatchValueCondition(value=False, cond="all"),
+                ],
+            ),
+            ProcessingItem(
+                identifier="values_to_str",
+                transformation=ConvertTypeTransformation(target_type="str"),
+                rule_conditions=[LogsourceCondition(product="windows")],
+                field_name_conditions=[
+                    IncludeFieldCondition(fields=[
+                        "destination.port",
+                        "source.port",
+                        "process.parent.pid",
+                        "process.pid",
+                        "destination.ip",
+                        "source.ip",
+                    ])
+                ],
+                field_name_condition_negation=True,
             ),
         ],
     )

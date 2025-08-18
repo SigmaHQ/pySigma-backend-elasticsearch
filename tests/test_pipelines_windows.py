@@ -1,3 +1,4 @@
+from sigma.backends.elasticsearch.elasticsearch_esql import ESQLBackend
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 from sigma.pipelines.elasticsearch.windows import ecs_windows, ecs_windows_old
 from sigma.collection import SigmaCollection
@@ -25,6 +26,71 @@ def test_ecs_windows():
         )
         == [
             "winlog.channel:Security AND (event.code:123 AND process.executable:test.exe AND winlog.event_data.TestField:test)"
+        ]
+    )
+
+def test_ecs_values_to_str():
+    assert (
+        ESQLBackend(ecs_windows()).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                product: windows
+                service: security
+            detection:
+                sel:
+                    EventID: 123
+                    DestinationIp|cidr: 192.168.0.0/16
+                    DestinationPort: 80
+                condition: sel
+        """
+            )
+        ) == [
+            'from * metadata _id, _index, _version | where winlog.channel=="Security" and event.code=="123" and cidr_match(destination.ip, "192.168.0.0/16") and destination.port==80'
+        ]
+    )
+
+def test_ecs_network_direction_str_egress():
+    assert (
+        ESQLBackend(ecs_windows()).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: network_connection
+                product: windows
+            detection:
+                sel:
+                    Initiated: true
+                condition: sel
+        """
+            )
+        ) == [
+            'from * metadata _id, _index, _version | where network.direction=="egress"'
+        ]
+    )
+
+def test_ecs_network_direction_str_ingress():
+    assert (
+        ESQLBackend(ecs_windows()).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: network_connection
+                product: windows
+            detection:
+                sel:
+                    Initiated: false
+                condition: sel
+        """
+            )
+        ) == [
+            'from * metadata _id, _index, _version | where network.direction=="ingress"'
         ]
     )
 
