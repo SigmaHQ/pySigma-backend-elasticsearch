@@ -50,6 +50,48 @@ def test_ecs_eventid_str():
         ]
     )
 
+def test_ecs_network_direction_str_egress():
+    assert (
+        ESQLBackend(ecs_windows()).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: network_connection
+                product: windows
+            detection:
+                sel:
+                    Initiated: true
+                condition: sel
+        """
+            )
+        ) == [
+            'from * metadata _id, _index, _version | where network.direction=="egress"'
+        ]
+    )
+
+def test_ecs_network_direction_str_ingress():
+    assert (
+        ESQLBackend(ecs_windows()).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: network_connection
+                product: windows
+            detection:
+                sel:
+                    Initiated: false
+                condition: sel
+        """
+            )
+        ) == [
+            'from * metadata _id, _index, _version | where network.direction=="ingress"'
+        ]
+    )
+
 
 def test_ecs_windows_fields():
     rule = ecs_windows().apply(

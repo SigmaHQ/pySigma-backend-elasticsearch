@@ -3,11 +3,13 @@ from sigma.processing.transformations import (
     FieldMappingTransformation,
     AddFieldnamePrefixTransformation,
     ConvertTypeTransformation,
+    SetValueTransformation,
 )
 from sigma.processing.conditions import (
     LogsourceCondition,
     IncludeFieldCondition,
     FieldNameProcessingItemAppliedCondition,
+    MatchValueCondition,
 )
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 
@@ -181,6 +183,26 @@ def ecs_windows() -> ProcessingPipeline:
                     IncludeFieldCondition(fields=["event.id", "event.code"]),
                 ],
                 rule_conditions=[LogsourceCondition(product="windows")],
+            ),
+            ProcessingItem(
+                identifier="network_direction_egress",
+                transformation=SetValueTransformation(value="egress"),
+                field_name_conditions=[
+                    IncludeFieldCondition(fields=["network.direction"]),
+                ],
+                detection_item_conditions=[
+                    MatchValueCondition(value=True, cond="all"),
+                ],
+            ),
+            ProcessingItem(
+                identifier="network_direction_ingress",
+                transformation=SetValueTransformation(value="ingress"),
+                field_name_conditions=[
+                    IncludeFieldCondition(fields=["network.direction"]),
+                ],
+                detection_item_conditions=[
+                    MatchValueCondition(value=False, cond="all"),
+                ],
             ),
         ],
     )
