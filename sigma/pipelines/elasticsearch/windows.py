@@ -2,6 +2,7 @@ from sigma.pipelines.common import generate_windows_logsource_items
 from sigma.processing.transformations import (
     FieldMappingTransformation,
     AddFieldnamePrefixTransformation,
+    ConvertTypeTransformation,
 )
 from sigma.processing.conditions import (
     LogsourceCondition,
@@ -171,6 +172,14 @@ def ecs_windows() -> ProcessingPipeline:
                 ],
                 field_name_condition_negation=True,
                 field_name_condition_linking=any,
+                rule_conditions=[LogsourceCondition(product="windows")],
+            ),
+            ProcessingItem(
+                identifier="eventid_to_str",
+                transformation=ConvertTypeTransformation(target_type="str"),
+                field_name_conditions=[
+                    IncludeFieldCondition(fields=["event.id", "event.code"]),
+                ],
                 rule_conditions=[LogsourceCondition(product="windows")],
             ),
         ],

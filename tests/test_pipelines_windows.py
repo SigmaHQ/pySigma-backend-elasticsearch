@@ -1,3 +1,4 @@
+from sigma.backends.elasticsearch.elasticsearch_esql import ESQLBackend
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 from sigma.pipelines.elasticsearch.windows import ecs_windows, ecs_windows_old
 from sigma.collection import SigmaCollection
@@ -25,6 +26,27 @@ def test_ecs_windows():
         )
         == [
             "winlog.channel:Security AND (event.code:123 AND process.executable:test.exe AND winlog.event_data.TestField:test)"
+        ]
+    )
+
+def test_ecs_eventid_str():
+    assert (
+        ESQLBackend(ecs_windows()).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                product: windows
+                service: security
+            detection:
+                sel:
+                    EventID: "123"
+                condition: sel
+        """
+            )
+        ) == [
+            'from * metadata _id, _index, _version | where winlog.channel=="Security" and event.code=="123"'
         ]
     )
 
