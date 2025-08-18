@@ -177,14 +177,6 @@ def ecs_windows() -> ProcessingPipeline:
                 rule_conditions=[LogsourceCondition(product="windows")],
             ),
             ProcessingItem(
-                identifier="eventid_to_str",
-                transformation=ConvertTypeTransformation(target_type="str"),
-                field_name_conditions=[
-                    IncludeFieldCondition(fields=["event.id", "event.code"]),
-                ],
-                rule_conditions=[LogsourceCondition(product="windows")],
-            ),
-            ProcessingItem(
                 identifier="network_direction_egress",
                 transformation=SetValueTransformation(value="egress"),
                 field_name_conditions=[
@@ -203,6 +195,11 @@ def ecs_windows() -> ProcessingPipeline:
                 detection_item_conditions=[
                     MatchValueCondition(value=False, cond="all"),
                 ],
+            ),
+            ProcessingItem(
+                identifier="values_to_str",
+                transformation=ConvertTypeTransformation(target_type="str"),
+                rule_conditions=[LogsourceCondition(product="windows")],
             ),
         ],
     )
