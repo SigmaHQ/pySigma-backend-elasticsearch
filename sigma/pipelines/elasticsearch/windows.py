@@ -200,6 +200,17 @@ def ecs_windows() -> ProcessingPipeline:
                 identifier="values_to_str",
                 transformation=ConvertTypeTransformation(target_type="str"),
                 rule_conditions=[LogsourceCondition(product="windows")],
+                field_name_conditions=[
+                    IncludeFieldCondition(fields=[
+                        "destination.port",
+                        "source.port",
+                        "process.parent.pid",
+                        "process.pid",
+                        "destination.ip",
+                        "source.ip",
+                    ])
+                ],
+                field_name_condition_negation=True,
             ),
         ],
     )
