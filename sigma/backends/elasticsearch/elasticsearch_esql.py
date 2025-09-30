@@ -452,7 +452,11 @@ class ESQLBackend(TextQueryBackend):
                 "falsePositives": rule.falsepositives,
                 "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
                 "immutable": False,
-                "license": "DRL",
+                "license": (
+                    rule.license 
+                    if rule.license is not None 
+                    else "DRL"
+                ),
                 "outputIndex": "",
                 "meta": {
                     "from": "1m",
@@ -522,7 +526,11 @@ class ESQLBackend(TextQueryBackend):
                 else str(rule.level.name).lower()
             ),
             "note": "",
-            "license": "DRL",
+            "license": (
+                rule.license 
+                if rule.license is not None 
+                else "DRL"
+            ),
             "output_index": "",
             "meta": {
                 "from": "1m",

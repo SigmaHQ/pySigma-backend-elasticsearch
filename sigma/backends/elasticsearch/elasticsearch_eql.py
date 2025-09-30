@@ -436,7 +436,11 @@ class EqlBackend(TextQueryBackend):
                 "falsePositives": rule.falsepositives,
                 "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
                 "immutable": False,
-                "license": "DRL",
+                "license": (
+                    rule.license 
+                    if rule.license is not None 
+                    else "DRL"
+                ),
                 "outputIndex": "",
                 "meta": {
                     "from": "1m",
@@ -504,7 +508,11 @@ class EqlBackend(TextQueryBackend):
             "false_positives": rule.falsepositives,
             "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
             "immutable": False,
-            "license": "DRL",
+            "license": (
+                rule.license 
+                if rule.license is not None 
+                else "DRL"
+            ),
             "output_index": "",
             "meta": {
                 "from": "1m",
@@ -522,8 +530,7 @@ class EqlBackend(TextQueryBackend):
             ),
             "severity": (
                 "low"
-                if rule.level is None
-                or str(rule.level.name).lower() == "informational"
+                if rule.level is None or str(rule.level.name).lower() == "informational"
                 else str(rule.level.name).lower()
             ),
             "risk_score_mapping": [],
