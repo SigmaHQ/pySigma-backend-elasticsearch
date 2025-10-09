@@ -137,7 +137,7 @@ class LuceneBackend(TextQueryBackend):
     # Check if a field exists in the log not the value
     field_exists_expression: ClassVar[str] = "_exists_:{field}"
     field_not_exists_expression: ClassVar[str] = "NOT _exists_:{field}"
-    
+
     # Value not bound to a field
     # Expression for string value not bound to a field as format string with placeholder {value}
     unbound_value_str_expression: ClassVar[str] = "*{value}*"
@@ -426,7 +426,11 @@ class LuceneBackend(TextQueryBackend):
                 "falsePositives": rule.falsepositives,
                 "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
                 "immutable": False,
-                "license": "DRL",
+                "license": (
+                    rule.license 
+                    if rule.license is not None 
+                    else "DRL"
+                ),
                 "outputIndex": "",
                 "meta": {
                     "from": "1m",
@@ -497,7 +501,11 @@ class LuceneBackend(TextQueryBackend):
             "false_positives": rule.falsepositives,
             "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
             "immutable": False,
-            "license": "DRL",
+            "license": (
+                rule.license 
+                if rule.license is not None 
+                else "DRL"
+            ),
             "output_index": "",
             "meta": {
                 "from": "1m",
