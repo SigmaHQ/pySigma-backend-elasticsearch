@@ -29,9 +29,7 @@ class ESQLBackend(TextQueryBackend):
     }
     requires_pipeline: bool = True
 
-    query_expression: ClassVar[str] = (
-        "from {state[index]} metadata {state[metadata]} | where {query}"
-    )
+    query_expression: ClassVar[str] = "{query}"
     state_defaults: ClassVar[Dict[str, str]] = {
         "index": "*",
         "metadata": "_id, _index, _version",
@@ -278,13 +276,11 @@ class ESQLBackend(TextQueryBackend):
 
         return ",".join(indices)
 
-    def finalize_query(
+    def finish_query(
         self,
         rule: SigmaRule,
         query: Union[str, DeferredQueryExpression],
-        index: int,
         state: ConversionState,
-        output_format: str,
     ) -> Union[str, DeferredQueryExpression]:
         # If set, load the index from the processing state
         index_state = (
@@ -302,11 +298,30 @@ class ESQLBackend(TextQueryBackend):
 
         # Save the processed index back to the processing state
         state.processing_state["index"] = index_state
-        return super().finalize_query(rule, query, index, state, output_format)
+        
+        return query
+    
+    def finalize_query_default(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> str:
+        """Finalize query for default output format by adding the FROM clause."""
+        # Get metadata from processing state
+        metadata = state.processing_state.get("metadata", self.state_defaults["metadata"])
+        index_state = state.processing_state.get("index", self.state_defaults["index"])
+        
+        # Add the 'from' clause to the query
+        return f"from {index_state} metadata {metadata} | where {query}"
 
     def finalize_query_kibana_ndjson(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> Dict:
+        # Get metadata from processing state
+        metadata = state.processing_state.get("metadata", self.state_defaults["metadata"])
+        index_state = state.processing_state.get("index", self.state_defaults["index"])
+        
+        # Add the 'from' clause to the query
+        full_query = f"from {index_state} metadata {metadata} | where {query}"
+        
         return {
             "attributes": {
                 "columns": [],
@@ -322,7 +337,7 @@ class ESQLBackend(TextQueryBackend):
                     "searchSourceJSON": str(
                         json.dumps(
                             {
-                                "query": {"esql": query},
+                                "query": {"esql": full_query},
                                 "index": {
                                     "title": state.processing_state["index"],
                                     "timeFieldName": "@timestamp",
@@ -431,6 +446,12 @@ class ESQLBackend(TextQueryBackend):
         If you want to have a nice importable NDJSON File for the Security Rule importer
         use pySigma Format 'siem_rule_ndjson' instead.
         """
+        # Get metadata from processing state
+        metadata = state.processing_state.get("metadata", self.state_defaults["metadata"])
+        index_state = state.processing_state.get("index", self.state_defaults["index"])
+        
+        # Add the 'from' clause to the query
+        full_query = f"from {index_state} metadata {metadata} | where {query}"
 
         return {
             "name": f"SIGMA - {rule.title}",
@@ -482,7 +503,7 @@ class ESQLBackend(TextQueryBackend):
                 "exceptionsList": [],
                 "type": "esql",
                 "language": "esql",
-                "query": query,
+                "query": full_query,
             },
             "rule_type_id": "siem.esqlRule",
             "notify_when": "onActiveAlert",
@@ -500,6 +521,12 @@ class ESQLBackend(TextQueryBackend):
 
         https://www.elastic.co/guide/en/security/current/rules-ui-management.html#import-export-rules-ui
         """
+        # Get metadata from processing state
+        metadata = state.processing_state.get("metadata", self.state_defaults["metadata"])
+        index_state = state.processing_state.get("index", self.state_defaults["index"])
+        
+        # Add the 'from' clause to the query
+        full_query = f"from {index_state} metadata {metadata} | where {query}"
 
         return {
             "id": str(rule.id),
@@ -553,7 +580,7 @@ class ESQLBackend(TextQueryBackend):
             "setup": "",
             "type": "esql",
             "language": "esql",
-            "query": query,
+            "query": full_query,
             "actions": [],
         }
 
