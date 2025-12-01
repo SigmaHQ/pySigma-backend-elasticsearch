@@ -56,9 +56,6 @@ def es_available_test():
 
 
 @pytest.fixture(scope="class", name="prepare_es_data")
-@pytest.mark.skipif(
-    es_available_test is False, reason="ES not available... Skipping tests..."
-)
 def fixture_prepare_es_data():
     if es_available_test():
         requests.delete(

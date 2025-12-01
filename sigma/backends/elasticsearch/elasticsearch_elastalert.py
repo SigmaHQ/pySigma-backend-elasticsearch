@@ -193,6 +193,9 @@ class ElastalertBackend(LuceneBackend):
         indices.sort()
 
         return ",".join(indices)
+    
+    def finish_query(self, rule, query, state):
+        return query
 
     def finalize_query(
         self,
