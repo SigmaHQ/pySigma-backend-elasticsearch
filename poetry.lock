@@ -518,14 +518,14 @@ diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pysigma"
-version = "1.0.1"
+version = "1.0.2"
 description = "Sigma rule processing and conversion tools"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "pysigma-1.0.1-py3-none-any.whl", hash = "sha256:ff73a1fb00af5ee5088fbe5a1f78bf6ae8d0baf7f404299f240dec7a153c4b30"},
-    {file = "pysigma-1.0.1.tar.gz", hash = "sha256:0e1c783bbe660485dd5a89301879c704a8c8758f4d2996c4d359a38595bdeb09"},
+    {file = "pysigma-1.0.2-py3-none-any.whl", hash = "sha256:1390a900ec53c6f960016bdc0dc818f0ea6bdf11add4006933a7a010b5abf4ca"},
+    {file = "pysigma-1.0.2.tar.gz", hash = "sha256:81ead98efac4aea4f861545659ee5bc70c44b1c7c55651b71f40c5bf3293bc20"},
 ]
 
 [package.dependencies]
@@ -787,4 +787,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "2bdadd3be8c4b12a4a287e40c592f86cbb3d7d981e1d2d55b8ca48f8a3900f9e"
+content-hash = "0348cc03060443f10ffefcd47640fe469ac54490af21e6ba4bd9a1e2f82799b7"
