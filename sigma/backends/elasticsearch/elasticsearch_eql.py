@@ -222,51 +222,45 @@ class EqlBackend(TextQueryBackend):
         original = s.original
         parts = list(s)
         
-        # Check if original string ends with \* or \? pattern
-        # This indicates a trailing backslash followed by a wildcard added by modifier
-        if len(original) >= 2:
-            # Check for patterns: ends with \* or starts with *\ followed by ... \*
-            # or middle positions with \*
+        # Find all literal wildcard characters in parts (not SpecialChars)
+        literal_wildcards_in_parts = []
+        for part in parts:
+            if isinstance(part, str) and part in ('*', '?'):
+                literal_wildcards_in_parts.append(part)
+        
+        # Only process if we have literal wildcards AND backslash-wildcard patterns in original
+        if literal_wildcards_in_parts and len(original) >= 2:
+            # Find positions of \* and \? patterns in original string
+            backslash_wildcard_positions = []
             for i in range(len(original) - 1):
                 if original[i] == '\\' and original[i+1] in ('*', '?'):
-                    wildcard_char = original[i+1]
-                    
-                    # Now check if this backslash is missing from parts
-                    # by checking if we have a literal wildcard character in parts
-                    # at a corresponding position
-                    has_literal_wildcard = False
-                    for part in parts:
-                        if isinstance(part, str) and part == wildcard_char:
-                            has_literal_wildcard = True
-                            break
-                    
-                    if has_literal_wildcard:
-                        # We found a literal wildcard that should have been preceded
-                        # by a backslash. The converted output needs fixing.
-                        # The converted string will have: ...\<wildcard>
-                        # We need to change it to: ...\\<wildcard>
-                        
-                        if wildcard_char == '*':
-                            # Find and replace \* with \\* (but need to be careful with escaping)
-                            # In the converted string, \* appears as \\* in Python repr
-                            # We need to make it \\\\* in Python repr (which is \\* in actual output)
-                            if converted.endswith('\\*"'):
-                                converted = converted[:-3] + '\\\\*"'
-                            elif converted.endswith('\\*'):
-                                converted = converted[:-2] + '\\\\*'
-                            # Also check for middle positions
-                            elif '\\*' in converted:
-                                # Replace the pattern more carefully
-                                converted = converted.replace('\\*', '\\\\*', 1)
-                        elif wildcard_char == '?':
-                            if converted.endswith('\\?"'):
-                                converted = converted[:-3] + '\\\\?"'
-                            elif converted.endswith('\\?'):
-                                converted = converted[:-2] + '\\\\?'
-                            elif '\\?' in converted:
-                                converted = converted.replace('\\?', '\\\\?', 1)
-                        
-                        break  # Only fix once per string
+                    backslash_wildcard_positions.append((i, original[i+1]))
+            
+            # If we have both literal wildcards in parts and backslash-wildcard patterns
+            # in original, we likely have the issue
+            if backslash_wildcard_positions:
+                # We need to add extra escaping for patterns like \* to become \\*
+                # In the converted string, these appear as \* and need to become \\*
+                # The safest approach is to check end positions first, then work backwards
+                
+                # Check if converted ends with \* or \? pattern (most common case)
+                if converted.endswith('\\*"') or converted.endswith('\\*'):
+                    if converted.endswith('\\*"'):
+                        converted = converted[:-3] + '\\\\*"'
+                    else:
+                        converted = converted[:-2] + '\\\\*'
+                elif converted.endswith('\\?"') or converted.endswith('\\?'):
+                    if converted.endswith('\\?"'):
+                        converted = converted[:-3] + '\\\\?"'
+                    else:
+                        converted = converted[:-2] + '\\\\?'
+                # For middle positions, we need to be more careful
+                # This handles cases where the backslash-wildcard is not at the end
+                else:
+                    # Replace all occurrences of \* with \\* and \? with \\?
+                    # This is safe because legitimate \* in the string would already be \\*
+                    converted = converted.replace('\\*', '\\\\*')
+                    converted = converted.replace('\\?', '\\\\?')
         
         return converted
 

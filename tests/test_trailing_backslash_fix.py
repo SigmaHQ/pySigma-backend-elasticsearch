@@ -204,3 +204,27 @@ def test_eql_contains_middle_backslash_only(eql_backend: EqlBackend):
     result = eql_backend.convert(rule)[0]
     # Middle backslash should be escaped but no trailing wildcard issue
     assert 'path:"*C:\\\\Windows*"' in result
+
+
+def test_eql_contains_literal_asterisk_middle(eql_backend: EqlBackend):
+    """Test contains with a literal asterisk in the middle (escaped with backslash in Sigma)."""
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test Literal Asterisk in Middle
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|contains: 'test\*value'
+                condition: sel
+        """
+    )
+    
+    result = eql_backend.convert(rule)[0]
+    # The \* means literal asterisk, should be escaped once in EQL
+    # Python repr shows \\* but actual string has \*
+    assert result == 'any where field:"*test\\*value*"'
+    # Verify actual backslash count (not Python repr)
+    assert result.count('\\') == 1
