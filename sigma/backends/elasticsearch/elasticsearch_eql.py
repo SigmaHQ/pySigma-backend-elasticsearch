@@ -197,6 +197,78 @@ class EqlBackend(TextQueryBackend):
             "CRITICAL": 99,
         }
 
+    def convert_value_str(self, s: "sigma.types.SigmaString", state: ConversionState) -> str:
+        """
+        Convert a SigmaString into a plain string which can be used in query.
+        
+        This override fixes the issue where trailing backslashes before wildcards 
+        added by modifiers (contains, startswith) are not properly escaped in EQL queries.
+        
+        When a Sigma rule value ends with a backslash (e.g., "\\Desktop\\"), and a wildcard
+        modifier adds a wildcard character after it, the SigmaString internal representation
+        loses the trailing backslash before the wildcard. This method detects this pattern 
+        by checking the original string and ensures the backslash before wildcards is 
+        properly escaped.
+        """
+        # First, get the standard conversion
+        converted = super().convert_value_str(s, state)
+        
+        # Check the original string for backslashes before wildcard positions
+        # The issue occurs when:
+        # - original string has pattern: ...\* or ...\? (backslash before wildcard)
+        # - But the parts list has: ..., <literal '*'> or ..., <literal '?'>
+        # - Missing the backslash before the literal wildcard character
+        
+        original = s.original
+        parts = list(s)
+        
+        # Find all literal wildcard characters in parts (not SpecialChars) using list comprehension
+        literal_wildcards_in_parts = [
+            part for part in parts 
+            if isinstance(part, str) and part in ('*', '?')
+        ]
+        
+        # Only process if we have literal wildcards AND backslash-wildcard patterns in original
+        if literal_wildcards_in_parts and len(original) >= 2:
+            # Find positions of \* and \? patterns in original string
+            backslash_wildcard_positions = [
+                (i, original[i+1]) 
+                for i in range(len(original) - 1)
+                if original[i] == '\\' and original[i+1] in ('*', '?')
+            ]
+            
+            # If we have both literal wildcards in parts and backslash-wildcard patterns
+            # in original, we likely have the issue
+            if backslash_wildcard_positions:
+                # We need to add extra escaping for patterns like \* to become \\*
+                # In the converted string, these appear as \* and need to become \\*
+                # The safest approach is to check end positions first, then work backwards
+                
+                # Helper function to fix ending patterns
+                def fix_ending(text: str, pattern: str) -> str:
+                    """Fix backslash escaping for patterns at the end of the string."""
+                    quoted_pattern = pattern + '"'
+                    if text.endswith(quoted_pattern):
+                        return text[:-len(quoted_pattern)] + '\\' + quoted_pattern
+                    elif text.endswith(pattern):
+                        return text[:-len(pattern)] + '\\' + pattern
+                    return text
+                
+                # Check if converted ends with \* or \? pattern (most common case)
+                if converted.endswith('\\*"') or converted.endswith('\\*'):
+                    converted = fix_ending(converted, '\\*')
+                elif converted.endswith('\\?"') or converted.endswith('\\?'):
+                    converted = fix_ending(converted, '\\?')
+                # For middle positions, we need to be more careful
+                # This handles cases where the backslash-wildcard is not at the end
+                else:
+                    # Replace all occurrences of \* with \\* and \? with \\?
+                    # This is safe because legitimate \* in the string would already be \\*
+                    converted = converted.replace('\\*', '\\\\*')
+                    converted = converted.replace('\\?', '\\\\?')
+        
+        return converted
+
     @staticmethod
     def _is_field_null_condition(cond: ConditionItem) -> bool:
         return isinstance(cond, ConditionFieldEqualsValueExpression) and isinstance(
