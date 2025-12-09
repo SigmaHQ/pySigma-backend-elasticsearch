@@ -197,6 +197,79 @@ class EqlBackend(TextQueryBackend):
             "CRITICAL": 99,
         }
 
+    def convert_value_str(self, s: "sigma.types.SigmaString", state: ConversionState) -> str:
+        """
+        Convert a SigmaString into a plain string which can be used in query.
+        
+        This override fixes the issue where trailing backslashes before wildcards 
+        added by modifiers (contains, startswith) are not properly escaped in EQL queries.
+        
+        When a Sigma rule value ends with a backslash (e.g., "\\Desktop\\"), and a wildcard
+        modifier adds a wildcard character after it, the SigmaString internal representation
+        loses the trailing backslash before the wildcard. This method detects this pattern 
+        by checking the original string and ensures the backslash before wildcards is 
+        properly escaped.
+        """
+        # First, get the standard conversion
+        converted = super().convert_value_str(s, state)
+        
+        # Check the original string for backslashes before wildcard positions
+        # The issue occurs when:
+        # - original string has pattern: ...\* or ...\? (backslash before wildcard)
+        # - But the parts list has: ..., <literal '*'> or ..., <literal '?'>
+        # - Missing the backslash before the literal wildcard character
+        
+        original = s.original
+        parts = list(s)
+        
+        # Check if original string ends with \* or \? pattern
+        # This indicates a trailing backslash followed by a wildcard added by modifier
+        if len(original) >= 2:
+            # Check for patterns: ends with \* or starts with *\ followed by ... \*
+            # or middle positions with \*
+            for i in range(len(original) - 1):
+                if original[i] == '\\' and original[i+1] in ('*', '?'):
+                    wildcard_char = original[i+1]
+                    
+                    # Now check if this backslash is missing from parts
+                    # by checking if we have a literal wildcard character in parts
+                    # at a corresponding position
+                    has_literal_wildcard = False
+                    for part in parts:
+                        if isinstance(part, str) and part == wildcard_char:
+                            has_literal_wildcard = True
+                            break
+                    
+                    if has_literal_wildcard:
+                        # We found a literal wildcard that should have been preceded
+                        # by a backslash. The converted output needs fixing.
+                        # The converted string will have: ...\<wildcard>
+                        # We need to change it to: ...\\<wildcard>
+                        
+                        if wildcard_char == '*':
+                            # Find and replace \* with \\* (but need to be careful with escaping)
+                            # In the converted string, \* appears as \\* in Python repr
+                            # We need to make it \\\\* in Python repr (which is \\* in actual output)
+                            if converted.endswith('\\*"'):
+                                converted = converted[:-3] + '\\\\*"'
+                            elif converted.endswith('\\*'):
+                                converted = converted[:-2] + '\\\\*'
+                            # Also check for middle positions
+                            elif '\\*' in converted:
+                                # Replace the pattern more carefully
+                                converted = converted.replace('\\*', '\\\\*', 1)
+                        elif wildcard_char == '?':
+                            if converted.endswith('\\?"'):
+                                converted = converted[:-3] + '\\\\?"'
+                            elif converted.endswith('\\?'):
+                                converted = converted[:-2] + '\\\\?'
+                            elif '\\?' in converted:
+                                converted = converted.replace('\\?', '\\\\?', 1)
+                        
+                        break  # Only fix once per string
+        
+        return converted
+
     @staticmethod
     def _is_field_null_condition(cond: ConditionItem) -> bool:
         return isinstance(cond, ConditionFieldEqualsValueExpression) and isinstance(
