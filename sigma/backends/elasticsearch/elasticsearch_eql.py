@@ -222,19 +222,20 @@ class EqlBackend(TextQueryBackend):
         original = s.original
         parts = list(s)
         
-        # Find all literal wildcard characters in parts (not SpecialChars)
-        literal_wildcards_in_parts = []
-        for part in parts:
-            if isinstance(part, str) and part in ('*', '?'):
-                literal_wildcards_in_parts.append(part)
+        # Find all literal wildcard characters in parts (not SpecialChars) using list comprehension
+        literal_wildcards_in_parts = [
+            part for part in parts 
+            if isinstance(part, str) and part in ('*', '?')
+        ]
         
         # Only process if we have literal wildcards AND backslash-wildcard patterns in original
         if literal_wildcards_in_parts and len(original) >= 2:
             # Find positions of \* and \? patterns in original string
-            backslash_wildcard_positions = []
-            for i in range(len(original) - 1):
-                if original[i] == '\\' and original[i+1] in ('*', '?'):
-                    backslash_wildcard_positions.append((i, original[i+1]))
+            backslash_wildcard_positions = [
+                (i, original[i+1]) 
+                for i in range(len(original) - 1)
+                if original[i] == '\\' and original[i+1] in ('*', '?')
+            ]
             
             # If we have both literal wildcards in parts and backslash-wildcard patterns
             # in original, we likely have the issue
@@ -243,17 +244,21 @@ class EqlBackend(TextQueryBackend):
                 # In the converted string, these appear as \* and need to become \\*
                 # The safest approach is to check end positions first, then work backwards
                 
+                # Helper function to fix ending patterns
+                def fix_ending(text: str, pattern: str) -> str:
+                    """Fix backslash escaping for patterns at the end of the string."""
+                    quoted_pattern = pattern + '"'
+                    if text.endswith(quoted_pattern):
+                        return text[:-len(quoted_pattern)] + '\\' + quoted_pattern
+                    elif text.endswith(pattern):
+                        return text[:-len(pattern)] + '\\' + pattern
+                    return text
+                
                 # Check if converted ends with \* or \? pattern (most common case)
                 if converted.endswith('\\*"') or converted.endswith('\\*'):
-                    if converted.endswith('\\*"'):
-                        converted = converted[:-3] + '\\\\*"'
-                    else:
-                        converted = converted[:-2] + '\\\\*'
+                    converted = fix_ending(converted, '\\*')
                 elif converted.endswith('\\?"') or converted.endswith('\\?'):
-                    if converted.endswith('\\?"'):
-                        converted = converted[:-3] + '\\\\?"'
-                    else:
-                        converted = converted[:-2] + '\\\\?'
+                    converted = fix_ending(converted, '\\?')
                 # For middle positions, we need to be more careful
                 # This handles cases where the backslash-wildcard is not at the end
                 else:
