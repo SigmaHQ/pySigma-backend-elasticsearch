@@ -1,4 +1,5 @@
 from sigma.backends.elasticsearch.elasticsearch_esql import ESQLBackend
+from sigma.backends.elasticsearch.elasticsearch_eql import EqlBackend
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 from sigma.pipelines.elasticsearch.windows import ecs_windows, ecs_windows_old
 from sigma.collection import SigmaCollection
@@ -182,3 +183,23 @@ def test_ecs_windows_other_logsource():
         )
         == ["Image:test"]
     )
+
+def test_ecs_windows_eql_contains_expression_with_trailing_backslash_multivalue():
+    eql_backend = EqlBackend(ecs_windows())
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                product: test_product
+            detection:
+                sel:
+                    field|contains:
+                    - 'valueA\'
+                    - 'valueB'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        r'any where field like~ ("*valueA\\*", "*valueB*")'
+    ]
