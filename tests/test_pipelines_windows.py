@@ -201,5 +201,5 @@ def test_ecs_windows_eql_contains_expression_with_trailing_backslash_multivalue(
         """
     )
     assert eql_backend.convert(rule) == [
-        r'any where Image like~ ("*valueA\\*", "*valueB*")'
+        r'any where process.executable like~ ("*valueA\\*", "*valueB*")'
     ]
