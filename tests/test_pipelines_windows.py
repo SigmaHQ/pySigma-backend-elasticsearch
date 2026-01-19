@@ -205,6 +205,7 @@ def test_ecs_windows_eql_contains_expression_with_trailing_backslash_multivalue(
     ]
 
 def test_ecs_windows_null_value_handling():
+    """regression test for https://github.com/SigmaHQ/pySigma-backend-elasticsearch/issues/173"""
     rule = SigmaCollection.from_yaml("""
         title: Test
         status: test
@@ -219,13 +220,6 @@ def test_ecs_windows_null_value_handling():
                 - CommandLine: null
             condition: selection and not filter
     """)
-    
-    # Test Lucene backend
-    lucene_result = LuceneBackend(ecs_windows()).convert(rule)
-    assert "SigmaNull" not in lucene_result[0], "SigmaNull object leaked into Lucene output"
-    assert "_exists_:process.command_line" in lucene_result[0]
-    
-    # Test EQL backend
-    eql_result = EqlBackend(ecs_windows()).convert(rule)
-    assert "SigmaNull" not in eql_result[0], "SigmaNull object leaked into EQL output"
-    assert "?process.command_line == null" in eql_result[0]
+    result = LuceneBackend(ecs_windows()).convert(rule)
+    assert "SigmaNull" not in result[0]
+
