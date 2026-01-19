@@ -203,3 +203,29 @@ def test_ecs_windows_eql_contains_expression_with_trailing_backslash_multivalue(
     assert eql_backend.convert(rule) == [
         r'any where process.executable like~ ("*valueA\\*", "*valueB*")'
     ]
+
+def test_ecs_windows_null_value_handling():
+    rule = SigmaCollection.from_yaml("""
+        title: Test
+        status: test
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine|endswith: svchost.exe
+            filter:
+                - ParentImage|endswith: rpcnet.exe
+                - CommandLine: null
+            condition: selection and not filter
+    """)
+    
+    # Test Lucene backend
+    lucene_result = LuceneBackend(ecs_windows()).convert(rule)
+    assert "SigmaNull" not in lucene_result[0], "SigmaNull object leaked into Lucene output"
+    assert "_exists_:process.command_line" in lucene_result[0]
+    
+    # Test EQL backend
+    eql_result = EqlBackend(ecs_windows()).convert(rule)
+    assert "SigmaNull" not in eql_result[0], "SigmaNull object leaked into EQL output"
+    assert "?process.command_line == null" in eql_result[0]
