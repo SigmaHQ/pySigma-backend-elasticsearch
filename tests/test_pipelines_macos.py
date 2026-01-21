@@ -31,9 +31,9 @@ def test_ecs_macos_esf_process_creation():
     query = result[0]
     print(f"\nQuery: {query}\n")
     
-    # Field mapping: Image -> process.executable
+    # Field mapping: Image → process.executable
     assert "process.executable" in query, f"Expected 'process.executable' in query, got: {query}"
-    # Field mapping: CommandLine -> process.command_line
+    # Field mapping: CommandLine → process.command_line
     assert "process.command_line" in query, f"Expected 'process.command_line' in query, got: {query}"
 
 
@@ -58,12 +58,12 @@ def test_ecs_macos_esf_file_event():
     query = result[0]
     print(f"\nQuery: {query}\n")
     
-    # Field mapping: TargetFilename -> file.path
+    # Field mapping: TargetFilename → file.path
     assert "file.path" in query, f"Expected 'file.path' in query, got: {query}"
 
 
 def test_ecs_macos_esf_field_mapping():
-    """Test comprehensive Sigma -> ECS field mappings."""
+    """Test comprehensive Sigma → ECS field mappings."""
     result = LuceneBackend(ecs_macos_esf()).convert(
         SigmaCollection.from_yaml("""
             title: Test Field Mapping

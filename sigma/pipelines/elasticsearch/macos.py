@@ -10,9 +10,9 @@ rules (which use Sigma taxonomy like Image, CommandLine, User) to queries
 that target the ECS fields in the collected data.
 
 Data Flow:
-    eslogger -> esf_collector.py -> Elasticsearch (ECS fields)
-                                        |
-    Sigma Rule (Sigma taxonomy) -> macos.py -> Lucene Query (ECS fields)
+    eslogger → esf_collector.py → Elasticsearch (ECS fields)
+                                        ↑
+    Sigma Rule (Sigma taxonomy) → macos.py → Lucene Query (ECS fields)
 
 Field Naming Conventions (matches Elastic Defend):
 - Process: process.executable, process.name, process.pid, process.args
@@ -49,11 +49,11 @@ def ecs_macos_esf() -> ProcessingPipeline:
     Sigma rules use taxonomy field names:
     - Image, CommandLine, ProcessId, User, TargetFilename
     
-    This pipeline transforms: Sigma taxonomy -> ECS fields
+    This pipeline transforms: Sigma taxonomy → ECS fields
     """
     
     # ========================================================================
-    # FIELD MAPPINGS: Sigma Taxonomy -> ECS (Elastic Common Schema)
+    # FIELD MAPPINGS: Sigma Taxonomy → ECS (Elastic Common Schema)
     # ========================================================================
     # These mappings align with Elastic Defend's ECS field naming conventions.
     # All ECS fields have been verified against the official ECS specification:
@@ -67,7 +67,7 @@ def ecs_macos_esf() -> ProcessingPipeline:
         # ====================================================================
         # PROCESS FIELDS (ECS: process.*)
         # ====================================================================
-        # Sigma taxonomy -> ECS process fields
+        # Sigma taxonomy → ECS process fields
         "Image": "process.executable",               # Process executable path
         "ProcessId": "process.pid",                  # Process ID
         "ProcessName": "process.name",               # Process name (basename)
