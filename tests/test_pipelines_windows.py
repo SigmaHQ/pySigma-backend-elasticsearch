@@ -203,3 +203,23 @@ def test_ecs_windows_eql_contains_expression_with_trailing_backslash_multivalue(
     assert eql_backend.convert(rule) == [
         r'any where process.executable like~ ("*valueA\\*", "*valueB*")'
     ]
+
+def test_ecs_windows_null_value_handling():
+    """regression test for https://github.com/SigmaHQ/pySigma-backend-elasticsearch/issues/173"""
+    rule = SigmaCollection.from_yaml("""
+        title: Test
+        status: test
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine|endswith: svchost.exe
+            filter:
+                - ParentImage|endswith: rpcnet.exe
+                - CommandLine: null
+            condition: selection and not filter
+    """)
+    result = LuceneBackend(ecs_windows()).convert(rule)
+    assert "SigmaNull" not in result[0]
+

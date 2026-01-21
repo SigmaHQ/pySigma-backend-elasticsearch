@@ -10,6 +10,7 @@ from sigma.processing.conditions import (
     IncludeFieldCondition,
     FieldNameProcessingItemAppliedCondition,
     MatchValueCondition,
+    IsNullCondition,
 )
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 
@@ -211,6 +212,10 @@ def ecs_windows() -> ProcessingPipeline:
                     ])
                 ],
                 field_name_condition_negation=True,
+                detection_item_conditions=[
+                    IsNullCondition(cond="any"),
+                ],
+                detection_item_condition_negation=True,
             ),
         ],
     )
