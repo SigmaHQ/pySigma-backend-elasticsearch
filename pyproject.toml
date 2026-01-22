@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pySigma-backend-elasticsearch"
-version = "2.0.1"
+version = "2.0.2"
 description = "pySigma Elasticsearch backend supporting Lucene, ES|QL (with correlations) and EQL queries"
 readme = "README.md"
 authors = ["Thomas Patzke <thomas@patzke.org>", "Hendrik Baecker <hb@process-zero.de>"]
