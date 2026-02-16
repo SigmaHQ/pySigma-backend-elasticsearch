@@ -11,7 +11,7 @@ def fixture_eql_backend():
 
 def test_event_count_correlation_rule_stats_query(eql_backend: EqlBackend):
     correlation_rule = SigmaCollection.from_yaml(
-        """
+        r"""
 title: Base rule
 name: base_rule
 status: test
@@ -41,8 +41,135 @@ correlation:
         'sequence by fieldC, fieldD with maxspan=15m \n [any where fieldA:"value1" and fieldB:"value2"]  with runs=10'
     ]
 
+def test_value_count_correlation_rule_stats_query(eql_backend):
+    correlation_rule = SigmaCollection.from_yaml(
+            r"""
+title: Base rule
+name: base_rule
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+---
+title: Multiple occurrences of base event
+status: test
+correlation:
+    type: value_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+    timespan: 15m
+    condition:
+        lt: 10
+        field: fieldD
+            """
+        )
+    assert eql_backend.convert(correlation_rule) == [
+        """sequence by fieldC with maxspan=15m \n [any where fieldA:"value1" and fieldB:"value2"] by fieldD with runs=10"""
+    ]
 
-def test_eql_correlation_event_count(eql_backend: EqlBackend):
+def test_temporal_correlation_rule_stats_query(eql_backend):
+    # Rule differs from cookie cutter template, 'aliases' key removed as not supported by EQL.
+    # EQL does not support timespans when events are un-ordered.
+    # See: https://www.elastic.co/docs/reference/query-languages/eql/eql-syntax#eql-samples
+    correlation_rule = SigmaCollection.from_yaml(
+        r"""
+title: Base rule 1
+name: base_rule_1
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+---
+title: Base rule 2
+name: base_rule_2
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value3
+        fieldB: value4
+    condition: selection
+---
+title: Temporal correlation rule
+status: test
+correlation:
+    type: temporal
+    rules:
+        - base_rule_1
+        - base_rule_2
+    group-by:
+        - fieldC
+    timespan: 15m
+""" 
+        )
+    assert(eql_backend.convert(correlation_rule) == [
+        """sample by fieldC \n [any where fieldA:"value1" and fieldB:"value2"] \n [any where fieldA:"value3" and fieldB:"value4"] """
+    ]
+    )
+
+def test_temporal_ordered_correlation_rule_stats_query(eql_backend):
+    # Rule differs from cookie cutter template, 'aliases' key removed as not supported by EQL.
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule 1
+name: base_rule_1
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+---
+title: Base rule 2
+name: base_rule_2
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value3
+        fieldB: value4
+    condition: selection
+---
+title: Ordered temporal correlation rule
+status: test
+correlation:
+    type: temporal_ordered
+    rules:
+        - base_rule_1
+        - base_rule_2
+    group-by:
+        - fieldC
+    timespan: 15m
+"""
+    )
+    assert eql_backend.convert(correlation_rule) == [
+        """sequence by fieldC with maxspan=15m \n [any where fieldA:"value1" and fieldB:"value2"] \n [any where fieldA:"value3" and fieldB:"value4"] """
+    ]
+#   Full diff:
+#     [
+#         'sequence by fieldC with maxspan=15m \n'
+#         ' [any where fieldA:"value1" and fieldB:"value2"] \n'
+#   -     ' [any where fieldA:"value3" and fieldB:"value4"] ',
+#   +     ' [any where fieldA:"value3" and fieldB:"value4"] by None with runs=2',
+#   ?                                                       +++++++++++++++++++
+#     ]
+# More investigation is needed as to where this is coming from at the end of base_rule_2
+
+def test_event_count_correlation_rule(eql_backend: EqlBackend):
     rule = SigmaCollection.from_yaml(
         r"""
 title: Password Spraying via SChannelName
@@ -78,7 +205,7 @@ detection:
     ]
 
 
-def test_eql_correlation_value_count(eql_backend: EqlBackend):
+def test_value_count_correlation_rule(eql_backend: EqlBackend):
     rule = SigmaCollection.from_yaml(
         r"""
 title: Password Spraying via SChannelName
@@ -115,7 +242,7 @@ detection:
     ]
 
 
-def test_eql_correlation_temporal(eql_backend: EqlBackend):
+def test_temporal_correlation_rule(eql_backend: EqlBackend):
     rule = SigmaCollection.from_yaml(
         r"""
 title: Suspicious File Open Activity
@@ -163,7 +290,7 @@ detection:
     ]
 
 
-def test_eql_correlation_temporal_ordered(eql_backend: EqlBackend):
+def test_temporal_ordered_correlation_rule(eql_backend: EqlBackend):
     rule = SigmaCollection.from_yaml(
         r"""
 title: Password Spraying via SChannelName

@@ -352,24 +352,17 @@ class EqlBackend(TextQueryBackend):
 
     def finalize_query_default(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
-    ) -> Any:
-        # TODO: implement the per-query output for the output format {{ format }} here. Usually, the generated query is
-        # embedded into a template, e.g. a JSON format with additional information from the Sigma rule.
-        # TODO: proper type annotation.
+    ) -> str:
+        """
+        Output a plain EQL query as a string. No metadata from the Sigma rule is outputted.
+        Use in the Correlation tab of Security Timeline (https://www.elastic.co/docs/solutions/security/investigate/timeline)
+        Or in a new detection rule (https://www.elastic.co/docs/solutions/security/detect-and-alert/create-detection-rule#create-eql-rule)
+        """
         if isinstance(rule, SigmaCorrelationRule):
             return f"{query}"
         return f"any where {query}"
 
-    def finalize_output_default(self, queries: List[str]) -> Any:
-        # TODO: implement the output finalization for all generated queries for the format {{ format }} here. Usually,
-        # the single generated queries are embedded into a structure, e.g. some JSON or XML that can be imported into
-        # the SIEM.
-        # TODO: proper type annotation. Sigma CLI supports:
-        # - str: output as is.
-        # - bytes: output in file only (e.g. if a zip package is output).
-        # - dict: output serialized as JSON.
-        # - list of str: output each item as is separated by two newlines.
-        # - list of dict: serialize each item as JSON and output all separated by newlines.
+    def finalize_output_default(self, queries: List[str]) -> List[str]:
         return list(queries)
 
     def finalize_query_eqlapi(
