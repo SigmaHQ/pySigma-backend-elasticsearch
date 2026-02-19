@@ -169,6 +169,60 @@ correlation:
 #     ]
 # More investigation is needed as to where this is coming from at the end of base_rule_2
 
+def test_temporal_ordered_correlation_rule_stats_query_three_base_rules(eql_backend):
+    correlation_rule = SigmaCollection.from_yaml(
+        r"""
+title: Base rule 1
+name: base_rule_1
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+---
+title: Base rule 2
+name: base_rule_2
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value3
+        fieldB: value4
+    condition: selection
+---
+title: Base rule 3
+name: base_rule_3
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value5
+        fieldB: value6
+    condition: selection
+---
+title: Ordered temporal correlation rule
+status: test
+correlation:
+    type: temporal_ordered
+    rules:
+        - base_rule_1
+        - base_rule_2
+        - base_rule_3
+    group-by:
+        - fieldC
+    timespan: 15m
+"""
+    )
+    assert eql_backend.convert(correlation_rule) == [
+        """sequence by fieldC with maxspan=15m \n [any where fieldA:"value1" and fieldB:"value2"] \n [any where fieldA:"value3" and fieldB:"value4"] \n [any where fieldA:"value5" and fieldB:"value6"]  """
+    ]
+
+
 def test_event_count_correlation_rule(eql_backend: EqlBackend):
     rule = SigmaCollection.from_yaml(
         r"""
