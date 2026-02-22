@@ -471,11 +471,9 @@ def test_eql_keyword_quotes(eql_backend: EqlBackend):
                 condition: sel and keywords
         """
     )
-    result = eql_backend.convert(rule)
-    assert (
-        result[0]
-        == 'any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")'
-    )
+    assert eql_backend.convert(rule) == [
+        'any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")'
+    ]
 
 
 def test_elasticsearch_eqlapi(eql_backend: EqlBackend):
@@ -496,7 +494,16 @@ def test_elasticsearch_eqlapi(eql_backend: EqlBackend):
         """
     )
     result = eql_backend.convert(rule, output_format="eqlapi")
-    assert result[0] == {"query": 'any where fieldA:"valueA" and fieldB:"valueB"'}
+    assert eql_backend.convert(rule, output_format="eqlapi") == [
+        """
+        GET /logs-*/_eql/search
+            {
+                "query": \"\"\"
+                    any where fieldA:"valueA" and fieldB:"valueB"
+                \"\"\"
+            }
+        """
+    ]
 
 
 def test_eql_keyword_quotes_eqlapi(eql_backend: EqlBackend):
@@ -521,9 +528,16 @@ def test_eql_keyword_quotes_eqlapi(eql_backend: EqlBackend):
         """
     )
     result = eql_backend.convert(rule, output_format="eqlapi")
-    assert result[0] == {
-        "query": 'any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")'
-    }
+    assert eql_backend.convert(rule, output_format="eqlapi") == [
+        """
+        GET /logs-*/_eql/search
+            {
+                "query": \"\"\"
+                    any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")
+                \"\"\"
+            }
+        """
+    ]
 
 
 def test_lucene_reference_query(eql_backend: EqlBackend):

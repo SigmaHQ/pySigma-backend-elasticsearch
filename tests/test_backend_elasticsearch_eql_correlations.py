@@ -219,7 +219,7 @@ correlation:
 """
     )
     assert eql_backend.convert(correlation_rule) == [
-        """sequence by fieldC with maxspan=15m \n [any where fieldA:"value1" and fieldB:"value2"] \n [any where fieldA:"value3" and fieldB:"value4"] \n [any where fieldA:"value5" and fieldB:"value6"]  """
+        """sequence by fieldC with maxspan=15m \n [any where fieldA:"value1" and fieldB:"value2"] \n [any where fieldA:"value3" and fieldB:"value4"] \n [any where fieldA:"value5" and fieldB:"value6"] """
     ]
 
 

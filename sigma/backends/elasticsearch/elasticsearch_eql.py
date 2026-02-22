@@ -346,6 +346,13 @@ class EqlBackend(TextQueryBackend):
             index_state = self.index_names
         if not isinstance(index_state, list):
             index_state = [index_state]
+
+        # Handle the case where the base rule does not specify a groupby field but the backend adds the expression anyway
+        temporal_ordered_expression_pattern = re.compile(r"by None with runs=\d+$")
+        m = re.search(temporal_ordered_expression_pattern, query) # Returns None if not found
+        if m:
+            query = query[:m.start()] + query[m.end():] # Strip the matched string from the query
+
         # Save the processed index back to the processing state
         state.processing_state["index"] = index_state
         return super().finalize_query(rule, query, index, state, output_format)
@@ -367,11 +374,20 @@ class EqlBackend(TextQueryBackend):
 
     def finalize_query_eqlapi(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
-    ) -> Dict:
+    ) -> str:
         """
-        Create EQL Queries ready to be used against the '_eql/search' API Endpoint.
+        Create EQL Queries ready to be used against the '/{index_pattern}_eql/search' API Endpoint.
+        Reference: https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-eql-search
         """
-        return {"query": f"any where {query}"}
+        return f"""
+        GET /logs-*/_eql/search
+            {{
+                "query": \"\"\"
+                    any where {query}
+                \"\"\"
+            }}
+        """
+        #{"query": f"any where {query}"}
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
         attack_tags = [t for t in tags if t.namespace == "attack"]
