@@ -153,7 +153,7 @@ class EqlBackend(TextQueryBackend):
     # Correlations
     correlation_methods: ClassVar[Dict[str, str]] = {
         "sequence": "Ordered Sequence",
-        "sample": "Unordered Sequence",
+        # "sample": "Unordered Sequence", # Removed due to lack of implementation.
     }
 
     default_correlation_method: ClassVar[str] = "sequence"
