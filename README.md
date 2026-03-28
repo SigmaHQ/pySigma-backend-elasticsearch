@@ -261,3 +261,15 @@ The output can be imported directly into Kibana as a Detection Rule.
 ### Lucene siem_rule_ndjson
 
 > To be continued...
+
+## Known Limitations
+
+### ES|QL Correlation Rules: Static Time Boundaries
+
+ES|QL correlation rules (event count, value count, and temporal correlation types) use `DATE_TRUNC()` to assign events to fixed, epoch-aligned time buckets. This means that the `timespan` window in a correlation rule is aligned to clock boundaries rather than being a true sliding window.
+
+**Consequence:** A correlation rule with a `timespan` of `5m` only matches if all relevant events appear within the same clock-aligned 5-minute interval (e.g. 17:15:00–17:20:00 or 17:20:00–17:25:00, where the end is exclusive). If events straddle a boundary — some falling in one bucket and some in the next — neither bucket may independently meet the detection threshold, resulting in a false negative.
+
+**Example:** Five SSH authentication failures spanning the 17:19–17:20 boundary would be split into two buckets (4 events + 1 event). A rule requiring 5 distinct usernames would not fire, even though all 5 events occurred within a 5-minute window.
+
+This behavior is [described in the Sigma correlation rules specification](https://github.com/SigmaHQ/sigma-specification/blob/main/specification/sigma-correlation-rules-specification.md#compatibility) and is an intentional trade-off, as ES|QL does not natively support true sliding-window aggregations. Users authoring correlation rules should be aware that detections may be missed when attack activity straddles a clock-aligned bucket boundary.
