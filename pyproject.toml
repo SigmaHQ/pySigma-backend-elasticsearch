@@ -27,7 +27,7 @@ packages = [
 pytest = "^9.0"
 pytest-cov = "^7.0"
 coverage = "^7.14"
-requests = "^2.32"
+requests = "^2.34"
 defusedxml = "^0.7.1"
 
 [build-system]
