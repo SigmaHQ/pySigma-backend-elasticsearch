@@ -26,7 +26,7 @@ packages = [
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0"
 pytest-cov = "^7.0"
-coverage = "^7.12"
+coverage = "^7.14"
 requests = "^2.32"
 defusedxml = "^0.7.1"
 
