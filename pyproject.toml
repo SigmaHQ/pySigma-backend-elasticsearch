@@ -1,6 +1,6 @@
 [project]
 name = "pySigma-backend-elasticsearch"
-version = "2.0.2"
+version = "2.0.3"
 description = "pySigma Elasticsearch backend supporting Lucene, ES|QL (with correlations) and EQL queries"
 readme = "README.md"
 authors = [
