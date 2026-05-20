@@ -728,7 +728,7 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(
             tags:
                 - attack.execution
                 - attack.t1059.001
-                - attack.defense_evasion
+                - attack.stealth
                 - attack.t1027
         """
     )
@@ -781,7 +781,7 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(
                 "tactic": {
                     "id": "TA0005",
                     "reference": "https://attack.mitre.org/tactics/TA0005",
-                    "name": "Defense Evasion",
+                    "name": "Stealth",
                 },
                 "framework": "MITRE ATT&CK",
                 "technique": [
