@@ -221,3 +221,224 @@ transformations:
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats event_type_count=count_distinct(event_type) by timebucket, fieldC
 | where event_type_count >= 2"""
     ]
+
+
+def test_event_count_correlation_with_fields_in_correlation_rule(esql_backend: ESQLBackend):
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule
+name: base_rule
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+    condition: selection
+---
+title: Multiple occurrences of base event
+status: test
+correlation:
+    type: event_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+    timespan: 5m
+    condition:
+        gte: 10
+fields:
+    - fieldD
+    - fieldE
+        """
+    )
+    assert esql_backend.convert(correlation_rule) == [
+        """from * metadata _id, _index, _version | where fieldA=="value1"
+| eval timebucket=date_trunc(5minutes, @timestamp) | stats event_count=count(), fieldD=values(fieldD), fieldE=values(fieldE) by timebucket, fieldC
+| where event_count >= 10"""
+    ]
+
+
+def test_event_count_correlation_with_fields_in_referenced_rule(esql_backend: ESQLBackend):
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule
+name: base_rule
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+    condition: selection
+fields:
+    - fieldD
+---
+title: Multiple occurrences of base event
+status: test
+correlation:
+    type: event_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+    timespan: 5m
+    condition:
+        gte: 10
+        """
+    )
+    assert esql_backend.convert(correlation_rule) == [
+        """from * metadata _id, _index, _version | where fieldA=="value1"
+| eval timebucket=date_trunc(5minutes, @timestamp) | stats event_count=count(), fieldD=values(fieldD) by timebucket, fieldC
+| where event_count >= 10"""
+    ]
+
+
+def test_event_count_correlation_fields_exclude_groupby(esql_backend: ESQLBackend):
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule
+name: base_rule
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+    condition: selection
+---
+title: Multiple occurrences of base event
+status: test
+correlation:
+    type: event_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+    timespan: 5m
+    condition:
+        gte: 10
+fields:
+    - fieldC
+    - fieldD
+        """
+    )
+    assert esql_backend.convert(correlation_rule) == [
+        """from * metadata _id, _index, _version | where fieldA=="value1"
+| eval timebucket=date_trunc(5minutes, @timestamp) | stats event_count=count(), fieldD=values(fieldD) by timebucket, fieldC
+| where event_count >= 10"""
+    ]
+
+
+def test_event_count_correlation_no_fields_no_values(esql_backend: ESQLBackend):
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule
+name: base_rule
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+    condition: selection
+---
+title: Multiple occurrences of base event
+status: test
+correlation:
+    type: event_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+    timespan: 5m
+    condition:
+        gte: 10
+        """
+    )
+    assert esql_backend.convert(correlation_rule) == [
+        """from * metadata _id, _index, _version | where fieldA=="value1"
+| eval timebucket=date_trunc(5minutes, @timestamp) | stats event_count=count() by timebucket, fieldC
+| where event_count >= 10"""
+    ]
+
+
+def test_value_count_correlation_with_fields(esql_backend: ESQLBackend):
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule
+name: base_rule
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+    condition: selection
+---
+title: Multiple occurrences of base event
+status: test
+correlation:
+    type: value_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+    timespan: 5m
+    condition:
+        lt: 10
+        field: fieldD
+fields:
+    - fieldE
+        """
+    )
+    assert esql_backend.convert(correlation_rule) == [
+        """from * metadata _id, _index, _version | where fieldA=="value1"
+| eval timebucket=date_trunc(5minutes, @timestamp) | stats value_count=count_distinct(fieldD), fieldE=values(fieldE) by timebucket, fieldC
+| where value_count < 10"""
+    ]
+
+
+def test_temporal_correlation_with_fields(esql_backend: ESQLBackend):
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Base rule 1
+name: base_rule_1
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+    condition: selection
+---
+title: Base rule 2
+name: base_rule_2
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value2
+    condition: selection
+---
+title: Temporal correlation rule
+status: test
+correlation:
+    type: temporal
+    rules:
+        - base_rule_1
+        - base_rule_2
+    group-by:
+        - fieldC
+    timespan: 5m
+fields:
+    - fieldD
+        """
+    )
+    assert esql_backend.convert(correlation_rule) == [
+        """from * metadata _id, _index, _version | where (fieldA=="value1") or (fieldA=="value2")
+| eval event_type=case(fieldA=="value1", "base_rule_1", fieldA=="value2", "base_rule_2")
+| eval timebucket=date_trunc(5minutes, @timestamp) | stats event_type_count=count_distinct(event_type), fieldD=values(fieldD) by timebucket, fieldC
+| where event_type_count >= 2"""
+    ]

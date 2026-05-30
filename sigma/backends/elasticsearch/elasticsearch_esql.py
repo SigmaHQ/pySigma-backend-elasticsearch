@@ -188,14 +188,20 @@ class ESQLBackend(TextQueryBackend):
     # correlation_search_field_normalization_expression_joiner: ClassVar[str] = ""
 
     event_count_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats event_count=count(){groupby}"
+        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats event_count=count(){fields}{groupby}"
     }
     value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats value_count=count_distinct({field}){groupby}"
+        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats value_count=count_distinct({field}){fields}{groupby}"
     }
     temporal_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats event_type_count=count_distinct(event_type){groupby}"
+        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats event_type_count=count_distinct(event_type){fields}{groupby}"
     }
+
+    correlation_fields_expression: ClassVar[Dict[str, str]] = {"stats": "{fields}"}
+    correlation_fields_field_expression: ClassVar[Dict[str, str]] = {
+        "stats": ", {field}=values({field})"
+    }
+    correlation_fields_field_expression_joiner: ClassVar[Dict[str, str]] = {"stats": ""}
 
     timespan_mapping: ClassVar[Dict[str, str]] = {
         "s": "seconds",
