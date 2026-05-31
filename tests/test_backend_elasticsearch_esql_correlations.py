@@ -254,7 +254,7 @@ fields:
     )
     assert esql_backend.convert(correlation_rule) == [
         """from * metadata _id, _index, _version | where fieldA=="value1"
-| eval timebucket=date_trunc(5minutes, @timestamp) | stats event_count=count(), fieldD=values(fieldD), fieldE=values(fieldE) by timebucket, fieldC
+| eval timebucket=date_trunc(5minutes, @timestamp) | stats event_count=count() by timebucket, fieldC
 | where event_count >= 10"""
     ]
 
@@ -306,6 +306,9 @@ detection:
     selection:
         fieldA: value1
     condition: selection
+fields:
+    - fieldC
+    - fieldD
 ---
 title: Multiple occurrences of base event
 status: test
@@ -318,9 +321,6 @@ correlation:
     timespan: 5m
     condition:
         gte: 10
-fields:
-    - fieldC
-    - fieldD
         """
     )
     assert esql_backend.convert(correlation_rule) == [
@@ -375,6 +375,8 @@ detection:
     selection:
         fieldA: value1
     condition: selection
+fields:
+    - fieldE
 ---
 title: Multiple occurrences of base event
 status: test
@@ -388,8 +390,6 @@ correlation:
     condition:
         lt: 10
         field: fieldD
-fields:
-    - fieldE
         """
     )
     assert esql_backend.convert(correlation_rule) == [
@@ -411,6 +411,8 @@ detection:
     selection:
         fieldA: value1
     condition: selection
+fields:
+    - fieldD
 ---
 title: Base rule 2
 name: base_rule_2
@@ -432,8 +434,6 @@ correlation:
     group-by:
         - fieldC
     timespan: 5m
-fields:
-    - fieldD
         """
     )
     assert esql_backend.convert(correlation_rule) == [
