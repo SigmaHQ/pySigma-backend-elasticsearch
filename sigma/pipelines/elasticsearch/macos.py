@@ -154,7 +154,7 @@ def ecs_macos_esf() -> ProcessingPipeline:
         # Target process (the process being injected/accessed)
         "TargetImage": "target.process.executable.caseless",  # Target process executable
         "TargetProcessId": "target.process.pid",     # Target process PID
-        "TargetProcessName": "target.process.name",  # Target process name
+        "TargetProcessName": "target.process.name.caseless",  # Target process name
         "TargetProcessGUID": "target.process.entity_id",  # Target entity ID
         
         # ====================================================================
