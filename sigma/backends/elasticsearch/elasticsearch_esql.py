@@ -4,7 +4,6 @@ from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.conversion.base import TextQueryBackend
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
 from sigma.types import SigmaCompareExpression
-from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 import sigma
 import re
 import json
@@ -370,6 +369,8 @@ class ESQLBackend(TextQueryBackend):
         return list(queries)
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
+        from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
+        
         attack_tags = [t for t in tags if t.namespace == "attack"]
         if not len(attack_tags) >= 2:
             return []

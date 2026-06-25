@@ -20,7 +20,6 @@ from sigma.types import (
     SpecialChars,
     SigmaNumber,
 )
-from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import ipaddress
 import sigma
@@ -323,6 +322,8 @@ class EqlBackend(TextQueryBackend):
         return {"query": f"any where {query}"}
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
+        from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
+        
         attack_tags = [t for t in tags if t.namespace == "attack"]
         if not len(attack_tags) >= 2:
             return []
