@@ -26,7 +26,7 @@ def test_ecs_windows():
             )
         )
         == [
-            "winlog.channel:Security AND (event.code:123 AND process.executable:test.exe AND winlog.event_data.TestField:test)"
+            "winlog.channel:Security AND (event.code:123 AND process.executable.caseless:test.exe AND winlog.event_data.TestField:test)"
         ]
     )
 
@@ -201,7 +201,7 @@ def test_ecs_windows_eql_contains_expression_with_trailing_backslash_multivalue(
         """
     )
     assert eql_backend.convert(rule) == [
-        r'any where process.executable like~ ("*valueA\\*", "*valueB*")'
+        r'any where process.executable.caseless like~ ("*valueA\\*", "*valueB*")'
     ]
 
 def test_ecs_windows_null_value_handling():
@@ -223,3 +223,54 @@ def test_ecs_windows_null_value_handling():
     result = LuceneBackend(ecs_windows()).convert(rule)
     assert "SigmaNull" not in result[0]
 
+
+def test_ecs_windows_caseless_fields():
+    """Test that caseless fields are used for process.executable and process.name fields - issue #178"""
+    assert (
+        LuceneBackend(ecs_windows()).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test Rule with Image Match
+            status: test
+            logsource:
+                category: process_creation
+                product: windows
+            detection:
+                selection:
+                    Image|endswith: '\\svchost.exe'
+                filter_main_img_location:
+                    Image:
+                        - 'C:\\Windows\\System32\\svchost.exe'
+                        - 'C:\\Windows\\SysWOW64\\svchost.exe'
+                condition: selection and not 1 of filter_main_*
+        """
+            )
+        )
+        == [
+            "process.executable.caseless:*\\\\svchost.exe AND (NOT (process.executable.caseless:(C\\:\\\\Windows\\\\System32\\\\svchost.exe OR C\\:\\\\Windows\\\\SysWOW64\\\\svchost.exe)))"
+        ]
+    )
+
+def test_ecs_windows_parent_caseless_fields():
+    """Test that caseless fields are used for parent process fields - issue #178"""
+    assert (
+        LuceneBackend(ecs_windows()).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test Parent Process Fields
+            status: test
+            logsource:
+                category: process_creation
+                product: windows
+            detection:
+                sel:
+                    ParentImage|endswith: '\\cmd.exe'
+                    ParentProcessName: 'cmd.exe'
+                condition: sel
+        """
+            )
+        )
+        == [
+            "process.parent.executable.caseless:*\\\\cmd.exe AND process.parent.name.caseless:cmd.exe"
+        ]
+    )
