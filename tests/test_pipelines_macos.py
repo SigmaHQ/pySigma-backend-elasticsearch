@@ -31,8 +31,8 @@ def test_ecs_macos_esf_process_creation():
     query = result[0]
     print(f"\nQuery: {query}\n")
     
-    # Field mapping: Image → process.executable
-    assert "process.executable" in query, f"Expected 'process.executable' in query, got: {query}"
+    # Field mapping: Image → process.executable.caseless
+    assert "process.executable.caseless" in query, f"Expected 'process.executable.caseless' in query, got: {query}"
     # Field mapping: CommandLine → process.command_line
     assert "process.command_line" in query, f"Expected 'process.command_line' in query, got: {query}"
 
@@ -87,10 +87,10 @@ def test_ecs_macos_esf_field_mapping():
     print(f"\nQuery: {query}\n")
     
     # Process fields
-    assert "process.executable" in query, f"Expected 'process.executable', got: {query}"
+    assert "process.executable.caseless" in query, f"Expected 'process.executable.caseless', got: {query}"
     assert "process.pid" in query, f"Expected 'process.pid', got: {query}"
     assert "process.user.name" in query, f"Expected 'process.user.name', got: {query}"
-    assert "process.parent.executable" in query, f"Expected 'process.parent.executable', got: {query}"
+    assert "process.parent.executable.caseless" in query, f"Expected 'process.parent.executable.caseless', got: {query}"
 
 
 def test_ecs_macos_esf_authentication():
@@ -141,7 +141,7 @@ def test_ecs_macos_esf_process_injection():
     print(f"\nQuery: {query}\n")
     
     # Injection fields
-    assert "process.executable" in query, f"Expected 'process.executable' (from SourceImage), got: {query}"
+    assert "process.executable.caseless" in query, f"Expected 'process.executable.caseless' (from SourceImage), got: {query}"
     assert "target.process.pid" in query, f"Expected 'target.process.pid', got: {query}"
 
 
@@ -168,7 +168,7 @@ def test_ecs_macos_esf_process_signal():
     print(f"\nQuery: {query}\n")
     
     # Signal fields
-    assert "process.executable" in query, f"Expected 'process.executable', got: {query}"
+    assert "process.executable.caseless" in query, f"Expected 'process.executable.caseless', got: {query}"
     assert "signal.number" in query, f"Expected 'signal.number', got: {query}"
 
 

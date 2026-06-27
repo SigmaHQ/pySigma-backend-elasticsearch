@@ -68,16 +68,16 @@ def ecs_macos_esf() -> ProcessingPipeline:
         # PROCESS FIELDS (ECS: process.*)
         # ====================================================================
         # Sigma taxonomy → ECS process fields
-        "Image": "process.executable",               # Process executable path
+        "Image": "process.executable.caseless",               # Process executable path
         "ProcessId": "process.pid",                  # Process ID
-        "ProcessName": "process.name",               # Process name (basename)
+        "ProcessName": "process.name.caseless",               # Process name (basename)
         "CommandLine": "process.command_line",       # Full command line
         "CurrentDirectory": "process.working_directory",  # Working directory
         
         # Parent process fields
-        "ParentImage": "process.parent.executable",       # Parent executable
+        "ParentImage": "process.parent.executable.caseless",       # Parent executable
         "ParentProcessId": "process.parent.pid",          # Parent PID
-        "ParentProcessName": "process.parent.name",       # Parent name
+        "ParentProcessName": "process.parent.name.caseless",       # Parent name
         "ParentCommandLine": "process.parent.command_line", # Parent command line
         
         # ====================================================================
@@ -148,13 +148,13 @@ def ecs_macos_esf() -> ProcessingPipeline:
         # - signal (event_type 27) can be used for defense evasion detection
         
         # Source process (the process performing the injection/access)
-        "SourceImage": "process.executable",         # Injecting process
+        "SourceImage": "process.executable.caseless",         # Injecting process
         "SourceProcessId": "process.pid",            # Injecting process PID
         
         # Target process (the process being injected/accessed)
-        "TargetImage": "target.process.executable",  # Target process executable
+        "TargetImage": "target.process.executable.caseless",  # Target process executable
         "TargetProcessId": "target.process.pid",     # Target process PID
-        "TargetProcessName": "target.process.name",  # Target process name
+        "TargetProcessName": "target.process.name.caseless",  # Target process name
         "TargetProcessGUID": "target.process.entity_id",  # Target entity ID
         
         # ====================================================================

@@ -26,7 +26,7 @@ def test_ecs_windows():
             )
         )
         == [
-            "winlog.channel:Security AND (event.code:123 AND process.executable:test.exe AND winlog.event_data.TestField:test)"
+            "winlog.channel:Security AND (event.code:123 AND process.executable.caseless:test.exe AND winlog.event_data.TestField:test)"
         ]
     )
 
@@ -201,7 +201,7 @@ def test_ecs_windows_eql_contains_expression_with_trailing_backslash_multivalue(
         """
     )
     assert eql_backend.convert(rule) == [
-        r'any where process.executable like~ ("*valueA\\*", "*valueB*")'
+        r'any where process.executable.caseless like~ ("*valueA\\*", "*valueB*")'
     ]
 
 def test_ecs_windows_null_value_handling():
@@ -222,4 +222,3 @@ def test_ecs_windows_null_value_handling():
     """)
     result = LuceneBackend(ecs_windows()).convert(rule)
     assert "SigmaNull" not in result[0]
-
