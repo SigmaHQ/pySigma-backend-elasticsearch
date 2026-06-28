@@ -89,35 +89,35 @@ def fixture_prepare_es_data():
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "fieldA": "valueA", "fieldB": "valueB"},
+            json={"@timestamp": 1696587400, "fieldA": "valueA", "fieldB": "valueB"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "fieldA": "otherisempty", "fieldB": ""},
+            json={"@timestamp": 1696587400, "fieldA": "otherisempty", "fieldB": ""},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "fieldK": "dot.value"},
+            json={"@timestamp": 1696587400, "fieldK": "dot.value"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "fieldA": "valueA1", "fieldB": "valueB1"},
+            json={"@timestamp": 1696587400, "fieldA": "valueA1", "fieldB": "valueB1"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "fieldA": "valueA2", "fieldB": "valueB2"},
+            json={"@timestamp": 1696587400, "fieldA": "valueA2", "fieldB": "valueB2"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
@@ -125,7 +125,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
-                "@timestamp": "1696587400",
+                "@timestamp": 1696587400,
                 "fieldA": "foosamplebar",
                 "fieldB": "foo",
             },
@@ -135,49 +135,49 @@ def fixture_prepare_es_data():
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "ipfield": "192.168.1.1"},
+            json={"@timestamp": 1696587400, "ipfield": "192.168.1.1"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "ipfield": "10.5.5.5"},
+            json={"@timestamp": 1696587400, "ipfield": "10.5.5.5"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "field name": "value"},
+            json={"@timestamp": 1696587400, "field name": "value"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "textFieldA": "value with spaces"},
+            json={"@timestamp": 1696587400, "textFieldA": "value with spaces"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "textFieldA": "value2 with spaces"},
+            json={"@timestamp": 1696587400, "textFieldA": "value2 with spaces"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "keywordFieldA": "value with spaces"},
+            json={"@timestamp": 1696587400, "keywordFieldA": "value with spaces"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
-            json={"@timestamp": "1696587400", "keywordFieldA": "value2 with spaces"},
+            json={"@timestamp": 1696587400, "keywordFieldA": "value2 with spaces"},
             timeout=120,
             verify=False,
             auth=pytest.es_creds,
@@ -185,7 +185,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
-                "@timestamp": "1696587400",
+                "@timestamp": 1696587400,
                 "OriginalFileName": "Cmd.exe",
                 "Image": "c:\\windows\\system32\\cmd.exe",
                 "CommandLine": "something < someother",
@@ -197,7 +197,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
-                "@timestamp": "1696587400",
+                "@timestamp": 1696587400,
                 "OriginalFileName": "Cmd.exe",
                 "Image": "c:\\windows\\system32\\cmd.exe",
                 "CommandLine": "something > someother",
@@ -209,7 +209,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
-                "@timestamp": "1696587400",
+                "@timestamp": 1696587400,
                 "OriginalFileName": "Cmd.exe",
                 "Image": "c:\\windows\\system32\\cmd.exe",
                 "CommandLine": "without angle bracket",
@@ -221,7 +221,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
-                "@timestamp": "1696587400",
+                "@timestamp": 1696587400,
                 "Image": "c:\\windows\\system32\\Sysmon.exe",
                 "Description": "System activity monitor",
                 "CommandLine": "Sysmon.exe -u",
@@ -233,7 +233,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
-                "@timestamp": "1696587400",
+                "@timestamp": 1696587400,
                 "Image": "c:\\windows\\system32\\Sysmon.exe",
                 "Description": "System activity monitor",
                 "CommandLine": "Sysmon.exe /u",
@@ -245,7 +245,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
-                "@timestamp": "1696587400",
+                "@timestamp": 1696587400,
                 "Image": "c:\\windows\\system32\\nonsysmon.exe",
                 "Description": "System idle monitor",
                 "CommandLine": "nonsysmon.exe -u",
@@ -257,7 +257,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
-                "@timestamp": "1696587400",
+                "@timestamp": 1696587400,
                 "Image": "c:\\windows\\system32\\nonsysmon.exe",
                 "Description": "System idle monitor",
                 "CommandLine": "nonsysmon.exe /u",
