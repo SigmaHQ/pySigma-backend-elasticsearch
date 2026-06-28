@@ -1,6 +1,7 @@
 from .windows import ecs_windows, ecs_windows_old
 from .zeek import ecs_zeek_beats, ecs_zeek_corelight, zeek_raw
 from .kubernetes import ecs_kubernetes
+from .macos import ecs_macos_esf
 
 pipelines = {
     "ecs_windows": ecs_windows,
@@ -8,5 +9,6 @@ pipelines = {
     "ecs_zeek_beats": ecs_zeek_beats,
     "ecs_zeek_corelight": ecs_zeek_corelight,
     "zeek": zeek_raw,
-    "ecs_kubernetes": ecs_kubernetes, 
+    "ecs_kubernetes": ecs_kubernetes,
+    "ecs_macos_esf": ecs_macos_esf,
 }

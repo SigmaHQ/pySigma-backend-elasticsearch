@@ -22,7 +22,6 @@ from sigma.types import (
     SpecialChars,
     SigmaNumber,
 )
-from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import ipaddress
 import sigma
@@ -390,6 +389,8 @@ class EqlBackend(TextQueryBackend):
         #{"query": f"any where {query}"}
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
+        from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
+        
         attack_tags = [t for t in tags if t.namespace == "attack"]
         if not len(attack_tags) >= 2:
             return []
@@ -503,7 +504,11 @@ class EqlBackend(TextQueryBackend):
                 "falsePositives": rule.falsepositives,
                 "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
                 "immutable": False,
-                "license": "DRL",
+                "license": (
+                    rule.license 
+                    if rule.license is not None 
+                    else "DRL"
+                ),
                 "outputIndex": "",
                 "meta": {
                     "from": "1m",
@@ -571,7 +576,11 @@ class EqlBackend(TextQueryBackend):
             "false_positives": rule.falsepositives,
             "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
             "immutable": False,
-            "license": "DRL",
+            "license": (
+                rule.license 
+                if rule.license is not None 
+                else "DRL"
+            ),
             "output_index": "",
             "meta": {
                 "from": "1m",
@@ -584,7 +593,9 @@ class EqlBackend(TextQueryBackend):
             ),
             "risk_score_mapping": [],
             "severity": (
-                str(rule.level.name).lower() if rule.level is not None else "low"
+                "low"
+                if rule.level is None or str(rule.level.name).lower() == "informational"
+                else str(rule.level.name).lower()
             ),
             "severity_mapping": [],
             "threat": list(self.finalize_output_threat_model(rule.tags)),

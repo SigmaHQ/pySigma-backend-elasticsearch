@@ -4,7 +4,6 @@ from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.conversion.base import TextQueryBackend
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
 from sigma.types import SigmaCompareExpression
-from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 import sigma
 import re
 import json
@@ -29,9 +28,7 @@ class ESQLBackend(TextQueryBackend):
     }
     requires_pipeline: bool = True
 
-    query_expression: ClassVar[str] = (
-        "from {state[index]} metadata {state[metadata]} | where {query}"
-    )
+    query_expression: ClassVar[str] = "{query}"
     state_defaults: ClassVar[Dict[str, str]] = {
         "index": "*",
         "metadata": "_id, _index, _version",
@@ -190,14 +187,20 @@ class ESQLBackend(TextQueryBackend):
     # correlation_search_field_normalization_expression_joiner: ClassVar[str] = ""
 
     event_count_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats event_count=count(){groupby}"
+        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats event_count=count(){fields}{groupby}"
     }
     value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats value_count=count_distinct({field}){groupby}"
+        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats value_count=count_distinct({field}){fields}{groupby}"
     }
     temporal_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats event_type_count=count_distinct(event_type){groupby}"
+        "stats": "| eval timebucket=date_trunc({timespan}, @timestamp) | stats event_type_count=count_distinct(event_type){fields}{groupby}"
     }
+
+    correlation_fields_expression: ClassVar[Dict[str, str]] = {"stats": "{fields}"}
+    correlation_fields_field_expression: ClassVar[Dict[str, str]] = {
+        "stats": ", {field}=values({field})"
+    }
+    correlation_fields_field_expression_joiner: ClassVar[Dict[str, str]] = {"stats": ""}
 
     timespan_mapping: ClassVar[Dict[str, str]] = {
         "s": "seconds",
@@ -225,6 +228,37 @@ class ESQLBackend(TextQueryBackend):
     temporal_condition_expression: ClassVar[Dict[str, str]] = {
         "stats": "| where event_type_count {op} {count}"
     }
+
+    def convert_correlation_aggregation_fields_from_template(
+        self,
+        correlation_rule_fields: list[str],
+        referenced_rules: list,
+        group_by: Optional[list[str]],
+        method: str,
+    ) -> str:
+        if self.correlation_fields_expression is None:
+            return ""
+        all_fields = []
+        for rl in referenced_rules:
+            for fld in rl.rule.fields:
+                if (group_by is None or fld not in group_by) and fld not in all_fields:
+                    all_fields.append(fld)
+        if (
+            len(all_fields) == 0
+            or self.correlation_fields_field_expression is None
+            or self.correlation_fields_field_expression_joiner is None
+        ):
+            return ""
+        return self.correlation_fields_expression[method].format(
+            fields=self.correlation_fields_field_expression_joiner[method].join(
+                (
+                    self.correlation_fields_field_expression[method].format(
+                        field=self.escape_and_quote_field(field)
+                    )
+                    for field in all_fields
+                )
+            )
+        )
 
     def __init__(
         self,
@@ -278,13 +312,11 @@ class ESQLBackend(TextQueryBackend):
 
         return ",".join(indices)
 
-    def finalize_query(
+    def finish_query(
         self,
         rule: SigmaRule,
         query: Union[str, DeferredQueryExpression],
-        index: int,
         state: ConversionState,
-        output_format: str,
     ) -> Union[str, DeferredQueryExpression]:
         # If set, load the index from the processing state
         index_state = (
@@ -302,11 +334,30 @@ class ESQLBackend(TextQueryBackend):
 
         # Save the processed index back to the processing state
         state.processing_state["index"] = index_state
-        return super().finalize_query(rule, query, index, state, output_format)
+        
+        return query
+    
+    def finalize_query_default(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> str:
+        """Finalize query for default output format by adding the FROM clause."""
+        # Get metadata from processing state
+        metadata = state.processing_state.get("metadata", self.state_defaults["metadata"])
+        index_state = state.processing_state.get("index", self.state_defaults["index"])
+        
+        # Add the 'from' clause to the query
+        return f"from {index_state} metadata {metadata} | where {query}"
 
     def finalize_query_kibana_ndjson(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> Dict:
+        # Get metadata from processing state
+        metadata = state.processing_state.get("metadata", self.state_defaults["metadata"])
+        index_state = state.processing_state.get("index", self.state_defaults["index"])
+        
+        # Add the 'from' clause to the query
+        full_query = f"from {index_state} metadata {metadata} | where {query}"
+        
         return {
             "attributes": {
                 "columns": [],
@@ -322,7 +373,7 @@ class ESQLBackend(TextQueryBackend):
                     "searchSourceJSON": str(
                         json.dumps(
                             {
-                                "query": {"esql": query},
+                                "query": {"esql": full_query},
                                 "index": {
                                     "title": state.processing_state["index"],
                                     "timeFieldName": "@timestamp",
@@ -355,6 +406,8 @@ class ESQLBackend(TextQueryBackend):
         return list(queries)
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
+        from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
+        
         attack_tags = [t for t in tags if t.namespace == "attack"]
         if not len(attack_tags) >= 2:
             return []
@@ -431,6 +484,12 @@ class ESQLBackend(TextQueryBackend):
         If you want to have a nice importable NDJSON File for the Security Rule importer
         use pySigma Format 'siem_rule_ndjson' instead.
         """
+        # Get metadata from processing state
+        metadata = state.processing_state.get("metadata", self.state_defaults["metadata"])
+        index_state = state.processing_state.get("index", self.state_defaults["index"])
+        
+        # Add the 'from' clause to the query
+        full_query = f"from {index_state} metadata {metadata} | where {query}"
 
         return {
             "name": f"SIGMA - {rule.title}",
@@ -452,7 +511,11 @@ class ESQLBackend(TextQueryBackend):
                 "falsePositives": rule.falsepositives,
                 "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
                 "immutable": False,
-                "license": "DRL",
+                "license": (
+                    rule.license 
+                    if rule.license is not None 
+                    else "DRL"
+                ),
                 "outputIndex": "",
                 "meta": {
                     "from": "1m",
@@ -478,7 +541,7 @@ class ESQLBackend(TextQueryBackend):
                 "exceptionsList": [],
                 "type": "esql",
                 "language": "esql",
-                "query": query,
+                "query": full_query,
             },
             "rule_type_id": "siem.esqlRule",
             "notify_when": "onActiveAlert",
@@ -496,6 +559,12 @@ class ESQLBackend(TextQueryBackend):
 
         https://www.elastic.co/guide/en/security/current/rules-ui-management.html#import-export-rules-ui
         """
+        # Get metadata from processing state
+        metadata = state.processing_state.get("metadata", self.state_defaults["metadata"])
+        index_state = state.processing_state.get("index", self.state_defaults["index"])
+        
+        # Add the 'from' clause to the query
+        full_query = f"from {index_state} metadata {metadata} | where {query}"
 
         return {
             "id": str(rule.id),
@@ -522,7 +591,11 @@ class ESQLBackend(TextQueryBackend):
                 else str(rule.level.name).lower()
             ),
             "note": "",
-            "license": "DRL",
+            "license": (
+                rule.license 
+                if rule.license is not None 
+                else "DRL"
+            ),
             "output_index": "",
             "meta": {
                 "from": "1m",
@@ -545,7 +618,7 @@ class ESQLBackend(TextQueryBackend):
             "setup": "",
             "type": "esql",
             "language": "esql",
-            "query": query,
+            "query": full_query,
             "actions": [],
         }
 

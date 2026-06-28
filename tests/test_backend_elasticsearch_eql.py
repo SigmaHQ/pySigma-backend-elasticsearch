@@ -136,6 +136,62 @@ def test_eql_in_expression(eql_backend: EqlBackend):
         'any where fieldA like~ ("valueA", "valueB", "valueC*")'
     ]
 
+def test_eql_contains_expression(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|contains: value
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        'any where field:"*value*"'
+    ]
+
+def test_eql_contains_expression_trailing_backslash(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|contains: 'value\'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        r'any where field:"*value\\*"'
+    ]
+
+def test_eql_contains_expression_trailing_backslash_multiple_values(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|contains:
+                        - 'valueA\'
+                        - 'valueB\'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        r'any where field like~ ("*valueA\\*", "*valueB\\*")'
+    ]
+
 
 def test_eql_in_expression_empty_string(eql_backend: EqlBackend):
     rule = SigmaCollection.from_yaml(

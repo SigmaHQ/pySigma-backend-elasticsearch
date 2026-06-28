@@ -497,7 +497,7 @@ def ecs_zeek_beats() -> ProcessingPipeline:
                         "c-ip": "source.ip",
                         "cs-uri": "url.original",
                         "clientip": "source.ip",
-                        "clientIP": "source.io",
+                        "clientIP": "source.ip",
                         "dest_domain": [
                             "query",
                             "host",
@@ -995,7 +995,7 @@ def ecs_zeek_corelight() -> ProcessingPipeline:
                         "c-ip": "source.ip",
                         "cs-uri": "url.original",
                         "clientip": "source.ip",
-                        "clientIP": "source.io",
+                        "clientIP": "source.ip",
                         "dest_domain": [
                             "query",
                             "host",

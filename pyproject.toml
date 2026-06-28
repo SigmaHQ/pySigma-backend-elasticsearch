@@ -1,11 +1,18 @@
-[tool.poetry]
+[project]
 name = "pySigma-backend-elasticsearch"
-version = "1.1.5"
+version = "2.1.0"
 description = "pySigma Elasticsearch backend supporting Lucene, ES|QL (with correlations) and EQL queries"
 readme = "README.md"
-authors = ["Thomas Patzke <thomas@patzke.org>", "Hendrik Baecker <hb@process-zero.de>"]
+authors = [
+    {name = "Thomas Patzke", email = "thomas@patzke.org"},
+    {name = "Hendrik Baecker", email = "hb@process-zero.de"}
+]
+
 license = "LGPL-3.0-only"
 repository = "https://github.com/SigmaHQ/pySigma-backend-elasticsearch"
+
+
+[tool.poetry]
 packages = [
     { include = "sigma" }
 ]
@@ -15,10 +22,10 @@ python = "^3.10"
 pysigma = "^1.2.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = ">=7.3,<9.0"
-pytest-cov = ">=4,<7"
-coverage = ">=6.4.1,<8.0.0"
-requests = "^2.28.1"
+pytest = "^9.1"
+pytest-cov = "^7.0"
+coverage = "^7.14"
+requests = "^2.34"
 defusedxml = "^0.7.1"
 
 [build-system]
