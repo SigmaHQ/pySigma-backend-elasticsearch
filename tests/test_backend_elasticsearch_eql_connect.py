@@ -77,6 +77,7 @@ def fixture_prepare_es_data():
             auth=pytest.es_creds,
             json={
                 "properties": {
+                    "@timestamp": {"type": "date", "format": "strict_date_optional_time||epoch_second"},
                     "ipfield": {"type": "ip"},
                     "textFieldA": {"type": "text"},
                     "keywordFieldA": {"type": "keyword"},
@@ -220,6 +221,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
+                "@timestamp": "1696587400",
                 "Image": "c:\\windows\\system32\\Sysmon.exe",
                 "Description": "System activity monitor",
                 "CommandLine": "Sysmon.exe -u",
@@ -231,6 +233,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
+                "@timestamp": "1696587400",
                 "Image": "c:\\windows\\system32\\Sysmon.exe",
                 "Description": "System activity monitor",
                 "CommandLine": "Sysmon.exe /u",
@@ -242,6 +245,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
+                "@timestamp": "1696587400",
                 "Image": "c:\\windows\\system32\\nonsysmon.exe",
                 "Description": "System idle monitor",
                 "CommandLine": "nonsysmon.exe -u",
@@ -253,6 +257,7 @@ def fixture_prepare_es_data():
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
             json={
+                "@timestamp": "1696587400",
                 "Image": "c:\\windows\\system32\\nonsysmon.exe",
                 "Description": "System idle monitor",
                 "CommandLine": "nonsysmon.exe /u",
