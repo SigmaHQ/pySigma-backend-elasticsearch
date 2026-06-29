@@ -431,6 +431,8 @@ def test_eql_filter_not(eql_backend: EqlBackend):
     assert eql_backend.convert(rule) == ["any where ?Field != null"]
 
 
+
+
 def test_eql_angle_brackets(eql_backend: EqlBackend):
     """Test for DSL output with < or > in the values"""
     rule = SigmaCollection.from_yaml(
@@ -525,11 +527,9 @@ def test_eql_keyword_quotes(eql_backend: EqlBackend):
                 condition: sel and keywords
         """
     )
-    result = eql_backend.convert(rule)
-    assert (
-        result[0]
-        == 'any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")'
-    )
+    assert eql_backend.convert(rule) == [
+        'any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")'
+    ]
 
 
 def test_elasticsearch_eqlapi(eql_backend: EqlBackend):
@@ -550,7 +550,16 @@ def test_elasticsearch_eqlapi(eql_backend: EqlBackend):
         """
     )
     result = eql_backend.convert(rule, output_format="eqlapi")
-    assert result[0] == {"query": 'any where fieldA:"valueA" and fieldB:"valueB"'}
+    assert eql_backend.convert(rule, output_format="eqlapi") == [
+        """
+        GET /logs-*/_eql/search
+            {
+                "query": \"\"\"
+                    any where fieldA:"valueA" and fieldB:"valueB"
+                \"\"\"
+            }
+        """
+    ]
 
 
 def test_eql_keyword_quotes_eqlapi(eql_backend: EqlBackend):
@@ -575,9 +584,16 @@ def test_eql_keyword_quotes_eqlapi(eql_backend: EqlBackend):
         """
     )
     result = eql_backend.convert(rule, output_format="eqlapi")
-    assert result[0] == {
-        "query": 'any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")'
-    }
+    assert eql_backend.convert(rule, output_format="eqlapi") == [
+        """
+        GET /logs-*/_eql/search
+            {
+                "query": \"\"\"
+                    any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")
+                \"\"\"
+            }
+        """
+    ]
 
 
 def test_lucene_reference_query(eql_backend: EqlBackend):

@@ -4,6 +4,7 @@ from typing import Iterable, ClassVar, Dict, List, Optional, Pattern, Tuple, Uni
 
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
+from sigma.correlations import SigmaCorrelationRule
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import (
@@ -14,6 +15,7 @@ from sigma.conditions import (
     ConditionFieldEqualsValueExpression,
 )
 from sigma.types import (
+    CompareOperators,
     SigmaCompareExpression,
     SigmaNull,
     SigmaFieldReference,
@@ -120,11 +122,11 @@ class EqlBackend(TextQueryBackend):
     compare_op_expression: ClassVar[str] = "{field} {operator} {value}"
     # Mapping between CompareOperators elements and strings used as replacement
     # for {operator} in compare_op_expression
-    compare_operators: ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
-        SigmaCompareExpression.CompareOperators.LT: "<",
-        SigmaCompareExpression.CompareOperators.LTE: "<=",
-        SigmaCompareExpression.CompareOperators.GT: ">",
-        SigmaCompareExpression.CompareOperators.GTE: ">=",
+    compare_operators: ClassVar[Dict[CompareOperators, str]] = {
+        CompareOperators.LT: "<",
+        CompareOperators.LTE: "<=",
+        CompareOperators.GT: ">",
+        CompareOperators.GTE: ">=",
     }
 
     # Null/None expressions
@@ -146,6 +148,60 @@ class EqlBackend(TextQueryBackend):
     or_in_operator: ClassVar[str] = " like~ "
     # List element separator
     list_separator: ClassVar[str] = ", "
+
+    # Correlations
+    correlation_methods: ClassVar[Dict[str, str]] = {
+        "sequence": "Ordered Sequence",
+        # "sample": "Unordered Sequence", # Removed due to lack of implementation.
+    }
+
+    default_correlation_method: ClassVar[str] = "sequence"
+
+    correlation_search_single_rule_expression: ClassVar[str] = "[any where {query}]"
+    correlation_search_multi_rule_expression: ClassVar[str] = "{queries}"
+    correlation_search_multi_rule_query_expression: ClassVar[str] = (
+        "[any where {query}]"
+    )
+    correlation_search_multi_rule_query_expression_joiner: ClassVar[str] = " \n "
+
+    default_correlation_query: ClassVar[str] = {
+        "sequence": "sequence {groupby} with maxspan={timespan} \n {search} {aggregate} {condition}",
+        # "sample": "sample {condition} \n [{search}] {aggregate}",
+    }
+
+    value_count_condition_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "with runs={count}"
+    }
+    value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "by {field}"
+    }
+    temporal_correlation_query: ClassVar[Dict[str, str]] = {
+        "sequence": "sample {groupby} \n {search} "
+    }
+    temporal_ordered_correlation_query: ClassVar[Dict[str, str]] = {
+        "sequence": "sequence {groupby} with maxspan={timespan} \n {search} {aggregate} {condition}"
+    }
+
+    temporal_aggregation_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "by {field}",
+    }
+    temporal_ordered_aggregation_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "by {field}"
+    }
+    event_count_aggregation_expression: ClassVar[Dict[str, str]] = {"sequence": ""}
+    event_count_condition_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "with runs={count}"
+    }
+    temporal_condition_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "with runs={count}"
+    }
+    temporal_ordered_condition_expression: ClassVar[Dict[str, str]] = {
+        "sequence": "with runs={count}"
+    }
+    groupby_expression_nofield: ClassVar = {"sequence": ""}
+    groupby_expression: ClassVar[Dict[str, str]] = {"sequence": "by {fields}"}
+    groupby_field_expression: ClassVar[Dict[str, str]] = {"sequence": "{field}"}
+    groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"sequence": ", "}
 
     # Value not bound to a field
     # Expression for string value not bound to a field as format string with placeholder {value}
@@ -289,37 +345,48 @@ class EqlBackend(TextQueryBackend):
             index_state = self.index_names
         if not isinstance(index_state, list):
             index_state = [index_state]
+
+        # Handle the case where the base rule does not specify a groupby field but the backend adds the expression anyway
+        temporal_ordered_expression_pattern = re.compile(r"by None with runs=\d+$")
+        m = re.search(temporal_ordered_expression_pattern, query) # Returns None if not found
+        if m:
+            query = query[:m.start()] + query[m.end():] # Strip the matched string from the query
+
         # Save the processed index back to the processing state
         state.processing_state["index"] = index_state
         return super().finalize_query(rule, query, index, state, output_format)
 
     def finalize_query_default(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
-    ) -> Any:
-        # TODO: implement the per-query output for the output format {{ format }} here. Usually, the generated query is
-        # embedded into a template, e.g. a JSON format with additional information from the Sigma rule.
-        # TODO: proper type annotation.
+    ) -> str:
+        """
+        Output a plain EQL query as a string. No metadata from the Sigma rule is outputted.
+        Use in the Correlation tab of Security Timeline (https://www.elastic.co/docs/solutions/security/investigate/timeline)
+        Or in a new detection rule (https://www.elastic.co/docs/solutions/security/detect-and-alert/create-detection-rule#create-eql-rule)
+        """
+        if isinstance(rule, SigmaCorrelationRule):
+            return f"{query}"
         return f"any where {query}"
 
-    def finalize_output_default(self, queries: List[str]) -> Any:
-        # TODO: implement the output finalization for all generated queries for the format {{ format }} here. Usually,
-        # the single generated queries are embedded into a structure, e.g. some JSON or XML that can be imported into
-        # the SIEM.
-        # TODO: proper type annotation. Sigma CLI supports:
-        # - str: output as is.
-        # - bytes: output in file only (e.g. if a zip package is output).
-        # - dict: output serialized as JSON.
-        # - list of str: output each item as is separated by two newlines.
-        # - list of dict: serialize each item as JSON and output all separated by newlines.
+    def finalize_output_default(self, queries: List[str]) -> List[str]:
         return list(queries)
 
     def finalize_query_eqlapi(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
-    ) -> Dict:
+    ) -> str:
         """
-        Create EQL Queries ready to be used against the '_eql/search' API Endpoint.
+        Create EQL Queries ready to be used against the '/{index_pattern}_eql/search' API Endpoint.
+        Reference: https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-eql-search
         """
-        return {"query": f"any where {query}"}
+        return f"""
+        GET /logs-*/_eql/search
+            {{
+                "query": \"\"\"
+                    any where {query}
+                \"\"\"
+            }}
+        """
+        #{"query": f"any where {query}"}
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
         from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
@@ -520,21 +587,16 @@ class EqlBackend(TextQueryBackend):
             },
             "max_signals": 100,
             "risk_score": (
-                0
+                self.severity_risk_mapping[rule.level.name]
                 if rule.level is not None
-                and str(rule.level.name).lower() == "informational"
-                else (
-                    self.severity_risk_mapping[rule.level.name]
-                    if rule.level is not None
-                    else 21
-                )
+                else 21
             ),
+            "risk_score_mapping": [],
             "severity": (
                 "low"
                 if rule.level is None or str(rule.level.name).lower() == "informational"
                 else str(rule.level.name).lower()
             ),
-            "risk_score_mapping": [],
             "severity_mapping": [],
             "threat": list(self.finalize_output_threat_model(rule.tags)),
             "tags": [f"{n.namespace}-{n.name}" for n in rule.tags],
