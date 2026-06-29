@@ -12,7 +12,7 @@ license = "LGPL-3.0-only"
 repository = "https://github.com/SigmaHQ/pySigma-backend-elasticsearch"
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "pysigma (>=1.0.0,<2.0.0)",
+    "pysigma (>=1.4.0,<2.0.0)",
     "pyyaml (>=6.0.3)"
 ]
 
