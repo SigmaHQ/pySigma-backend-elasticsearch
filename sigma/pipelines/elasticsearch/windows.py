@@ -212,10 +212,6 @@ def ecs_windows() -> ProcessingPipeline:
                     ])
                 ],
                 field_name_condition_negation=True,
-                detection_item_conditions=[
-                    IsNullCondition(cond="any"),
-                ],
-                detection_item_condition_negation=True,
             ),
         ],
     )
