@@ -620,8 +620,12 @@ class LuceneBackend(TextQueryBackend):
             tags.remove(tag)
 
     def finalize_query_dsl_lucene(
-        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+        self, rule: SigmaRule, query: Union[str, Dict], index: int, state: ConversionState
     ) -> Dict:
+        # Correlation rules already return a complete dict from their
+        # convert_correlation_*_rule methods -- pass through as-is.
+        if isinstance(query, dict):
+            return query
         return {
             "query": {
                 "bool": {
@@ -632,7 +636,7 @@ class LuceneBackend(TextQueryBackend):
             }
         }
 
-    def finalize_output_dsl_lucene(self, queries: List[Dict]) -> Dict:
+    def finalize_output_dsl_lucene(self, queries: List[Dict]) -> List[Dict]:
         return list(queries)
 
     def finalize_query_kibana_ndjson(
