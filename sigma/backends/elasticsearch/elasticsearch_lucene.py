@@ -311,6 +311,167 @@ class LuceneBackend(TextQueryBackend):
             regex=self.convert_value_re(cond.value.to_regex(self.add_escaped_re), state),
         )
 
+    # ------------------------------------------------------------------
+    # Correlation rule conversion: event_count and value_count
+    # ------------------------------------------------------------------
+
+    def _build_correlation_query(
+        self,
+        rule: "SigmaCorrelationRule",
+        aggs_body: Dict,
+    ) -> List[Dict]:
+        """Build a complete ES _search body for a correlation rule.
+
+        The base Lucene query is extracted from the referenced rules,
+        wrapped in a ``bool.must`` with an ``analyze_wildcard`` query_string,
+        then the supplied ``aggs_body`` is attached.
+
+        Returns a **list** (matching the pySigma convention) containing a
+        single dict that can be sent directly to ``POST /<index>/_search``.
+        """
+        # Collect the Lucene query strings from all referenced rules.
+        lucene_parts: List[str] = []
+        for ref in rule.referenced_rules:
+            for q in ref.rule.get_conversion_result():
+                lucene_parts.append(q)
+        lucene_query = " OR ".join(f"({p})" for p in lucene_parts) if lucene_parts else "*"
+
+        # Group-by fields → terms aggregation nesting
+        group_fields: List[str] = rule.group_by or []
+
+        # Build the nested terms aggregation chain with the leaf agg
+        aggs = self._nest_terms_aggs(group_fields, aggs_body)
+
+        timespan_seconds = int(rule.timespan.to_seconds()) if rule.timespan else 300
+        timespan_str = f"{timespan_seconds}s"
+
+        return [
+            {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {
+                                "query_string": {
+                                    "query": lucene_query,
+                                    "analyze_wildcard": True,
+                                }
+                            },
+                            {
+                                "range": {
+                                    "@timestamp": {"gte": f"now-{timespan_str}"}
+                                }
+                            },
+                        ]
+                    }
+                },
+                "aggs": aggs,
+                "size": 0,
+            }
+        ]
+
+    @staticmethod
+    def _nest_terms_aggs(
+        group_fields: List[str], leaf_aggs: Dict
+    ) -> Dict:
+        """Build nested ``terms`` aggregations for the group-by fields.
+
+        If *group_fields* is ``["source.ip", "user.name"]`` and *leaf_aggs*
+        contains a ``bucket_selector``, the result looks like::
+
+            {
+                "by_source.ip": {
+                    "terms": {"field": "source.ip", "size": 10000},
+                    "aggs": {
+                        "by_user.name": {
+                            "terms": {"field": "user.name", "size": 10000},
+                            "aggs": { ...leaf_aggs... }
+                        }
+                    }
+                }
+            }
+
+        If no group fields are provided the leaf aggs are returned as-is.
+        """
+        if not group_fields:
+            return leaf_aggs
+
+        # Build inside-out: start with the innermost field
+        current_aggs = leaf_aggs
+        for field in reversed(group_fields):
+            current_aggs = {
+                f"by_{field}": {
+                    "terms": {"field": field, "size": 10000},
+                    "aggs": current_aggs,
+                }
+            }
+        return current_aggs
+
+    def convert_correlation_event_count_rule(
+        self,
+        rule: "SigmaCorrelationRule",
+        output_format: Optional[str] = None,
+        method: str = "default",
+    ) -> List[Dict]:
+        """Convert an event_count correlation rule to an ES aggregation query.
+
+        Generates a ``terms`` aggregation (per group-by field) with a
+        ``bucket_selector`` that filters buckets by the count condition.
+
+        Example Sigma correlation::
+
+            correlation:
+                type: event_count
+                rules:
+                    - base_rule
+                group-by:
+                    - source.ip
+                timespan: 10m
+                condition:
+                    gte: 5
+
+        Produces::
+
+            POST /<index>/_search
+            {
+              "size": 0,
+              "query": { "bool": { "must": [<lucene query>, <time range>] } },
+              "aggs": {
+                "by_source.ip": {
+                  "terms": { "field": "source.ip", "size": 10000 },
+                  "aggs": {
+                    "count_check": {
+                      "bucket_selector": {
+                        "buckets_path": { "count": "_count" },
+                        "script": "params.count >= 5"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        """
+        from sigma.correlations import SigmaCorrelationCondition
+
+        cond = rule.condition
+        if not isinstance(cond, SigmaCorrelationCondition):
+            raise SigmaFeatureNotSupportedByBackendError(
+                "Extended correlation conditions are not supported by the Lucene backend."
+            )
+
+        op = self._condition_op_to_script.get(cond.op, ">=")
+        count = cond.count
+
+        leaf_aggs = {
+            "count_check": {
+                "bucket_selector": {
+                    "buckets_path": {"count": "_count"},
+                    "script": f"params.count {op} {count}",
+                }
+            }
+        }
+
+        return self._build_correlation_query(rule, leaf_aggs)
+
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
         from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
         
