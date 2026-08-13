@@ -4,6 +4,7 @@ from typing import Iterable, ClassVar, Dict, List, Optional, Pattern, Tuple, Uni
 
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
+from sigma.correlations import SigmaCorrelationRule, SigmaCorrelationConditionOperator
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import (
@@ -143,6 +144,35 @@ class LuceneBackend(TextQueryBackend):
     unbound_value_str_expression: ClassVar[str] = "*{value}*"
     # Expression for number value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression: ClassVar[str] = "{value}"
+
+    # Correlation support: event_count and value_count via ES aggregations.
+    # Temporal and temporal_ordered are NOT supported (require EQL sequences).
+    correlation_methods: ClassVar[Dict[str, str]] = {
+        "default": "ES DSL aggregation queries for correlation rules",
+    }
+    default_correlation_method: ClassVar[str] = "default"
+
+    # Required by base class for the search phase of correlation conversion.
+    correlation_search_single_rule_expression: ClassVar[str] = "{query}"
+    correlation_search_multi_rule_expression: ClassVar[str] = "{queries}"
+    correlation_search_multi_rule_query_expression: ClassVar[str] = "{query}"
+    correlation_search_multi_rule_query_expression_joiner: ClassVar[str] = " OR "
+
+    # Group-by templates used by the base class helpers.
+    groupby_expression: ClassVar[Dict[str, str]] = {"default": "{fields}"}
+    groupby_field_expression: ClassVar[Dict[str, str]] = {"default": "{field}"}
+    groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"default": ","}
+    groupby_expression_nofield: ClassVar[Dict[str, str]] = {"default": ""}
+
+    # Map Sigma condition operators to ES bucket_selector script operators.
+    _condition_op_to_script: ClassVar[Dict] = {
+        SigmaCorrelationConditionOperator.LT: "<",
+        SigmaCorrelationConditionOperator.LTE: "<=",
+        SigmaCorrelationConditionOperator.GT: ">",
+        SigmaCorrelationConditionOperator.GTE: ">=",
+        SigmaCorrelationConditionOperator.EQ: "==",
+        SigmaCorrelationConditionOperator.NEQ: "!=",
+    }
 
     def __init__(
         self,
