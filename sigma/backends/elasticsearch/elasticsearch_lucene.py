@@ -330,10 +330,21 @@ class LuceneBackend(TextQueryBackend):
         single dict that can be sent directly to ``POST /<index>/_search``.
         """
         # Collect the Lucene query strings from all referenced rules.
+        # get_conversion_result() may return raw strings (default format)
+        # or dicts (dsl_lucene format) -- extract the Lucene string either way.
         lucene_parts: List[str] = []
         for ref in rule.referenced_rules:
             for q in ref.rule.get_conversion_result():
-                lucene_parts.append(q)
+                if isinstance(q, dict):
+                    # Extract Lucene query from DSL wrapper
+                    try:
+                        lucene_parts.append(
+                            q["query"]["bool"]["must"][0]["query_string"]["query"]
+                        )
+                    except (KeyError, IndexError, TypeError):
+                        lucene_parts.append(str(q))
+                else:
+                    lucene_parts.append(str(q))
         lucene_query = " OR ".join(f"({p})" for p in lucene_parts) if lucene_parts else "*"
 
         # Group-by fields → terms aggregation nesting
@@ -342,7 +353,7 @@ class LuceneBackend(TextQueryBackend):
         # Build the nested terms aggregation chain with the leaf agg
         aggs = self._nest_terms_aggs(group_fields, aggs_body)
 
-        timespan_seconds = int(rule.timespan.to_seconds()) if rule.timespan else 300
+        timespan_seconds = int(rule.timespan.seconds) if rule.timespan else 300
         timespan_str = f"{timespan_seconds}s"
 
         return [
@@ -550,6 +561,22 @@ class LuceneBackend(TextQueryBackend):
         }
 
         return self._build_correlation_query(rule, leaf_aggs)
+
+    def finish_query(self, rule, query, state):
+        """Override to pass correlation dicts through without string formatting."""
+        if isinstance(query, dict):
+            return query
+        return super().finish_query(rule, query, state)
+
+    def convert_correlation_temporal_rule(self, rule, output_format=None, method="default"):
+        raise SigmaFeatureNotSupportedByBackendError(
+            "Temporal correlation rules are not supported by the Lucene backend. Use the EQL backend instead."
+        )
+
+    def convert_correlation_temporal_ordered_rule(self, rule, output_format=None, method="default"):
+        raise SigmaFeatureNotSupportedByBackendError(
+            "Temporal ordered correlation rules are not supported by the Lucene backend. Use the EQL backend instead."
+        )
 
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
         from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
