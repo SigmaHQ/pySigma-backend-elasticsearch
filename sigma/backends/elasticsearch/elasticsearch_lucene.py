@@ -472,6 +472,85 @@ class LuceneBackend(TextQueryBackend):
 
         return self._build_correlation_query(rule, leaf_aggs)
 
+    def convert_correlation_value_count_rule(
+        self,
+        rule: "SigmaCorrelationRule",
+        output_format: Optional[str] = None,
+        method: str = "default",
+    ) -> List[Dict]:
+        """Convert a value_count correlation rule to an ES aggregation query.
+
+        Generates a ``terms`` aggregation (per group-by field) with a
+        ``cardinality`` sub-aggregation on the target field, followed by a
+        ``bucket_selector`` that filters buckets by the distinct count.
+
+        Example Sigma correlation::
+
+            correlation:
+                type: value_count
+                rules:
+                    - base_rule
+                group-by:
+                    - source.ip
+                timespan: 15m
+                condition:
+                    field: user.name
+                    gte: 10
+
+        Produces::
+
+            POST /<index>/_search
+            {
+              "size": 0,
+              "query": { "bool": { "must": [<lucene query>, <time range>] } },
+              "aggs": {
+                "by_source.ip": {
+                  "terms": { "field": "source.ip", "size": 10000 },
+                  "aggs": {
+                    "distinct_values": {
+                      "cardinality": { "field": "user.name" }
+                    },
+                    "count_check": {
+                      "bucket_selector": {
+                        "buckets_path": { "count": "distinct_values" },
+                        "script": "params.count >= 10"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        """
+        from sigma.correlations import SigmaCorrelationCondition
+
+        cond = rule.condition
+        if not isinstance(cond, SigmaCorrelationCondition):
+            raise SigmaFeatureNotSupportedByBackendError(
+                "Extended correlation conditions are not supported by the Lucene backend."
+            )
+
+        op = self._condition_op_to_script.get(cond.op, ">=")
+        count = cond.count
+        distinct_field = cond.fieldref
+        if not distinct_field:
+            raise SigmaFeatureNotSupportedByBackendError(
+                "value_count correlation requires a 'field' in the condition."
+            )
+
+        leaf_aggs = {
+            "distinct_values": {
+                "cardinality": {"field": distinct_field}
+            },
+            "count_check": {
+                "bucket_selector": {
+                    "buckets_path": {"count": "distinct_values"},
+                    "script": f"params.count {op} {count}",
+                }
+            },
+        }
+
+        return self._build_correlation_query(rule, leaf_aggs)
+
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
         from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
         
