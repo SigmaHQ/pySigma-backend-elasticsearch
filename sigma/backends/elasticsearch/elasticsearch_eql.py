@@ -172,12 +172,6 @@ class EqlBackend(TextQueryBackend):
         # "sample": "sample {condition} \n [{search}] {aggregate}",
     }
 
-    value_count_condition_expression: ClassVar[Dict[str, str]] = {
-        "sequence": "with runs={count}"
-    }
-    value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
-        "sequence": "by {field}"
-    }
     temporal_correlation_query: ClassVar[Dict[str, str]] = {
         "sequence": "sample {groupby} \n {search} "
     }
