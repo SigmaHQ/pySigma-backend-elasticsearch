@@ -4,6 +4,7 @@ from typing import Iterable, ClassVar, Dict, List, Optional, Pattern, Tuple, Uni
 
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
+from sigma.correlations import SigmaCorrelationRule, SigmaCorrelationConditionOperator
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import (
@@ -144,6 +145,35 @@ class LuceneBackend(TextQueryBackend):
     # Expression for number value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression: ClassVar[str] = "{value}"
 
+    # Correlation support: event_count and value_count via ES aggregations.
+    # Temporal and temporal_ordered are NOT supported (require EQL sequences).
+    correlation_methods: ClassVar[Dict[str, str]] = {
+        "default": "ES DSL aggregation queries for correlation rules",
+    }
+    default_correlation_method: ClassVar[str] = "default"
+
+    # Required by base class for the search phase of correlation conversion.
+    correlation_search_single_rule_expression: ClassVar[str] = "{query}"
+    correlation_search_multi_rule_expression: ClassVar[str] = "{queries}"
+    correlation_search_multi_rule_query_expression: ClassVar[str] = "{query}"
+    correlation_search_multi_rule_query_expression_joiner: ClassVar[str] = " OR "
+
+    # Group-by templates used by the base class helpers.
+    groupby_expression: ClassVar[Dict[str, str]] = {"default": "{fields}"}
+    groupby_field_expression: ClassVar[Dict[str, str]] = {"default": "{field}"}
+    groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"default": ","}
+    groupby_expression_nofield: ClassVar[Dict[str, str]] = {"default": ""}
+
+    # Map Sigma condition operators to ES bucket_selector script operators.
+    _condition_op_to_script: ClassVar[Dict] = {
+        SigmaCorrelationConditionOperator.LT: "<",
+        SigmaCorrelationConditionOperator.LTE: "<=",
+        SigmaCorrelationConditionOperator.GT: ">",
+        SigmaCorrelationConditionOperator.GTE: ">=",
+        SigmaCorrelationConditionOperator.EQ: "==",
+        SigmaCorrelationConditionOperator.NEQ: "!=",
+    }
+
     def __init__(
         self,
         processing_pipeline: Optional[
@@ -281,6 +311,273 @@ class LuceneBackend(TextQueryBackend):
             regex=self.convert_value_re(cond.value.to_regex(self.add_escaped_re), state),
         )
 
+    # ------------------------------------------------------------------
+    # Correlation rule conversion: event_count and value_count
+    # ------------------------------------------------------------------
+
+    def _build_correlation_query(
+        self,
+        rule: "SigmaCorrelationRule",
+        aggs_body: Dict,
+    ) -> List[Dict]:
+        """Build a complete ES _search body for a correlation rule.
+
+        The base Lucene query is extracted from the referenced rules,
+        wrapped in a ``bool.must`` with an ``analyze_wildcard`` query_string,
+        then the supplied ``aggs_body`` is attached.
+
+        Returns a **list** (matching the pySigma convention) containing a
+        single dict that can be sent directly to ``POST /<index>/_search``.
+        """
+        # Collect the Lucene query strings from all referenced rules.
+        # get_conversion_result() may return raw strings (default format)
+        # or dicts (dsl_lucene format) -- extract the Lucene string either way.
+        lucene_parts: List[str] = []
+        for ref in rule.referenced_rules:
+            for q in ref.rule.get_conversion_result():
+                if isinstance(q, dict):
+                    # Extract Lucene query from DSL wrapper
+                    try:
+                        lucene_parts.append(
+                            q["query"]["bool"]["must"][0]["query_string"]["query"]
+                        )
+                    except (KeyError, IndexError, TypeError):
+                        lucene_parts.append(str(q))
+                else:
+                    lucene_parts.append(str(q))
+        lucene_query = " OR ".join(f"({p})" for p in lucene_parts) if lucene_parts else "*"
+
+        # Group-by fields → terms aggregation nesting
+        group_fields: List[str] = rule.group_by or []
+
+        # Build the nested terms aggregation chain with the leaf agg
+        aggs = self._nest_terms_aggs(group_fields, aggs_body)
+
+        timespan_seconds = int(rule.timespan.seconds) if rule.timespan else 300
+        timespan_str = f"{timespan_seconds}s"
+
+        return [
+            {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {
+                                "query_string": {
+                                    "query": lucene_query,
+                                    "analyze_wildcard": True,
+                                }
+                            },
+                            {
+                                "range": {
+                                    "@timestamp": {"gte": f"now-{timespan_str}"}
+                                }
+                            },
+                        ]
+                    }
+                },
+                "aggs": aggs,
+                "size": 0,
+            }
+        ]
+
+    @staticmethod
+    def _nest_terms_aggs(
+        group_fields: List[str], leaf_aggs: Dict
+    ) -> Dict:
+        """Build nested ``terms`` aggregations for the group-by fields.
+
+        If *group_fields* is ``["source.ip", "user.name"]`` and *leaf_aggs*
+        contains a ``bucket_selector``, the result looks like::
+
+            {
+                "by_source.ip": {
+                    "terms": {"field": "source.ip", "size": 10000},
+                    "aggs": {
+                        "by_user.name": {
+                            "terms": {"field": "user.name", "size": 10000},
+                            "aggs": { ...leaf_aggs... }
+                        }
+                    }
+                }
+            }
+
+        If no group fields are provided the leaf aggs are returned as-is.
+        """
+        if not group_fields:
+            return leaf_aggs
+
+        # Build inside-out: start with the innermost field
+        current_aggs = leaf_aggs
+        for field in reversed(group_fields):
+            current_aggs = {
+                f"by_{field}": {
+                    "terms": {"field": field, "size": 10000},
+                    "aggs": current_aggs,
+                }
+            }
+        return current_aggs
+
+    def convert_correlation_event_count_rule(
+        self,
+        rule: "SigmaCorrelationRule",
+        output_format: Optional[str] = None,
+        method: str = "default",
+    ) -> List[Dict]:
+        """Convert an event_count correlation rule to an ES aggregation query.
+
+        Generates a ``terms`` aggregation (per group-by field) with a
+        ``bucket_selector`` that filters buckets by the count condition.
+
+        Example Sigma correlation::
+
+            correlation:
+                type: event_count
+                rules:
+                    - base_rule
+                group-by:
+                    - source.ip
+                timespan: 10m
+                condition:
+                    gte: 5
+
+        Produces::
+
+            POST /<index>/_search
+            {
+              "size": 0,
+              "query": { "bool": { "must": [<lucene query>, <time range>] } },
+              "aggs": {
+                "by_source.ip": {
+                  "terms": { "field": "source.ip", "size": 10000 },
+                  "aggs": {
+                    "count_check": {
+                      "bucket_selector": {
+                        "buckets_path": { "count": "_count" },
+                        "script": "params.count >= 5"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        """
+        from sigma.correlations import SigmaCorrelationCondition
+
+        cond = rule.condition
+        if not isinstance(cond, SigmaCorrelationCondition):
+            raise SigmaFeatureNotSupportedByBackendError(
+                "Extended correlation conditions are not supported by the Lucene backend."
+            )
+
+        op = self._condition_op_to_script.get(cond.op, ">=")
+        count = cond.count
+
+        leaf_aggs = {
+            "count_check": {
+                "bucket_selector": {
+                    "buckets_path": {"count": "_count"},
+                    "script": f"params.count {op} {count}",
+                }
+            }
+        }
+
+        return self._build_correlation_query(rule, leaf_aggs)
+
+    def convert_correlation_value_count_rule(
+        self,
+        rule: "SigmaCorrelationRule",
+        output_format: Optional[str] = None,
+        method: str = "default",
+    ) -> List[Dict]:
+        """Convert a value_count correlation rule to an ES aggregation query.
+
+        Generates a ``terms`` aggregation (per group-by field) with a
+        ``cardinality`` sub-aggregation on the target field, followed by a
+        ``bucket_selector`` that filters buckets by the distinct count.
+
+        Example Sigma correlation::
+
+            correlation:
+                type: value_count
+                rules:
+                    - base_rule
+                group-by:
+                    - source.ip
+                timespan: 15m
+                condition:
+                    field: user.name
+                    gte: 10
+
+        Produces::
+
+            POST /<index>/_search
+            {
+              "size": 0,
+              "query": { "bool": { "must": [<lucene query>, <time range>] } },
+              "aggs": {
+                "by_source.ip": {
+                  "terms": { "field": "source.ip", "size": 10000 },
+                  "aggs": {
+                    "distinct_values": {
+                      "cardinality": { "field": "user.name" }
+                    },
+                    "count_check": {
+                      "bucket_selector": {
+                        "buckets_path": { "count": "distinct_values" },
+                        "script": "params.count >= 10"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        """
+        from sigma.correlations import SigmaCorrelationCondition
+
+        cond = rule.condition
+        if not isinstance(cond, SigmaCorrelationCondition):
+            raise SigmaFeatureNotSupportedByBackendError(
+                "Extended correlation conditions are not supported by the Lucene backend."
+            )
+
+        op = self._condition_op_to_script.get(cond.op, ">=")
+        count = cond.count
+        distinct_field = cond.fieldref
+        if not distinct_field:
+            raise SigmaFeatureNotSupportedByBackendError(
+                "value_count correlation requires a 'field' in the condition."
+            )
+
+        leaf_aggs = {
+            "distinct_values": {
+                "cardinality": {"field": distinct_field}
+            },
+            "count_check": {
+                "bucket_selector": {
+                    "buckets_path": {"count": "distinct_values"},
+                    "script": f"params.count {op} {count}",
+                }
+            },
+        }
+
+        return self._build_correlation_query(rule, leaf_aggs)
+
+    def finish_query(self, rule, query, state):
+        """Override to pass correlation dicts through without string formatting."""
+        if isinstance(query, dict):
+            return query
+        return super().finish_query(rule, query, state)
+
+    def convert_correlation_temporal_rule(self, rule, output_format=None, method="default"):
+        raise SigmaFeatureNotSupportedByBackendError(
+            "Temporal correlation rules are not supported by the Lucene backend. Use the EQL backend instead."
+        )
+
+    def convert_correlation_temporal_ordered_rule(self, rule, output_format=None, method="default"):
+        raise SigmaFeatureNotSupportedByBackendError(
+            "Temporal ordered correlation rules are not supported by the Lucene backend. Use the EQL backend instead."
+        )
+
     def finalize_output_threat_model(self, tags: List[SigmaRuleTag]) -> Iterable[Dict]:
         from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
         
@@ -350,8 +647,12 @@ class LuceneBackend(TextQueryBackend):
             tags.remove(tag)
 
     def finalize_query_dsl_lucene(
-        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+        self, rule: SigmaRule, query: Union[str, Dict], index: int, state: ConversionState
     ) -> Dict:
+        # Correlation rules already return a complete dict from their
+        # convert_correlation_*_rule methods -- pass through as-is.
+        if isinstance(query, dict):
+            return query
         return {
             "query": {
                 "bool": {
@@ -362,7 +663,7 @@ class LuceneBackend(TextQueryBackend):
             }
         }
 
-    def finalize_output_dsl_lucene(self, queries: List[Dict]) -> Dict:
+    def finalize_output_dsl_lucene(self, queries: List[Dict]) -> List[Dict]:
         return list(queries)
 
     def finalize_query_kibana_ndjson(
