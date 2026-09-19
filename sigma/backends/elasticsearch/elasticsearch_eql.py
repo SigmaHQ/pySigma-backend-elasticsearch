@@ -532,7 +532,9 @@ class EqlBackend(TextQueryBackend):
                 "type": "eql",
                 "language": "eql",
                 "index": self.index_names,
-                "query": f"any where {query}",
+                "query": (
+                    f"any where {query}" if not isinstance(rule, SigmaCorrelationRule) else f"{query}"
+                ),
                 "filters": [],
             },
             "rule_type_id": "siem.queryRule",
@@ -607,7 +609,9 @@ class EqlBackend(TextQueryBackend):
             "type": "eql",
             "language": "eql",
             "index": self.index_names,
-            "query": f"any where {query}",
+            "query": (
+                f"any where {query}" if not isinstance(rule, SigmaCorrelationRule) else f"{query}"
+            ),
             "filters": [],
             "actions": [],
         }
