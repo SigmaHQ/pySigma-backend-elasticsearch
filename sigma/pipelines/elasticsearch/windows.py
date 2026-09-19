@@ -118,6 +118,7 @@ def ecs_windows() -> ProcessingPipeline:
                         "Device": "file.path",
                         "SourceThreadId": "process.thread.id",
                         "TargetObject": "registry.path",
+                        "Details": "registry.data.strings",
                         "PipeName": "file.name",
                         "Destination": "process.executable.caseless",
                         "QueryName": "dns.question.name",
