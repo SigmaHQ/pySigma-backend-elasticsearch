@@ -297,6 +297,11 @@ class LuceneBackend(TextQueryBackend):
                 self.filter_chars,
             )
             return self.str_quote + converted + self.str_quote
+
+        # Enclose the Windows event log source in quotation marks 
+        # so that it is treated as a phrase search.
+        if not s.contains_special() and str(s).count('/') == 1 and str(s).split('/')[1].isalpha():
+            return self.str_quote + super().convert_value_str(s, state) + self.str_quote
         return super().convert_value_str(s, state)
 
     def convert_condition_val_str(

@@ -222,3 +222,19 @@ def test_ecs_windows_null_value_handling():
     """)
     result = LuceneBackend(ecs_windows()).convert(rule)
     assert "SigmaNull" not in result[0]
+
+def test_ecs_windows_windows_event_logsource_phrase_quoted():
+    rule = SigmaCollection.from_yaml("""
+        title: Test
+        status: test
+        logsource:
+            product: windows
+            service: sysmon
+        detection:
+            selection:
+                    EventID: 16
+            condition: selection    
+    """)
+    assert LuceneBackend(ecs_windows()).convert(rule) == [
+        'winlog.channel:"Microsoft\-Windows\-Sysmon\/Operational" AND event.code:16'
+        ]
