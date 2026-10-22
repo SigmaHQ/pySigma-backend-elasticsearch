@@ -591,6 +591,34 @@ correlation:
         elastalert_backend.convert(correlation_rule)
 
 
+def test_elastalert_multi_word_value_phrase_quoted(elastalert_backend: ElastalertBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    Description: 'Windows sudo utility'
+                condition: sel
+        """
+    )
+    assert elastalert_backend.convert(rule)[0] == (
+        """description: ''
+filter:
+- query:
+    query_string:
+      query: Description:"Windows sudo utility"
+index: '*'
+name: Test
+priority: 1
+type: any
+"""
+    )
+
+
 def test_elastalert_multi_correlation_rules(elastalert_backend: ElastalertBackend):
     correlation_rule = SigmaCollection.from_yaml(
         """

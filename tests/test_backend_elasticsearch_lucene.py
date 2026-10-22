@@ -878,7 +878,7 @@ def test_es_dsl_lucene_space_value_text(lucene_backend: LuceneBackend):
                     "must": [
                         {
                             "query_string": {
-                                "query": "textFieldA:value\\ with\\ spaces",
+                                "query": 'textFieldA:"value with spaces"',
                                 "analyze_wildcard": True,
                             }
                         }
@@ -905,3 +905,73 @@ def test_elasticsearch_siem_rule_ndjson_output(lucene_backend: LuceneBackend):
     """Test for output format siem_rule."""
     # TODO: implement a test for the output format
     pass
+
+
+def test_lucene_multi_word_value_phrase_quoted(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: 'Windows sudo utility'
+                condition: sel
+        """
+    )
+    assert lucene_backend.convert(rule) == ['fieldA:"Windows sudo utility"']
+
+
+def test_lucene_single_word_value_not_quoted(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: singleword
+                condition: sel
+        """
+    )
+    assert lucene_backend.convert(rule) == ["fieldA:singleword"]
+
+
+def test_lucene_multi_word_value_with_wildcard_not_quoted(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: 'Windows sudo'
+                condition: sel
+        """
+    )
+    assert lucene_backend.convert(rule) == ["fieldA:*Windows\\ sudo*"]
+
+
+def test_lucene_in_expression_with_multi_word_value(lucene_backend: LuceneBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - singleword
+                        - 'multi word value'
+                condition: sel
+        """
+    )
+    assert lucene_backend.convert(rule) == ['fieldA:(singleword OR "multi word value")']

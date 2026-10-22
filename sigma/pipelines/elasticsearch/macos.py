@@ -473,6 +473,6 @@ def ecs_macos_esf() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) macOS Endpoint Security Framework (ESF) mappings",
         priority=30,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=items
     )

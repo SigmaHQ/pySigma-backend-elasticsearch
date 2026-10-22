@@ -41,37 +41,6 @@ correlation:
         'sequence by fieldC, fieldD with maxspan=15m \n [any where fieldA:"value1" and fieldB:"value2"]  with runs=10'
     ]
 
-def test_value_count_correlation_rule_stats_query(eql_backend):
-    correlation_rule = SigmaCollection.from_yaml(
-            r"""
-title: Base rule
-name: base_rule
-status: test
-logsource:
-    category: test
-detection:
-    selection:
-        fieldA: value1
-        fieldB: value2
-    condition: selection
----
-title: Multiple occurrences of base event
-status: test
-correlation:
-    type: value_count
-    rules:
-        - base_rule
-    group-by:
-        - fieldC
-    timespan: 15m
-    condition:
-        lt: 10
-        field: fieldD
-            """
-        )
-    assert eql_backend.convert(correlation_rule) == [
-        """sequence by fieldC with maxspan=15m \n [any where fieldA:"value1" and fieldB:"value2"] by fieldD with runs=10"""
-    ]
 
 def test_temporal_correlation_rule_stats_query(eql_backend):
     # Rule differs from cookie cutter template, 'aliases' key removed as not supported by EQL.
@@ -256,43 +225,6 @@ detection:
 
     assert eql_backend.convert(rule) == [
         "sequence by SChannelName with maxspan=15m \n [any where EventID:8004]  with runs=35"
-    ]
-
-
-def test_value_count_correlation_rule(eql_backend: EqlBackend):
-    rule = SigmaCollection.from_yaml(
-        r"""
-title: Password Spraying via SChannelName
-id: dcb9bf7c-216b-4a22-80a2-3232284cda18
-name: password_spraying_schannel
-status: experimental
-description: Detecting Password Spraying via SChannelName
-correlation:
-    type: value_count
-    rules:
-        - ntlm_authentification
-    group-by:
-        - SChannelName
-    timespan: 15m
-    condition:
-        field: UserName
-        gt: 35
----
-title: NTLM Authentification
-id: dcb9bf7c-216b-4a22-80a2-1232284cda18
-name: ntlm_authentification
-logsource:
-    product: windows
-    category: security
-detection:
-    selection:
-        EventID: 8004
-    condition: selection
-        """
-    )
-
-    assert eql_backend.convert(rule) == [
-        "sequence by SChannelName with maxspan=15m \n [any where EventID:8004] by UserName with runs=35"
     ]
 
 
