@@ -133,6 +133,11 @@ class ESQLBackend(TextQueryBackend):
         True,
         True,
     )  # If regular field-escaping/quoting is applied to field1 and field2. A custom escaping/quoting can be implemented in the convert_condition_field_eq_field_escape_and_quote method.
+    field_equals_field_startswith_expression: ClassVar[str] = (
+        "STARTS_WITH({field1},{field2})"
+    )
+    field_equals_field_endswith_expression: ClassVar[str] = "ENDS_WITH({field1},{field2})"
+    field_equals_field_contains_expression: ClassVar[str] = "CONTAINS({field1},{field2})"
 
     # Null/None expressions
     field_null_expression: ClassVar[str] = (

@@ -133,6 +133,13 @@ def fixture_prepare_es_data():
         )
         requests.post(
             f"{pytest.es_url}/test-index/_doc/",
+            json={"fieldA": "foobar", "fieldB": "bar"},
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
             json={"ipfield": "192.168.1.1"},
             timeout=120,
             verify=False,
@@ -738,8 +745,12 @@ class TestConnectElasticsearch:
         result = self.query_backend_hits(result_esql, num_wanted=2)
 
         # Ensure we see only the searched Sysmon.exe Images.
-        assert result["columns"][2]["name"] == "Image"
-        assert all("Sysmon.exe" in entry[2] for entry in result["values"])
+        image_col = next(
+            i
+            for i, column in enumerate(result["columns"])
+            if column["name"] == "Image"
+        )
+        assert all("Sysmon.exe" in entry[image_col] for entry in result["values"])
 
     def test_connect_esql_advanced_quotetest(
         self, prepare_es_data, esql_backend: ESQLBackend
@@ -771,5 +782,72 @@ class TestConnectElasticsearch:
         result = self.query_backend_hits(result_esql, num_wanted=2)
 
         # Ensure we see only the searched bitsadmin.exe Images.
-        assert result["columns"][2]["name"] == "Image"
-        assert all("bitsadmin.exe" in entry[2] for entry in result["values"])
+        image_col = next(
+            i
+            for i, column in enumerate(result["columns"])
+            if column["name"] == "Image"
+        )
+        assert all("bitsadmin.exe" in entry[image_col] for entry in result["values"])
+
+    def test_connect_esql_fieldref_startswith(
+        self, prepare_es_data, esql_backend: ESQLBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|fieldref|startswith: fieldB
+                    condition: sel
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        assert "STARTS_WITH(fieldA,fieldB)" in result_esql
+        self.query_backend_hits(result_esql, num_wanted=2)
+
+    def test_connect_esql_fieldref_contains(
+        self, prepare_es_data, esql_backend: ESQLBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|fieldref|contains: fieldB
+                    condition: sel
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        assert "CONTAINS(fieldA,fieldB)" in result_esql
+        self.query_backend_hits(result_esql, num_wanted=3)
+
+    def test_connect_esql_fieldref_endswith(
+        self, prepare_es_data, esql_backend: ESQLBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|fieldref|endswith: fieldB
+                    condition: sel
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        assert "ENDS_WITH(fieldA,fieldB)" in result_esql
+        self.query_backend_hits(result_esql, num_wanted=2)
