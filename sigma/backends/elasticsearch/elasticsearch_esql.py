@@ -3,7 +3,7 @@ from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.conversion.base import TextQueryBackend
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
-from sigma.types import SigmaCompareExpression
+from sigma.types import SigmaCompareExpression, SigmaString
 import sigma
 import re
 import json
@@ -259,6 +259,28 @@ class ESQLBackend(TextQueryBackend):
                 )
             )
         )
+
+    def convert_value_str(self, s: SigmaString, state: ConversionState) -> str:
+        r"""Convert a SigmaString into an ES|QL string literal.
+
+        A value without Sigma wildcards is matched literally (==, starts_with(),
+        ends_with(), in), so a literal * or ? (written \* or \? in Sigma) is not
+        escaped. ES|QL string literals only accept the escapes \t, \n, \r, \" and \\,
+        so "a\*b" would be rejected. Values with wildcards are LIKE patterns and keep
+        the default conversion.
+        """
+        if s.contains_special():
+            return super().convert_value_str(s, state)
+        converted = s.convert(
+            escape_char=self.escape_char,
+            wildcard_multi=None,
+            wildcard_single=None,
+            add_escaped=self.str_quote + self.add_escaped,
+            filter_chars=self.filter_chars,
+        )
+        if self.decide_string_quoting(s):
+            return self.quote_string(converted)
+        return converted
 
     def __init__(
         self,
