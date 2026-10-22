@@ -184,7 +184,7 @@ def test_elasticsearch_esql_regex_query(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * metadata _id, _index, _version | where fieldA rlike "foo.*bar" and fieldB=="foo"'
+            'from * metadata _id, _index, _version | where fieldA rlike ".*(foo.*bar).*" and fieldB=="foo"'
         ]
     )
 
