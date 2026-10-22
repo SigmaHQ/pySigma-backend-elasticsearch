@@ -1,6 +1,17 @@
 import re
 import json
-from typing import Iterable, ClassVar, Dict, List, Optional, Pattern, Tuple, Union, Any
+from typing import (
+    Iterable,
+    ClassVar,
+    Dict,
+    List,
+    Optional,
+    Pattern,
+    Tuple,
+    Union,
+    Any,
+    cast,
+)
 
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
@@ -21,6 +32,7 @@ from sigma.types import (
     SigmaFieldReference,
     SpecialChars,
     SigmaNumber,
+    SigmaString,
 )
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import ipaddress
@@ -303,6 +315,60 @@ class EqlBackend(TextQueryBackend):
             )
         else:
             return super().convert_condition_field_eq_val_str(cond, state)
+
+    def convert_condition_field_eq_val_num(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field = number value expressions.
+
+        Numeric values are compared with the case-sensitive '==' operator so
+        the right-hand operand can stay an unquoted number:
+
+            event.code == 3
+
+        Unlike ':' (which requires a string operand), '==' supports numeric
+        operands natively, so no quoting is needed here.
+        """
+        expr = "{field}" + "==" + "{value}"
+        return expr.format(
+            field=self.escape_and_quote_field(cond.field),
+            value=cond.value,
+        )
+
+    def convert_condition_as_in_expression(
+        self, cond: ConditionOR, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field in value list conditions.
+
+        Values in the list are all quoted as strings because EQL's 'like~'
+        operator requires string operands (numeric values included).
+        """
+        if self.field_in_list_expression is None or self.list_separator is None:
+            raise NotImplementedError("Field in list expressions are not supported by the backend")
+        if not all(
+            isinstance(arg, ConditionFieldEqualsValueExpression) for arg in cond.args
+        ):  # All arguments must be field equals value expressions, legitimates casts below
+            raise TypeError(
+                "Field in list expression requires all arguments to be ConditionFieldEqualsValueExpression"
+            )
+        field_name = cast(ConditionFieldEqualsValueExpression, cond.args[0]).field
+        if {cast(ConditionFieldEqualsValueExpression, arg).field for arg in cond.args} != {
+            field_name
+        }:
+            raise ValueError("Field in list expression requires all fields to be the same")
+        values = []
+        for arg in cond.args:
+            val = cast(ConditionFieldEqualsValueExpression, arg).value
+            if isinstance(val, SigmaString):
+                values.append(self.convert_value_str(val, state))
+            else:  # SigmaNumber or other scalar: quote as string
+                values.append(self.convert_value_str(SigmaString(str(val)), state))
+
+        return self.field_in_list_expression.format(
+            field=self.escape_and_quote_field(field_name),
+            op=(self.or_in_operator if isinstance(cond, ConditionOR) else self.and_in_operator),
+            list=self.list_separator.join(values),
+        )
 
     def convert_condition_not(
         self, cond: ConditionNOT, state: ConversionState

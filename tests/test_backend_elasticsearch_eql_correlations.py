@@ -224,7 +224,7 @@ detection:
     )
 
     assert eql_backend.convert(rule) == [
-        "sequence by SChannelName with maxspan=15m \n [any where EventID:8004]  with runs=35"
+        "sequence by SChannelName with maxspan=15m \n [any where EventID==8004]  with runs=35"
     ]
 
 
@@ -309,5 +309,5 @@ detection:
     )
 
     assert eql_backend.convert(rule) == [
-        "sequence by SChannelName with maxspan=15m \n [any where EventID:8004] by UserName with runs=35"
+        "sequence by SChannelName with maxspan=15m \n [any where EventID==8004] by UserName with runs=35"
     ]
