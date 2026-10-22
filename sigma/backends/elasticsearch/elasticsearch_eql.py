@@ -410,7 +410,7 @@ class EqlBackend(TextQueryBackend):
             index_state = [index_state]
 
         # Handle the case where the base rule does not specify a groupby field but the backend adds the expression anyway
-        temporal_ordered_expression_pattern = re.compile(r"by None with runs=\d+$")
+        temporal_ordered_expression_pattern = re.compile(r"by (?:None)? with runs=\d+$")
         m = re.search(temporal_ordered_expression_pattern, query) # Returns None if not found
         if m:
             query = query[:m.start()] + query[m.end():] # Strip the matched string from the query
