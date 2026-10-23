@@ -2,6 +2,7 @@ from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.conversion.base import TextQueryBackend
+from sigma.backends.elasticsearch.lucene_regex import LuceneRegexMixin
 from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
 from sigma.types import SigmaCompareExpression
 import sigma
@@ -10,7 +11,7 @@ import json
 from typing import ClassVar, Dict, Tuple, Pattern, List, Iterable, Optional, Union
 
 
-class ESQLBackend(TextQueryBackend):
+class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
     """ES|QL backend."""
 
     # TODO: change the token definitions according to the syntax. Delete these not supported by your backend.

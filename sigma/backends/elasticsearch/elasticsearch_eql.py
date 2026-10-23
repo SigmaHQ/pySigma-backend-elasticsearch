@@ -17,6 +17,7 @@ from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.correlations import SigmaCorrelationRule
 from sigma.conversion.base import TextQueryBackend
+from sigma.backends.elasticsearch.lucene_regex import LuceneRegexMixin
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import (
     ConditionItem,
@@ -39,7 +40,7 @@ import ipaddress
 import sigma
 
 
-class EqlBackend(TextQueryBackend):
+class EqlBackend(LuceneRegexMixin, TextQueryBackend):
     """
     Elasticsearch event query language backend. Generates query strings described here in the
     Elasticsearch documentation:
@@ -117,7 +118,9 @@ class EqlBackend(TextQueryBackend):
     re_expression: ClassVar[str] = '{field} regex~ "{regex}"'
     # Character used for escaping in regular expressions
     re_escape_char: ClassVar[str] = "\\"
-    re_escape: ClassVar[Tuple[str]] = ("/",)
+    # " ends the EQL string; the translated regex writes a literal " as \" (a Lucene operator).
+    # / is a plain character in EQL strings and Lucene regex (EQL rejects \/).
+    re_escape: ClassVar[Tuple[str]] = ('"',)
     # Escape the escape char for JSON compatibility.
     # According to Elastic documentation, backslash is used for escaping in JSON,
     # so backslashes in regex patterns must be escaped to ensure compatibility when
