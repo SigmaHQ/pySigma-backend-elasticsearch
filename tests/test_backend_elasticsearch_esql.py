@@ -165,6 +165,80 @@ def test_elasticsearch_esql_wildcard_expressions(esql_backend: ESQLBackend):
     )
 
 
+def test_elasticsearch_esql_like_backslash(esql_backend: ESQLBackend):
+    # LIKE treats \ as an escape character, so a literal backslash is \\ in the
+    # pattern and \\\\ in the ES|QL string literal.
+    assert (
+        esql_backend.convert(
+            SigmaCollection.from_yaml(
+                r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    Image|contains: '\Users\Public\'
+                condition: sel
+        """
+            )
+        )
+        == [
+            r'from * metadata _id, _index, _version | where Image like "*\\\\Users\\\\Public\\\\*"'
+        ]
+    )
+
+
+def test_elasticsearch_esql_like_literal_wildcards(esql_backend: ESQLBackend):
+    # Escaped * and ? in Sigma are literal characters and must be escaped in the
+    # LIKE pattern; the unescaped * stays a wildcard.
+    assert (
+        esql_backend.convert(
+            SigmaCollection.from_yaml(
+                r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: 'a\*b\?c*d'
+                condition: sel
+        """
+            )
+        )
+        == [r'from * metadata _id, _index, _version | where fieldA like "a\\*b\\?c*d"']
+    )
+
+
+def test_elasticsearch_esql_backslash_without_like(esql_backend: ESQLBackend):
+    # ==, starts_with() and ends_with() don't use LIKE escaping.
+    assert (
+        esql_backend.convert(
+            SigmaCollection.from_yaml(
+                r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    - Image: 'C:\Users\Public\a.exe'
+                    - Image|startswith: 'C:\Users\'
+                    - Image|endswith: '\Public\a.exe'
+                condition: sel
+        """
+            )
+        )
+        == [
+            r'from * metadata _id, _index, _version | where Image=="C:\\Users\\Public\\a.exe" or starts_with(Image, "C:\\Users\\") or ends_with(Image, "\\Public\\a.exe")'
+        ]
+    )
+
+
 def test_elasticsearch_esql_literal_wildcards_not_escaped(esql_backend: ESQLBackend):
     assert (
         esql_backend.convert(

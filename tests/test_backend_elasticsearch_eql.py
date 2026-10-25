@@ -548,7 +548,7 @@ def test_eql_keyword_quotes(eql_backend: EqlBackend):
         """
     )
     assert eql_backend.convert(rule) == [
-        'any where (Field like~ (1234, 5678)) and ("keywordA" or "keywordB")'
+        'any where (Field like~ ("1234", "5678")) and ("keywordA" or "keywordB")'
     ]
 
 
@@ -599,7 +599,7 @@ def test_eql_keyword_quotes_eqlapi(eql_backend: EqlBackend):
     )
     assert eql_backend.convert(rule, output_format="eqlapi") == [
         {
-            "query": "any where (Field like~ (1234, 5678)) and (\"keywordA\" or \"keywordB\")"
+            "query": "any where (Field like~ (\"1234\", \"5678\")) and (\"keywordA\" or \"keywordB\")"
         }
     ]
 
