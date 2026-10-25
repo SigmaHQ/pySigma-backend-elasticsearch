@@ -3,8 +3,14 @@ from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.conversion.base import TextQueryBackend
 from sigma.backends.elasticsearch.lucene_regex import LuceneRegexMixin
-from sigma.conditions import ConditionItem, ConditionAND, ConditionOR, ConditionNOT
-from sigma.types import SigmaCompareExpression
+from sigma.conditions import (
+    ConditionItem,
+    ConditionAND,
+    ConditionOR,
+    ConditionNOT,
+    ConditionFieldEqualsValueExpression,
+)
+from sigma.types import SigmaCompareExpression, SigmaString, SpecialChars
 import sigma
 import re
 import json
@@ -234,6 +240,75 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
     temporal_condition_expression: ClassVar[Dict[str, str]] = {
         "stats": "| where event_type_count {op} {count}"
     }
+
+    def convert_condition_field_eq_val_str(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        r"""Write LIKE matches with LIKE escaping; all other string matches as before.
+
+        In an ES|QL LIKE pattern the backslash is an escape character (only * and ?
+        may follow it), so literal backslashes, * and ? from the Sigma value need one
+        more level of escaping than in ==, starts_with() or ends_with(). Without it,
+        Elasticsearch rejects the pattern *\Users\* (from a Windows path), and a
+        literal * produces a string literal ES|QL can't parse.
+        """
+        value = cond.value
+        if isinstance(value, SigmaString) and self._is_like_match(value):
+            return self.wildcard_match_expression.format(
+                field=self.escape_and_quote_field(cond.field),
+                value=self.convert_value_like(value),
+            )
+        return super().convert_condition_field_eq_val_str(cond, state)
+
+    @staticmethod
+    def _is_like_match(value: SigmaString) -> bool:
+        """True when the value is converted with wildcard_match_expression (LIKE).
+
+        Mirrors the choice made in TextQueryBackend.convert_condition_field_eq_val_str
+        for this backend: no wildcards -> ==, only a trailing * -> starts_with(),
+        only a leading * -> ends_with(), any other wildcard use -> LIKE.
+        """
+        if not value.contains_special():
+            return False
+        if (
+            value.endswith(SpecialChars.WILDCARD_MULTI)
+            and not value[:-1].contains_special()
+        ):
+            return False
+        if (
+            value.startswith(SpecialChars.WILDCARD_MULTI)
+            and not value[1:].contains_special()
+        ):
+            return False
+        return True
+
+    def convert_value_like(self, value: SigmaString) -> str:
+        r"""Convert a SigmaString into a quoted ES|QL LIKE pattern.
+
+        Two levels of escaping, applied in order:
+        1. LIKE: Sigma wildcards become * and ?; literal \, * and ? get a backslash.
+        2. ES|QL string literal: \ and " get a backslash.
+
+        Example: the Sigma value *\Users\* becomes the pattern *\\Users\\* and is
+        written as "*\\\\Users\\\\*".
+        """
+        pattern = ""
+        for part in value.s:
+            if part == SpecialChars.WILDCARD_MULTI:
+                pattern += self.wildcard_multi
+            elif part == SpecialChars.WILDCARD_SINGLE:
+                pattern += self.wildcard_single
+            elif isinstance(part, str):
+                for char in part:
+                    if char in ("\\", "*", "?"):
+                        pattern += "\\"
+                    pattern += char
+            else:
+                raise NotImplementedError(
+                    "Placeholders in LIKE values are not supported by the ES|QL backend."
+                )
+        literal = pattern.replace("\\", "\\\\").replace('"', '\\"')
+        return self.quote_string(literal)
 
     def convert_correlation_aggregation_fields_from_template(
         self,
