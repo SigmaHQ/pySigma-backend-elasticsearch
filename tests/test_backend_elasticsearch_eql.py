@@ -307,6 +307,24 @@ def test_eql_field_name_with_whitespace(eql_backend: EqlBackend):
     assert eql_backend.convert(rule) == ['any where `field name`:"value"']
 
 
+def test_eql_bool_value(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: true
+                    fieldB: false
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == ["any where fieldA==true and fieldB==false"]
+
+
 def test_eql_not_filter_null_and(eql_backend: EqlBackend):
     """Test for DSL output with embedded query string query."""
     rule = SigmaCollection.from_yaml(

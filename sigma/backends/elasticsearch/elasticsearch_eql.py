@@ -335,6 +335,22 @@ class EqlBackend(TextQueryBackend):
             value=cond.value,
         )
 
+    def convert_condition_field_eq_val_bool(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field = boolean value expressions.
+
+        Booleans are compared with '==' because ':' only accepts string
+        operands:
+
+            file.code_signature.signed == true
+        """
+        return (
+            self.escape_and_quote_field(cond.field)
+            + "=="
+            + self.bool_values[cond.value.boolean]
+        )
+
     def convert_condition_as_in_expression(
         self, cond: ConditionOR, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:
