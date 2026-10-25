@@ -80,7 +80,7 @@ class EqlBackend(TextQueryBackend):
     eq_token: ClassVar[str] = ":"
 
     field_quote: ClassVar[str] = "`"
-    field_quote_pattern: ClassVar[Pattern] = re.compile(r"^\d.*|.*\s.*|-")
+    field_quote_pattern: ClassVar[Pattern] = re.compile(r"^\d.*|.*[\s-].*")
     field_quote_pattern_negation: ClassVar[bool] = False
     # String output
     # Fields
