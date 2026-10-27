@@ -45,7 +45,7 @@ determinize" (e.g. a wide bounded repeat such as ``.{6,64}`` after the leading
 """
 
 import re
-from typing import List, Set
+from typing import ClassVar, List, Set
 
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 from sigma.types import SigmaRegularExpressionFlag
@@ -500,8 +500,15 @@ class LuceneRegexMixin:
     escaped with the backend's re_escape settings (no (?flags) prefix: flags are part of
     the translation)."""
 
+    # True if the backend matches case-insensitively itself when the i flag is set (e.g. with
+    # {flag_i} in re_expression): the pattern is then translated without the i flag.
+    re_native_ignore_case: ClassVar[bool] = False
+
     def convert_value_re(self, r, state):
-        pattern = to_lucene_regex(str(r.regexp), r.flags)
+        flags = r.flags
+        if self.re_native_ignore_case:
+            flags = flags - {SigmaRegularExpressionFlag.IGNORECASE}
+        pattern = to_lucene_regex(str(r.regexp), flags)
         return escape_for_query(
             pattern, self.re_escape, self.re_escape_char, self.re_escape_escape_char
         )

@@ -238,7 +238,7 @@ def test_ecs_windows_eql_regex_conversion():
             condition: sel
     """)
     result = eql_backend.convert(rule)
-    assert result == ['any where process.command_line regex~ ".*(foobar[0-9]{3}).*"']
+    assert result == ['any where process.command_line regex ".*(foobar[0-9]{3}).*"']
 
 def test_ecs_windows_lucene_regex_conversion():
     """regression test for https://github.com/SigmaHQ/pySigma-backend-elasticsearch/issues/177"""

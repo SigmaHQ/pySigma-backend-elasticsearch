@@ -468,6 +468,8 @@ class TestConnectElasticsearch:
             ("re", r"exe\s[-/]u", 4),
             # anchored at the start: excludes nonsysmon.exe
             ("re", r"^Sysmon\.exe", 2),
+            # case-sensitive without the i flag
+            ("re", r"^SYSMON\.exe", 0),
             # case-insensitive, anchored at both ends
             ("re|i", r"^SYSMON\.EXE\s/U$", 1),
         ],
