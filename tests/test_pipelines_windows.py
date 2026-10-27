@@ -236,5 +236,5 @@ def test_ecs_windows_windows_event_logsource_phrase_quoted():
             condition: selection    
     """)
     assert LuceneBackend(ecs_windows()).convert(rule) == [
-        'winlog.channel:"Microsoft\-Windows\-Sysmon\/Operational" AND event.code:16'
+        r'winlog.channel:"Microsoft\-Windows\-Sysmon\/Operational" AND event.code:16'
         ]
