@@ -34,6 +34,7 @@ from sigma.types import (
     SpecialChars,
     SigmaNumber,
     SigmaString,
+    SigmaRegularExpressionFlag,
 )
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import ipaddress
@@ -115,7 +116,15 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
 
     # Regular expressions
     # Regular expression query as format string with placeholders {field} and {regex}
-    re_expression: ClassVar[str] = '{field} regex~ "{regex}"'
+    # regex is case-sensitive like Sigma re; with the i flag, regex~ ignores case.
+    re_expression: ClassVar[str] = '{field} regex{flag_i} "{regex}"'
+    re_flags: ClassVar[Dict[SigmaRegularExpressionFlag, str]] = {
+        SigmaRegularExpressionFlag.IGNORECASE: "~",
+        # m is refused by the translation, s needs no change
+        SigmaRegularExpressionFlag.MULTILINE: "",
+        SigmaRegularExpressionFlag.DOTALL: "",
+    }
+    re_native_ignore_case: ClassVar[bool] = True
     # Character used for escaping in regular expressions
     re_escape_char: ClassVar[str] = "\\"
     # " ends the EQL string; the translated regex writes a literal " as \" (a Lucene operator).
