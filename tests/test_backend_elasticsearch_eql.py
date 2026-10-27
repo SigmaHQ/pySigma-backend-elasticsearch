@@ -228,7 +228,7 @@ def test_eql_regex_query(eql_backend: EqlBackend):
         """
     )
     assert eql_backend.convert(rule) == [
-        'any where fieldA regex~ "foo.*bar" and fieldB:"foo"'
+        'any where fieldA regex ".*(foo.*bar).*" and fieldB:"foo"'
     ]
 
 
@@ -249,7 +249,7 @@ def test_eql_regex_query_escaped_input(eql_backend: EqlBackend):
         """
     )
     assert eql_backend.convert(rule) == [
-        r'any where fieldA regex~ "127\\.0\\.0\\.1:[1-9]\\d{3}" and fieldB:"foo" and fieldC regex~ "foo\/bar"'
+        r'any where fieldA regex ".*(127\\.0\\.0\\.1:[1-9]\\d{3}).*" and fieldB:"foo" and fieldC regex ".*(foo/bar).*"'
     ]
 
 
@@ -268,8 +268,26 @@ def test_eql_regex_escaped_dollar_sign(eql_backend: EqlBackend):
                 condition: sel
         """
     )
+    assert eql_backend.convert(rule) == [r'any where username regex ".*(\\$).*"']
+
+
+def test_eql_regex_case_insensitive(eql_backend: EqlBackend):
+    """regex is case-sensitive like Sigma re; with the i flag, regex~ ignores case."""
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|re|i: foo
+                condition: sel
+        """
+    )
     assert eql_backend.convert(rule) == [
-        r'any where username regex~ "\\$"'
+        'any where fieldA regex~ ".*(foo).*"'
     ]
 
 
@@ -305,6 +323,44 @@ def test_eql_field_name_with_whitespace(eql_backend: EqlBackend):
         """
     )
     assert eql_backend.convert(rule) == ['any where `field name`:"value"']
+
+
+def test_eql_field_name_with_hyphen(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    cs-uri-query: value
+                    c-useragent: ''
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        'any where `cs-uri-query`:"value" and `c-useragent`==""'
+    ]
+
+
+def test_eql_bool_value(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: true
+                    fieldB: false
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == ["any where fieldA==true and fieldB==false"]
 
 
 def test_eql_not_filter_null_and(eql_backend: EqlBackend):

@@ -167,7 +167,7 @@ def test_lucene_regex_query(lucene_backend: LuceneBackend):
                 condition: sel
         """
     )
-    assert lucene_backend.convert(rule) == ["fieldA:/foo.*bar/ AND fieldB:foo"]
+    assert lucene_backend.convert(rule) == ["fieldA:/.*(foo.*bar).*/ AND fieldB:foo"]
 
 
 def test_lucene_regex_query_escaped_input(lucene_backend: LuceneBackend):
@@ -187,7 +187,7 @@ def test_lucene_regex_query_escaped_input(lucene_backend: LuceneBackend):
         """
     )
     assert lucene_backend.convert(rule) == [
-        "fieldA:/127\.0\.0\.1:[1-9]\d{3}/ AND fieldB:foo AND fieldC:/foo\\/bar/"
+        "fieldA:/.*(127\.0\.0\.1:[1-9]\d{3}).*/ AND fieldB:foo AND fieldC:/.*(foo\\/bar).*/"
     ]
 
 
