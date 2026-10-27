@@ -17,6 +17,7 @@ from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.correlations import SigmaCorrelationRule
 from sigma.conversion.base import TextQueryBackend
+from sigma.backends.elasticsearch.lucene_regex import LuceneRegexMixin
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import (
     ConditionItem,
@@ -33,13 +34,14 @@ from sigma.types import (
     SpecialChars,
     SigmaNumber,
     SigmaString,
+    SigmaRegularExpressionFlag,
 )
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import ipaddress
 import sigma
 
 
-class EqlBackend(TextQueryBackend):
+class EqlBackend(LuceneRegexMixin, TextQueryBackend):
     """
     Elasticsearch event query language backend. Generates query strings described here in the
     Elasticsearch documentation:
@@ -80,7 +82,7 @@ class EqlBackend(TextQueryBackend):
     eq_token: ClassVar[str] = ":"
 
     field_quote: ClassVar[str] = "`"
-    field_quote_pattern: ClassVar[Pattern] = re.compile(r"^\d.*|.*\s.*|-")
+    field_quote_pattern: ClassVar[Pattern] = re.compile(r"^\d.*|.*[\s-].*")
     field_quote_pattern_negation: ClassVar[bool] = False
     # String output
     # Fields
@@ -114,10 +116,20 @@ class EqlBackend(TextQueryBackend):
 
     # Regular expressions
     # Regular expression query as format string with placeholders {field} and {regex}
-    re_expression: ClassVar[str] = '{field} regex~ "{regex}"'
+    # regex is case-sensitive like Sigma re; with the i flag, regex~ ignores case.
+    re_expression: ClassVar[str] = '{field} regex{flag_i} "{regex}"'
+    re_flags: ClassVar[Dict[SigmaRegularExpressionFlag, str]] = {
+        SigmaRegularExpressionFlag.IGNORECASE: "~",
+        # m is refused by the translation, s needs no change
+        SigmaRegularExpressionFlag.MULTILINE: "",
+        SigmaRegularExpressionFlag.DOTALL: "",
+    }
+    re_native_ignore_case: ClassVar[bool] = True
     # Character used for escaping in regular expressions
     re_escape_char: ClassVar[str] = "\\"
-    re_escape: ClassVar[Tuple[str]] = ("/",)
+    # " ends the EQL string; the translated regex writes a literal " as \" (a Lucene operator).
+    # / is a plain character in EQL strings and Lucene regex (EQL rejects \/).
+    re_escape: ClassVar[Tuple[str]] = ('"',)
     # Escape the escape char for JSON compatibility.
     # According to Elastic documentation, backslash is used for escaping in JSON,
     # so backslashes in regex patterns must be escaped to ensure compatibility when
