@@ -1,6 +1,7 @@
 from typing import ClassVar, Dict, List, Optional, Union, Any
 
 from sigma.rule import SigmaRule
+from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.state import ConversionState
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.processing.pipeline import ProcessingPipeline
@@ -124,8 +125,10 @@ class ElastalertBackend(LuceneBackend):
                 f"Operator '{rule.condition.op}' is not supported by Elastalert backend for event count correlation rules."
             )
 
-        elastalert_rule = super().convert_correlation_event_count_rule(
-            rule, output_format, method
+        # Bypass LuceneBackend's ES DSL aggregation implementation and use the
+        # template-based conversion that produces the Elastalert filter.
+        elastalert_rule = TextQueryBackend.convert_correlation_event_count_rule(
+            self, rule, output_format, method
         )
 
         elastalert_rule[0].update(
@@ -149,8 +152,8 @@ class ElastalertBackend(LuceneBackend):
         output_format: Optional[str] = None,
         method: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        elastalert_rule = super().convert_correlation_value_count_rule(
-            rule, output_format, method
+        elastalert_rule = TextQueryBackend.convert_correlation_value_count_rule(
+            self, rule, output_format, method
         )
 
         elastalert_rule[0].update(
@@ -176,6 +179,26 @@ class ElastalertBackend(LuceneBackend):
             ] -= 1
 
         return elastalert_rule
+
+    def convert_correlation_temporal_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        raise NotImplementedError(
+            "Correlation rule type 'temporal' is not supported by backend."
+        )
+
+    def convert_correlation_temporal_ordered_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        raise NotImplementedError(
+            "Correlation rule type 'temporal_ordered' is not supported by backend."
+        )
 
     def preprocess_indices(self, indices: List[str]) -> str:
         if not indices:

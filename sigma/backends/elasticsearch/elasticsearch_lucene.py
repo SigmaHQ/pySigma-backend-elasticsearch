@@ -6,6 +6,7 @@ from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.correlations import SigmaCorrelationRule, SigmaCorrelationConditionOperator
 from sigma.conversion.base import TextQueryBackend
+from sigma.backends.elasticsearch.lucene_regex import LuceneRegexMixin
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import (
     ConditionItem,
@@ -20,7 +21,7 @@ from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import sigma
 
 
-class LuceneBackend(TextQueryBackend):
+class LuceneBackend(LuceneRegexMixin, TextQueryBackend):
     """
     Elasticsearch query string backend. Generates query strings described here in the
     Elasticsearch documentation:

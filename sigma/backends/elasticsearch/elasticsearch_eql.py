@@ -1,11 +1,23 @@
 import re
 import json
-from typing import Iterable, ClassVar, Dict, List, Optional, Pattern, Tuple, Union, Any
+from typing import (
+    Iterable,
+    ClassVar,
+    Dict,
+    List,
+    Optional,
+    Pattern,
+    Tuple,
+    Union,
+    Any,
+    cast,
+)
 
 from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.correlations import SigmaCorrelationRule
 from sigma.conversion.base import TextQueryBackend
+from sigma.backends.elasticsearch.lucene_regex import LuceneRegexMixin
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import (
     ConditionItem,
@@ -21,13 +33,15 @@ from sigma.types import (
     SigmaFieldReference,
     SpecialChars,
     SigmaNumber,
+    SigmaString,
+    SigmaRegularExpressionFlag,
 )
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import ipaddress
 import sigma
 
 
-class EqlBackend(TextQueryBackend):
+class EqlBackend(LuceneRegexMixin, TextQueryBackend):
     """
     Elasticsearch event query language backend. Generates query strings described here in the
     Elasticsearch documentation:
@@ -68,7 +82,7 @@ class EqlBackend(TextQueryBackend):
     eq_token: ClassVar[str] = ":"
 
     field_quote: ClassVar[str] = "`"
-    field_quote_pattern: ClassVar[Pattern] = re.compile(r"^\d.*|.*\s.*|-")
+    field_quote_pattern: ClassVar[Pattern] = re.compile(r"^\d.*|.*[\s-].*")
     field_quote_pattern_negation: ClassVar[bool] = False
     # String output
     # Fields
@@ -102,10 +116,20 @@ class EqlBackend(TextQueryBackend):
 
     # Regular expressions
     # Regular expression query as format string with placeholders {field} and {regex}
-    re_expression: ClassVar[str] = '{field} regex~ "{regex}"'
+    # regex is case-sensitive like Sigma re; with the i flag, regex~ ignores case.
+    re_expression: ClassVar[str] = '{field} regex{flag_i} "{regex}"'
+    re_flags: ClassVar[Dict[SigmaRegularExpressionFlag, str]] = {
+        SigmaRegularExpressionFlag.IGNORECASE: "~",
+        # m is refused by the translation, s needs no change
+        SigmaRegularExpressionFlag.MULTILINE: "",
+        SigmaRegularExpressionFlag.DOTALL: "",
+    }
+    re_native_ignore_case: ClassVar[bool] = True
     # Character used for escaping in regular expressions
     re_escape_char: ClassVar[str] = "\\"
-    re_escape: ClassVar[Tuple[str]] = ("/",)
+    # " ends the EQL string; the translated regex writes a literal " as \" (a Lucene operator).
+    # / is a plain character in EQL strings and Lucene regex (EQL rejects \/).
+    re_escape: ClassVar[Tuple[str]] = ('"',)
     # Escape the escape char for JSON compatibility.
     # According to Elastic documentation, backslash is used for escaping in JSON,
     # so backslashes in regex patterns must be escaped to ensure compatibility when
@@ -304,6 +328,76 @@ class EqlBackend(TextQueryBackend):
         else:
             return super().convert_condition_field_eq_val_str(cond, state)
 
+    def convert_condition_field_eq_val_num(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field = number value expressions.
+
+        Numeric values are compared with the case-sensitive '==' operator so
+        the right-hand operand can stay an unquoted number:
+
+            event.code == 3
+
+        Unlike ':' (which requires a string operand), '==' supports numeric
+        operands natively, so no quoting is needed here.
+        """
+        expr = "{field}" + "==" + "{value}"
+        return expr.format(
+            field=self.escape_and_quote_field(cond.field),
+            value=cond.value,
+        )
+
+    def convert_condition_field_eq_val_bool(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field = boolean value expressions.
+
+        Booleans are compared with '==' because ':' only accepts string
+        operands:
+
+            file.code_signature.signed == true
+        """
+        return (
+            self.escape_and_quote_field(cond.field)
+            + "=="
+            + self.bool_values[cond.value.boolean]
+        )
+
+    def convert_condition_as_in_expression(
+        self, cond: ConditionOR, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field in value list conditions.
+
+        Values in the list are all quoted as strings because EQL's 'like~'
+        operator requires string operands (numeric values included).
+        """
+        if self.field_in_list_expression is None or self.list_separator is None:
+            raise NotImplementedError("Field in list expressions are not supported by the backend")
+        if not all(
+            isinstance(arg, ConditionFieldEqualsValueExpression) for arg in cond.args
+        ):  # All arguments must be field equals value expressions, legitimates casts below
+            raise TypeError(
+                "Field in list expression requires all arguments to be ConditionFieldEqualsValueExpression"
+            )
+        field_name = cast(ConditionFieldEqualsValueExpression, cond.args[0]).field
+        if {cast(ConditionFieldEqualsValueExpression, arg).field for arg in cond.args} != {
+            field_name
+        }:
+            raise ValueError("Field in list expression requires all fields to be the same")
+        values = []
+        for arg in cond.args:
+            val = cast(ConditionFieldEqualsValueExpression, arg).value
+            if isinstance(val, SigmaString):
+                values.append(self.convert_value_str(val, state))
+            else:  # SigmaNumber or other scalar: quote as string
+                values.append(self.convert_value_str(SigmaString(str(val)), state))
+
+        return self.field_in_list_expression.format(
+            field=self.escape_and_quote_field(field_name),
+            op=(self.or_in_operator if isinstance(cond, ConditionOR) else self.and_in_operator),
+            list=self.list_separator.join(values),
+        )
+
     def convert_condition_not(
         self, cond: ConditionNOT, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:
@@ -344,7 +438,7 @@ class EqlBackend(TextQueryBackend):
             index_state = [index_state]
 
         # Handle the case where the base rule does not specify a groupby field but the backend adds the expression anyway
-        temporal_ordered_expression_pattern = re.compile(r"by None with runs=\d+$")
+        temporal_ordered_expression_pattern = re.compile(r"by (?:None)? with runs=\d+$")
         m = re.search(temporal_ordered_expression_pattern, query) # Returns None if not found
         if m:
             query = query[:m.start()] + query[m.end():] # Strip the matched string from the query
