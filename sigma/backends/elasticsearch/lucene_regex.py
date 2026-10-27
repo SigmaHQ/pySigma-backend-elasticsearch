@@ -47,11 +47,15 @@ determinize" (e.g. a wide bounded repeat such as ``.{6,64}`` after the leading
 import re
 from typing import List, Set
 
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 from sigma.types import SigmaRegularExpressionFlag
 
 
-class LuceneRegexError(NotImplementedError):
-    """The regular expression can't be translated exactly into a Lucene regular expression."""
+class LuceneRegexError(SigmaFeatureNotSupportedByBackendError):
+    """The regular expression can't be translated exactly into a Lucene regular expression.
+
+    A Sigma error, so pySigma reports it for the rule (and skips the rule when the
+    backend collects errors) like any other feature the backend doesn't support."""
 
 
 # Characters that are operators in Lucene regular expressions but plain characters in

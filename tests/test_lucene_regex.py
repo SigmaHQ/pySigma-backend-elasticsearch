@@ -2,6 +2,9 @@ import re
 
 import pytest
 
+from sigma.backends.elasticsearch import EqlBackend, ESQLBackend, LuceneBackend
+from sigma.collection import SigmaCollection
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 from sigma.backends.elasticsearch.lucene_regex import (
     LuceneRegexError,
     escape_for_query,
@@ -149,3 +152,39 @@ def test_to_lucene_regex_same_matches(pattern, flags):
 def test_escape_for_query():
     assert escape_for_query(r"a\"b/c", ['"'], "\\", True) == r"a\\\"b/c"
     assert escape_for_query(r"a\.b/c", ["/"], "\\", False) == r"a\.b\/c"
+
+
+RULES_ONE_UNTRANSLATABLE = r"""
+title: translatable
+status: test
+logsource:
+    category: test_category
+    product: test_product
+detection:
+    sel:
+        fieldA|re: 'ping'
+    condition: sel
+---
+title: untranslatable
+status: test
+logsource:
+    category: test_category
+    product: test_product
+detection:
+    sel:
+        fieldA|re: '\bHKTL\b'
+    condition: sel
+"""
+
+
+@pytest.mark.parametrize("backend", [LuceneBackend, EqlBackend, ESQLBackend])
+def test_untranslatable_regex_is_a_feature_not_supported_error(backend):
+    """An untranslatable regex fails only its own rule: it is collected like other
+    unsupported features, and the other rules still convert."""
+    rules = SigmaCollection.from_yaml(RULES_ONE_UNTRANSLATABLE)
+    collecting = backend(collect_errors=True)
+    assert len(collecting.convert(rules)) == 1
+    assert [rule.title for rule, _ in collecting.errors] == ["untranslatable"]
+    assert isinstance(collecting.errors[0][1], SigmaFeatureNotSupportedByBackendError)
+    with pytest.raises(SigmaFeatureNotSupportedByBackendError):
+        backend().convert(SigmaCollection.from_yaml(RULES_ONE_UNTRANSLATABLE))
