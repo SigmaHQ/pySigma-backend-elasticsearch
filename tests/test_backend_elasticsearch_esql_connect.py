@@ -588,6 +588,36 @@ class TestConnectElasticsearch:
         result_esql = esql_backend.convert(rule)[0]
         self.query_backend_hits(result_esql, num_wanted=1)
 
+    @pytest.mark.parametrize(
+        "modifiers, regex, num_wanted",
+        [
+            # Sigma regexes match anywhere in the value (Lucene regexes must match all of it)
+            ("re", r"exe\s[-/]u", 4),
+            # anchored at the start: excludes nonsysmon.exe
+            ("re", r"^Sysmon\.exe", 2),
+            # case-insensitive, anchored at both ends
+            ("re|i", r"^SYSMON\.EXE\s/U$", 1),
+        ],
+    )
+    def test_connect_esql_regex_search_semantics(
+        self, prepare_es_data, esql_backend: ESQLBackend, modifiers, regex, num_wanted
+    ):
+        rule = SigmaCollection.from_yaml(
+            f"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        CommandLine|{modifiers}: '{regex}'
+                    condition: sel
+            """
+        )
+        result = esql_backend.convert(rule)[0]
+        self.query_backend_hits(result, num_wanted=num_wanted)
+
     def test_connect_esql_cidr_v4_query(
         self, prepare_es_data, esql_backend: ESQLBackend
     ):
