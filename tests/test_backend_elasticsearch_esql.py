@@ -28,7 +28,7 @@ def test_elasticsearch_esql_and_expression(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"'
+            'from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea" and TO_LOWER(fieldB)=="valueb"'
         ]
     )
 
@@ -53,7 +53,7 @@ def test_elasticsearch_esql_or_expression(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * metadata _id, _index, _version | where fieldA=="valueA" or fieldB=="valueB"'
+            'from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea" or TO_LOWER(fieldB)=="valueb"'
         ]
     )
 
@@ -81,7 +81,7 @@ def test_elasticsearch_esql_and_or_expression(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * metadata _id, _index, _version | where (fieldA in ("valueA1", "valueA2")) and (fieldB in ("valueB1", "valueB2"))'
+            'from * metadata _id, _index, _version | where (TO_LOWER(fieldA) in ("valuea1", "valuea2")) and (TO_LOWER(fieldB) in ("valueb1", "valueb2"))'
         ]
     )
 
@@ -108,7 +108,7 @@ def test_elasticsearch_esql_or_and_expression(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * metadata _id, _index, _version | where fieldA=="valueA1" and fieldB=="valueB1" or fieldA=="valueA2" and fieldB=="valueB2"'
+            'from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea1" and TO_LOWER(fieldB)=="valueb1" or TO_LOWER(fieldA)=="valuea2" and TO_LOWER(fieldB)=="valueb2"'
         ]
     )
 
@@ -134,7 +134,7 @@ def test_elasticsearch_esql_in_expression(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * metadata _id, _index, _version | where fieldA in ("valueA", "valueB", "valueC")'
+            'from * metadata _id, _index, _version | where TO_LOWER(fieldA) in ("valuea", "valueb", "valuec")'
         ]
     )
 
@@ -160,7 +160,7 @@ def test_elasticsearch_esql_wildcard_expressions(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * metadata _id, _index, _version | where fieldA like "val*A" or ends_with(fieldA, "valueB") or starts_with(fieldA, "valueC")'
+            'from * metadata _id, _index, _version | where TO_LOWER(fieldA) like "val*a" or ends_with(TO_LOWER(fieldA), "valueb") or starts_with(TO_LOWER(fieldA), "valuec")'
         ]
     )
 
@@ -185,7 +185,7 @@ def test_elasticsearch_esql_like_backslash(esql_backend: ESQLBackend):
             )
         )
         == [
-            r'from * metadata _id, _index, _version | where Image like "*\\\\Users\\\\Public\\\\*"'
+            r'from * metadata _id, _index, _version | where TO_LOWER(Image) like "*\\\\users\\\\public\\\\*"'
         ]
     )
 
@@ -209,7 +209,7 @@ def test_elasticsearch_esql_like_literal_wildcards(esql_backend: ESQLBackend):
         """
             )
         )
-        == [r'from * metadata _id, _index, _version | where fieldA like "a\\*b\\?c*d"']
+        == [r'from * metadata _id, _index, _version | where TO_LOWER(fieldA) like "a\\*b\\?c*d"']
     )
 
 
@@ -234,7 +234,7 @@ def test_elasticsearch_esql_backslash_without_like(esql_backend: ESQLBackend):
             )
         )
         == [
-            r'from * metadata _id, _index, _version | where Image=="C:\\Users\\Public\\a.exe" or starts_with(Image, "C:\\Users\\") or ends_with(Image, "\\Public\\a.exe")'
+            r'from * metadata _id, _index, _version | where TO_LOWER(Image)=="c:\\users\\public\\a.exe" or starts_with(TO_LOWER(Image), "c:\\users\\") or ends_with(TO_LOWER(Image), "\\public\\a.exe")'
         ]
     )
 
@@ -263,7 +263,7 @@ def test_elasticsearch_esql_literal_wildcards_not_escaped(esql_backend: ESQLBack
             )
         )
         == [
-            'from * metadata _id, _index, _version | where fieldA=="a*b" and fieldB=="a?b" and starts_with(fieldC, "a*b") and ends_with(fieldD, "a?b") and (fieldE in ("a*b", "c?d"))'
+            'from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="a*b" and TO_LOWER(fieldB)=="a?b" and starts_with(TO_LOWER(fieldC), "a*b") and ends_with(TO_LOWER(fieldD), "a?b") and (TO_LOWER(fieldE) in ("a*b", "c?d"))'
         ]
     )
 
@@ -288,7 +288,7 @@ def test_elasticsearch_esql_literal_backslash_and_quote_escaped(esql_backend: ES
             )
         )
         == [
-            r'from * metadata _id, _index, _version | where fieldA=="C:\\Windows\\cmd.exe" and ends_with(fieldB, "\\cmd.exe") and fieldC=="a\"b"'
+            r'from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="c:\\windows\\cmd.exe" and ends_with(TO_LOWER(fieldB), "\\cmd.exe") and TO_LOWER(fieldC)=="a\"b"'
         ]
     )
 
@@ -312,7 +312,7 @@ def test_elasticsearch_esql_regex_query(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from * metadata _id, _index, _version | where fieldA rlike ".*(foo.*bar).*" and fieldB=="foo"'
+            'from * metadata _id, _index, _version | where fieldA rlike ".*(foo.*bar).*" and TO_LOWER(fieldB)=="foo"'
         ]
     )
 
@@ -357,7 +357,7 @@ def test_elasticsearch_esql_field_name_with_whitespace(esql_backend: ESQLBackend
         """
             )
         )
-        == ['from * metadata _id, _index, _version | where `field name`=="value"']
+        == ['from * metadata _id, _index, _version | where TO_LOWER(`field name`)=="value"']
     )
 
 
@@ -396,7 +396,7 @@ def test_elasticsearch_esql_set_state_index_string(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from logs-test-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"'
+            'from logs-test-* metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea" and TO_LOWER(fieldB)=="valueb"'
         ]
     )
 
@@ -438,7 +438,7 @@ def test_elasticsearch_esql_set_state_index_list(esql_backend: ESQLBackend):
             )
         )
         == [
-            'from logs-test1-*,logs-test2-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"'
+            'from logs-test1-*,logs-test2-* metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea" and TO_LOWER(fieldB)=="valueb"'
         ]
     )
 
@@ -511,7 +511,7 @@ detection:
             )
         )
         == [
-            'from logs-test1-*,logs-test2-*,logs-test3-* metadata _id, _index, _version | where (fieldA=="valueA") or (fieldB=="valueB")\n| eval timebucket=date_trunc(15minutes, @timestamp) | stats value_count=count_distinct(User) by timebucket, field\n| where value_count > 5'
+            'from logs-test1-*,logs-test2-*,logs-test3-* metadata _id, _index, _version | where (TO_LOWER(fieldA)=="valuea") or (TO_LOWER(fieldB)=="valueb")\n| eval timebucket=date_trunc(15minutes, @timestamp) | stats value_count=count_distinct(User) by timebucket, field\n| where value_count > 5'
         ]
     )
 
@@ -552,7 +552,7 @@ def test_elasticsearch_esql_set_state_index_list_single(esql_backend: ESQLBacken
             )
         )
         == [
-            'from logs-test-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"'
+            'from logs-test-* metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea" and TO_LOWER(fieldB)=="valueb"'
         ]
     )
 
@@ -594,7 +594,7 @@ def test_elasticsearch_esql_set_state_index_list_deduplicate(esql_backend: ESQLB
             )
         )
         == [
-            'from logs-test-* metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"'
+            'from logs-test-* metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea" and TO_LOWER(fieldB)=="valueb"'
         ]
     )
 
@@ -636,7 +636,7 @@ def test_elasticsearch_esql_set_state_index_list_wildcard(esql_backend: ESQLBack
             )
         )
         == [
-            'from * metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"'
+            'from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea" and TO_LOWER(fieldB)=="valueb"'
         ]
     )
 
@@ -666,7 +666,7 @@ def test_elasticsearch_esql_ndjson(esql_backend: ESQLBackend):
             "hideChart": False,
             "isTextBasedQuery": True,
             "kibanaSavedObjectMeta": {
-                "searchSourceJSON": '{"query": {"esql": "from * metadata _id, _index, _version | where fieldA==\\"valueA\\" and fieldB==\\"valueB\\""}, "index": {"title": "*", "timeFieldName": "@timestamp", "sourceFilters": [], "type": "esql", "fieldFormats": {}, "runtimeFieldMap": {}, "allowNoIndex": false, "name": "*", "allowHidden": false}, "filter": []}'
+                "searchSourceJSON": '{"query": {"esql": "from * metadata _id, _index, _version | where TO_LOWER(fieldA)==\\"valuea\\" and TO_LOWER(fieldB)==\\"valueb\\""}, "index": {"title": "*", "timeFieldName": "@timestamp", "sourceFilters": [], "type": "esql", "fieldFormats": {}, "runtimeFieldMap": {}, "allowNoIndex": false, "name": "*", "allowHidden": false}, "filter": []}'
             },
             "sort": [["@timestamp", "desc"]],
             "timeRestore": False,
@@ -731,7 +731,7 @@ def test_elasticsearch_esql_siemrule(esql_backend: ESQLBackend):
             "exceptionsList": [],
             "type": "esql",
             "language": "esql",
-            "query": 'from * metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"',
+            "query": 'from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea" and TO_LOWER(fieldB)=="valueb"',
         },
         "rule_type_id": "siem.esqlRule",
         "notify_when": "onActiveAlert",
@@ -788,7 +788,7 @@ def test_elasticsearch_esql_siemrule_ndjson(esql_backend: ESQLBackend):
         "setup": "",
         "type": "esql",
         "language": "esql",
-        "query": 'from * metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"',
+        "query": 'from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea" and TO_LOWER(fieldB)=="valueb"',
         "actions": [],
     }
 
@@ -891,6 +891,81 @@ tags:
         "setup": "",
         "type": "esql",
         "language": "esql",
-        "query": 'from * metadata _id, _index, _version | where fieldA=="valueA" and fieldB=="valueB"',
+        "query": 'from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="valuea" and TO_LOWER(fieldB)=="valueb"',
         "actions": [],
     }
+
+
+@pytest.mark.parametrize(
+    "detection, expected",
+    [
+        # ip literals are not wrapped in TO_LOWER(), ES|QL rejects it for ip fields
+        ("DestinationIp: 192.168.1.1", 'DestinationIp=="192.168.1.1"'),
+        (
+            "DestinationIp: 'fe80:0000:0000:0000:0000:0000:0000:beef'",
+            'DestinationIp=="fe80:0000:0000:0000:0000:0000:0000:beef"',
+        ),
+        (
+            "DestinationIp: [192.168.1.1, 10.5.5.5]",
+            'DestinationIp in ("192.168.1.1", "10.5.5.5")',
+        ),
+        # not a valid IP address, therefore handled as string
+        ("DestinationIp: 10.0.0.256", 'TO_LOWER(DestinationIp)=="10.0.0.256"'),
+        # numbers are passed through untouched
+        ("destination.port: [80, 443]", "destination.port in (80, 443)"),
+        # |cased keeps field and value case-sensitive
+        ("CommandLine|cased: GiT.ExE", 'CommandLine=="GiT.ExE"'),
+        ("CommandLine|cased|contains: GiT.ExE", 'CommandLine like "*GiT.ExE*"'),
+        (r"Image|cased|startswith: 'C:\Windows'", r'starts_with(Image, "C:\\Windows")'),
+        (r"Image|cased|endswith: '\CMD.EXE'", r'ends_with(Image, "\\CMD.EXE")'),
+        ("CommandLine|cased: [GiT, ExE]", 'CommandLine in ("GiT", "ExE")'),
+        # lowercasing and LIKE escaping combined
+        (
+            r"Image|contains: 'C:\WINDOWS\System32'",
+            r'TO_LOWER(Image) like "*c:\\\\windows\\\\system32*"',
+        ),
+    ],
+)
+def test_elasticsearch_esql_string_case_handling(
+    esql_backend: ESQLBackend, detection: str, expected: str
+):
+    assert (
+        esql_backend.convert(
+            SigmaCollection.from_yaml(
+                f"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    {detection}
+                condition: sel
+        """
+            )
+        )
+        == [f"from * metadata _id, _index, _version | where {expected}"]
+    )
+
+
+def test_elasticsearch_esql_mixed_case_sensitivity(esql_backend: ESQLBackend):
+    """|cased and default values of the same field can't share an in-expression."""
+    assert esql_backend.convert(
+        SigmaCollection.from_yaml(
+            """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    - CommandLine: ValueA
+                    - CommandLine|cased: ValueB
+                condition: sel
+            """
+        )
+    ) == [
+        'from * metadata _id, _index, _version | where TO_LOWER(CommandLine)=="valuea" or CommandLine=="ValueB"'
+    ]

@@ -264,6 +264,10 @@ The output can be imported directly into Kibana as a Detection Rule.
 
 ## Known Limitations
 
+### ES|QL Case-Insensitive String Matching
+
+ES|QL string operators (`==`, `LIKE`, `RLIKE`, `STARTS_WITH`, `ENDS_WITH`, `IN`) are case-sensitive. The backend implements Sigma's case-insensitive default by wrapping fields and values in `TO_LOWER()`, e.g. `CommandLine|contains: Git.exe` becomes `TO_LOWER(CommandLine) like "*git.exe*"`. This comes with a performance trade-off. Non string type fields will make the query fail, use the `|cased` modifier.
+
 ### ES|QL Correlation Rules: Static Time Boundaries
 
 ES|QL correlation rules (event count, value count, and temporal correlation types) use `DATE_TRUNC()` to assign events to fixed, epoch-aligned time buckets. This means that the `timespan` window in a correlation rule is aligned to clock boundaries rather than being a true sliding window.
