@@ -255,7 +255,7 @@ class LuceneBackend(TextQueryBackend):
 
         return super().compare_precedence(outer, inner)
 
-    def convert_value_str(self, s: SigmaString, state: ConversionState) -> str:
+    def convert_value_str(self, s: SigmaString, state: ConversionState, cond: ConditionFieldEqualsValueExpression) -> str:
         # Phrase-quote multi-word plain values so the query_string parser treats
         # them as phrase queries rather than splitting on whitespace.
         if not s.contains_special() and " " in str(s):
@@ -267,6 +267,14 @@ class LuceneBackend(TextQueryBackend):
                 self.filter_chars,
             )
             return self.str_quote + converted + self.str_quote
+
+        # If the field name is “winlog.channel” and the field value is “providername/channeltype,”
+        # ensure that the field value is searched for as a phrase.
+        if (cond.field == "winlog.channel"
+            and not s.contains_special() 
+            and str(s).count('/') == 1
+            and str(s).split('/')[1].isalpha()):
+                return self.str_quote + super().convert_value_str(s, state) + self.str_quote
         return super().convert_value_str(s, state)
 
     def convert_condition_field_eq_val_str(
