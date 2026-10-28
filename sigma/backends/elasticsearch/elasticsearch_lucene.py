@@ -269,6 +269,66 @@ class LuceneBackend(TextQueryBackend):
             return self.str_quote + converted + self.str_quote
         return super().convert_value_str(s, state)
 
+    def convert_condition_field_eq_val_str(
+            self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+        ) -> str | DeferredQueryExpression:
+        """Conversion of field = string value expressions"""
+        cond_value = cond.value
+        if not isinstance(cond_value, SigmaString):
+            raise TypeError("Expected SigmaString for cond.value, got {type(cond_value)}")
+        try:
+            if (  # Check conditions for usage of 'startswith' operator
+                self.startswith_expression
+                is not None  # 'startswith' operator is defined in backend
+                and cond_value.endswith(SpecialChars.WILDCARD_MULTI)  # String ends with wildcard
+                and (
+                    self.startswith_expression_allow_special
+                    or not cond_value[:-1].contains_special()
+                )  # Remainder of string doesn't contains special characters or it's allowed
+            ):
+                expr = (
+                    self.startswith_expression
+                )  # If all conditions are fulfilled, use 'startswith' operator instead of equal token
+                value = cond_value[:-1]
+            elif (  # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
+                self.endswith_expression is not None
+                and cond_value.startswith(SpecialChars.WILDCARD_MULTI)
+                and (
+                    self.endswith_expression_allow_special or not cond_value[1:].contains_special()
+                )
+            ):
+                expr = self.endswith_expression
+                value = cond_value[1:]
+            elif (  # contains: string starts and ends with wildcard
+                self.contains_expression is not None
+                and cond_value.startswith(SpecialChars.WILDCARD_MULTI)
+                and cond_value.endswith(SpecialChars.WILDCARD_MULTI)
+                and (
+                    self.contains_expression_allow_special
+                    or not cond_value[1:-1].contains_special()
+                )
+            ):
+                expr = self.contains_expression
+                value = cond_value[1:-1]
+            elif (  # wildcard match expression: string contains wildcard
+                self.wildcard_match_expression is not None and cond_value.contains_special()
+            ):
+                expr = self.wildcard_match_expression
+                value = cond_value
+            else:
+                expr = self.eq_expression
+                value = cond_value
+            return expr.format(
+                field=self.escape_and_quote_field(cond.field),
+                value=self.convert_value_str(value, state, cond),
+                regex=self.convert_value_re(value.to_regex(self.add_escaped_re), state),
+                backend=self,
+            )
+        except TypeError:  # pragma: no cover
+            raise NotImplementedError(
+                "Field equals string value expressions with strings are not supported by the backend."
+            )
+
     def convert_condition_val_str(
         self, cond: ConditionValueExpression, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:
