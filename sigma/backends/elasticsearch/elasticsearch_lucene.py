@@ -288,7 +288,7 @@ class LuceneBackend(TextQueryBackend):
             if (  # Check conditions for usage of 'startswith' operator
                 self.startswith_expression
                 is not None  # 'startswith' operator is defined in backend
-                and cond_value.endswith(SpecialChars.WILDCARD_MULTI)  # String ends with wildcard
+                and cond_value.endswith(LuceneBackend.wildcard_multi)  # String ends with wildcard
                 and (
                     self.startswith_expression_allow_special
                     or not cond_value[:-1].contains_special()
@@ -300,7 +300,7 @@ class LuceneBackend(TextQueryBackend):
                 value = cond_value[:-1]
             elif (  # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
                 self.endswith_expression is not None
-                and cond_value.startswith(SpecialChars.WILDCARD_MULTI)
+                and cond_value.startswith(LuceneBackend.wildcard_multi)
                 and (
                     self.endswith_expression_allow_special or not cond_value[1:].contains_special()
                 )
@@ -309,8 +309,8 @@ class LuceneBackend(TextQueryBackend):
                 value = cond_value[1:]
             elif (  # contains: string starts and ends with wildcard
                 self.contains_expression is not None
-                and cond_value.startswith(SpecialChars.WILDCARD_MULTI)
-                and cond_value.endswith(SpecialChars.WILDCARD_MULTI)
+                and cond_value.startswith(LuceneBackend.wildcard_multi)
+                and cond_value.endswith(LuceneBackend.wildcard_multi)
                 and (
                     self.contains_expression_allow_special
                     or not cond_value[1:-1].contains_special()
