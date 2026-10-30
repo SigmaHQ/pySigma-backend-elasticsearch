@@ -1,10 +1,11 @@
-from .windows import ecs_windows, ecs_windows_old
+from .windows import ecs_windows, ecs_windows_elastic_defend, ecs_windows_old
 from .zeek import ecs_zeek_beats, ecs_zeek_corelight, zeek_raw
 from .kubernetes import ecs_kubernetes
 from .macos import ecs_macos_esf
 
 pipelines = {
     "ecs_windows": ecs_windows,
+    "ecs_windows_elastic_defend": ecs_windows_elastic_defend,
     "ecs_windows_old": ecs_windows_old,
     "ecs_zeek_beats": ecs_zeek_beats,
     "ecs_zeek_corelight": ecs_zeek_corelight,
