@@ -94,11 +94,11 @@ def ecs_windows() -> ProcessingPipeline:
                         "FileName": "file.path",
                         "ProcessGuid": "process.entity_id",
                         "ProcessId": "process.pid",
-                        "Image": "process.executable.caseless",
+                        "Image": "process.executable",
                         "CurrentDirectory": "process.working_directory",
                         "ParentProcessGuid": "process.parent.entity_id",
                         "ParentProcessId": "process.parent.pid",
-                        "ParentImage": "process.parent.executable.caseless",
+                        "ParentImage": "process.parent.executable",
                         "ParentCommandLine": "process.parent.command_line",
                         "TargetFilename": "file.path",
                         "SourceIp": "source.ip",
@@ -114,13 +114,13 @@ def ecs_windows() -> ProcessingPipeline:
                         "Imphash": "file.pe.imphash",
                         "SourceProcessGuid": "process.entity_id",
                         "SourceProcessId": "process.pid",
-                        "SourceImage": "process.executable.caseless",
+                        "SourceImage": "process.executable",
                         "Device": "file.path",
                         "SourceThreadId": "process.thread.id",
                         "TargetObject": "registry.path",
                         "Details": "registry.data.strings",
                         "PipeName": "file.name",
-                        "Destination": "process.executable.caseless",
+                        "Destination": "process.executable",
                         "QueryName": "dns.question.name",
                         "QueryStatus": "sysmon.dns.status",
                         "IsExecutable": "sysmon.file.is_executable",
@@ -145,7 +145,7 @@ def ecs_windows() -> ProcessingPipeline:
                         "ScriptBlockId": "powershell.file.script_block_id",
                         "AccountDomain": "user.domain",
                         "AccountName": "user.name",
-                        "Application": "process.executable.caseless",
+                        "Application": "process.executable",
                         "ClientAddress": "source.ip",
                         "ClientName": "source.domain",
                         "DestAddress": "destination.ip",
@@ -153,9 +153,9 @@ def ecs_windows() -> ProcessingPipeline:
                         "IpAddress": "source.ip",
                         "IpPort": "source.port",
                         "NewProcessId": "process.pid",
-                        "NewProcessName": "process.executable.caseless",
-                        "ParentProcessName": "process.parent.name.caseless",
-                        "ProcessName": "process.executable.caseless",
+                        "NewProcessName": "process.executable",
+                        "ParentProcessName": "process.parent.name",
+                        "ProcessName": "process.executable",
                         "SourceAddress": "source.ip",
                         "TargetDomainName": "user.domain",
                         "User": "user.name",
@@ -213,6 +213,33 @@ def ecs_windows() -> ProcessingPipeline:
                     ])
                 ],
                 field_name_condition_negation=True,
+            ),
+        ],
+    )
+
+
+# Fields that have a .caseless subfield in Elastic Defend but not in Winlogbeat
+# or the Windows integration.
+_elastic_defend_caseless_fields = {
+    "process.executable": "process.executable.caseless",
+    "process.parent.executable": "process.parent.executable.caseless",
+    "process.name": "process.name.caseless",
+    "process.parent.name": "process.parent.name.caseless",
+}
+
+
+def ecs_windows_elastic_defend() -> ProcessingPipeline:
+    """Add-on pipeline for Elastic Defend indices that remaps ECS executable/name
+    fields to their .caseless subfields for case-insensitive matching in Lucene."""
+    return ProcessingPipeline(
+        name="Elastic Defend .caseless field remapping for ECS Windows pipelines",
+        priority=21,
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
+        items=[
+            ProcessingItem(
+                identifier="ecs_windows_elastic_defend_caseless_mapping",
+                transformation=FieldMappingTransformation(_elastic_defend_caseless_fields),
+                rule_conditions=[LogsourceCondition(product="windows")],
             ),
         ],
     )

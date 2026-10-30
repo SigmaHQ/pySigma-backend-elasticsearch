@@ -1,7 +1,7 @@
 from sigma.backends.elasticsearch.elasticsearch_esql import ESQLBackend
 from sigma.backends.elasticsearch.elasticsearch_eql import EqlBackend
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
-from sigma.pipelines.elasticsearch.windows import ecs_windows, ecs_windows_old
+from sigma.pipelines.elasticsearch.windows import ecs_windows, ecs_windows_elastic_defend, ecs_windows_old
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 
@@ -26,7 +26,7 @@ def test_ecs_windows():
             )
         )
         == [
-            "winlog.channel:Security AND (event.code:123 AND process.executable.caseless:test.exe AND winlog.event_data.TestField:test)"
+            "winlog.channel:Security AND (event.code:123 AND process.executable:test.exe AND winlog.event_data.TestField:test)"
         ]
     )
 
@@ -201,7 +201,7 @@ def test_ecs_windows_eql_contains_expression_with_trailing_backslash_multivalue(
         """
     )
     assert eql_backend.convert(rule) == [
-        r'any where process.executable.caseless like~ ("*valueA\\*", "*valueB*")'
+        r'any where process.executable like~ ("*valueA\\*", "*valueB*")'
     ]
 
 def test_ecs_windows_null_value_handling():
@@ -256,3 +256,55 @@ def test_ecs_windows_lucene_regex_conversion():
     """)
     result = lucene_backend.convert(rule)
     assert result == ["process.command_line:/.*(foobar[0-9]{3}).*/"]
+
+
+def test_ecs_windows_elastic_defend_caseless_image():
+    """ecs_windows_elastic_defend remaps process.executable to .caseless for Elastic Defend indices."""
+    from sigma.pipelines.elasticsearch.windows import ecs_windows_elastic_defend
+    pipeline = ecs_windows() + ecs_windows_elastic_defend()
+    assert (
+        LuceneBackend(pipeline).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: process_creation
+                product: windows
+            detection:
+                sel:
+                    Image|endswith: '\\powershell.exe'
+                    ParentImage|endswith: '\\cmd.exe'
+                condition: sel
+        """
+            )
+        )
+        == [
+            "process.executable.caseless:*\\\\powershell.exe AND process.parent.executable.caseless:*\\\\cmd.exe"
+        ]
+    )
+
+
+def test_ecs_windows_no_caseless_by_default():
+    """ecs_windows alone does not produce .caseless fields (Winlogbeat compatibility)."""
+    assert (
+        LuceneBackend(ecs_windows()).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: process_creation
+                product: windows
+            detection:
+                sel:
+                    Image|endswith: '\\powershell.exe'
+                    ParentImage|endswith: '\\cmd.exe'
+                condition: sel
+        """
+            )
+        )
+        == [
+            "process.executable:*\\\\powershell.exe AND process.parent.executable:*\\\\cmd.exe"
+        ]
+    )
