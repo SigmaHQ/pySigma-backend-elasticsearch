@@ -22,7 +22,7 @@ python = "^3.11"
 pysigma = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^9.1"
+pytest = "^9.2"
 pytest-cov = "^7.0"
 coverage = "^7.16"
 requests = "^2.34"
