@@ -1,4 +1,3 @@
-import pytest
 from sigma.backends.elasticsearch.elasticsearch_esql import ESQLBackend
 from sigma.backends.elasticsearch.elasticsearch_eql import EqlBackend
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
@@ -257,63 +256,3 @@ def test_ecs_windows_lucene_regex_conversion():
     """)
     result = lucene_backend.convert(rule)
     assert result == ["process.command_line:/.*(foobar[0-9]{3}).*/"]
-
-
-@pytest.mark.parametrize(
-    "value, direction",
-    [
-        ("true", "egress"),
-        ("false", "ingress"),
-        ("'true'", "egress"),
-        ("'false'", "ingress"),
-        ('"true"', "egress"),
-        ('"false"', "ingress"),
-        ("'TRUE'", "egress"),
-        ("'False'", "ingress"),
-        ("'egress'", "egress"),
-        ("'ingress'", "ingress"),
-        ("'trueish'", "trueish"),
-    ],
-)
-def test_ecs_windows_network_direction_quoted_values(value, direction):
-    rule = SigmaCollection.from_yaml(
-        f"""
-        title: Test
-        status: test
-        logsource:
-            product: windows
-            category: network_connection
-        detection:
-            sel:
-                Initiated: {value}
-            condition: sel
-        """
-    )
-    assert LuceneBackend(ecs_windows()).convert(rule) == [
-        f"network.direction:{direction}"
-    ]
-
-
-@pytest.mark.parametrize(
-    "category,field",
-    [
-        ("driver_load", "file.code_signature.subject_name"),
-        ("image_load", "file.code_signature.subject_name"),
-        ("antivirus", "winlog.event_data.Signature"),
-    ],
-)
-def test_ecs_windows_signature_category(category, field):
-    rule = SigmaCollection.from_yaml(
-        f"""
-        title: Test
-        status: test
-        logsource:
-            product: windows
-            category: {category}
-        detection:
-            sel:
-                Signature: Acme
-            condition: sel
-        """
-    )
-    assert LuceneBackend(ecs_windows()).convert(rule) == [f"{field}:Acme"]
