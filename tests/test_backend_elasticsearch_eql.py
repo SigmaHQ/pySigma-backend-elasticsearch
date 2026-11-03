@@ -1,7 +1,7 @@
 import pytest
 from sigma.backends.elasticsearch.elasticsearch_eql import EqlBackend
 from sigma.collection import SigmaCollection
-from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError, SigmaConfigurationError
 
 
 @pytest.fixture(name="eql_backend")
@@ -712,7 +712,7 @@ def test_elasticsearch_siemrule_eql(eql_backend: EqlBackend):
             "description": "No description",
             "ruleId": "c277adc0-f0c4-42e1-af9d-fab062992156",
             "falsePositives": [],
-            "from": "now-5m",
+            "from": "now-6m",
             "immutable": False,
             "license": "DRL",
             "outputIndex": "",
@@ -787,7 +787,7 @@ def test_elasticsearch_siemrule_eql_with_threatmodel(eql_backend: EqlBackend):
             "description": "No description",
             "ruleId": "c277adc0-f0c4-42e1-af9d-fab062992156",
             "falsePositives": [],
-            "from": "now-5m",
+            "from": "now-6m",
             "immutable": False,
             "license": "DRL",
             "outputIndex": "",
@@ -880,7 +880,7 @@ def test_elasticsearch_siemrule_eql_ndjson(eql_backend: EqlBackend):
         },
         "author": [],
         "false_positives": [],
-        "from": "now-5m",
+        "from": "now-6m",
         "rule_id": "c277adc0-f0c4-42e1-af9d-fab062992156",
         "max_signals": 100,
         "risk_score_mapping": [],
@@ -912,6 +912,33 @@ def test_elasticsearch_siemrule_eql_ndjson(eql_backend: EqlBackend):
         "throttle": "no_actions",
         "actions": [],
     }
+
+
+def test_elasticsearch_siemrule_eql_custom_meta_lookback():
+    backend = EqlBackend(schedule_interval=10, schedule_interval_unit="m", meta_lookback="2m")
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            id: c277adc0-f0c4-42e1-af9d-fab062992156
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                condition: sel
+        """
+    )
+    result = backend.convert(rule, output_format="siem_rule_ndjson")
+    assert result[0]["from"] == "now-12m"
+    assert result[0]["meta"] == {"from": "2m"}
+    assert result[0]["interval"] == "10m"
+
+
+def test_elasticsearch_siemrule_eql_invalid_meta_lookback():
+    with pytest.raises(SigmaConfigurationError):
+        EqlBackend(meta_lookback="bogus")
 
 
 def test_elasticsearch_siem_rule_output(eql_backend: EqlBackend):
