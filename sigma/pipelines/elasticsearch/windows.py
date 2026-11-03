@@ -10,6 +10,7 @@ from sigma.processing.conditions import (
     IncludeFieldCondition,
     FieldNameProcessingItemAppliedCondition,
     MatchValueCondition,
+    MatchStringCondition,
     IsNullCondition,
 )
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
@@ -186,7 +187,9 @@ def ecs_windows() -> ProcessingPipeline:
                 ],
                 detection_item_conditions=[
                     MatchValueCondition(value=True, cond="all"),
+                    MatchStringCondition(pattern=r"(?i)^true$", cond="all"),
                 ],
+                detection_item_condition_linking=any,
             ),
             ProcessingItem(
                 identifier="network_direction_ingress",
@@ -196,7 +199,9 @@ def ecs_windows() -> ProcessingPipeline:
                 ],
                 detection_item_conditions=[
                     MatchValueCondition(value=False, cond="all"),
+                    MatchStringCondition(pattern=r"(?i)^false$", cond="all"),
                 ],
+                detection_item_condition_linking=any,
             ),
             ProcessingItem(
                 identifier="values_to_str",
