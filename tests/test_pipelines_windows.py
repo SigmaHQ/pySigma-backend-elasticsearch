@@ -292,3 +292,28 @@ def test_ecs_windows_network_direction_quoted_values(value, direction):
     assert LuceneBackend(ecs_windows()).convert(rule) == [
         f"network.direction:{direction}"
     ]
+
+
+@pytest.mark.parametrize(
+    "category,field",
+    [
+        ("driver_load", "file.code_signature.subject_name"),
+        ("image_load", "file.code_signature.subject_name"),
+        ("antivirus", "winlog.event_data.Signature"),
+    ],
+)
+def test_ecs_windows_signature_category(category, field):
+    rule = SigmaCollection.from_yaml(
+        f"""
+        title: Test
+        status: test
+        logsource:
+            product: windows
+            category: {category}
+        detection:
+            sel:
+                Signature: Acme
+            condition: sel
+        """
+    )
+    assert LuceneBackend(ecs_windows()).convert(rule) == [f"{field}:Acme"]

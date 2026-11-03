@@ -45,8 +45,8 @@ ecs_windows_variable_mappings = {
     "Protocol": (("category", "network_connection", "network.transport"),),
     "Initiated": (("category", "network_connection", "network.direction"),),
     "Signature": (
-        ("category", "driver_loaded", "file.code_signature.subject_name"),
-        ("category", "image_loaded", "file.code_signature.subject_name"),
+        ("category", "driver_load", "file.code_signature.subject_name"),
+        ("category", "image_load", "file.code_signature.subject_name"),
     ),
     "EngineVersion": (("service", "powershell-classic", "powershell.engine.version"),),
     "HostVersion": (
