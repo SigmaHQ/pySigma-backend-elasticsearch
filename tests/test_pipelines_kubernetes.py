@@ -1,3 +1,4 @@
+import pytest
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 from sigma.pipelines.elasticsearch.kubernetes import ecs_kubernetes
 from sigma.collection import SigmaCollection
@@ -126,4 +127,39 @@ def test_ecs_kubernetes_fields():
     assert rule.fields == [
         "kubernetes.audit.verb",
         "kubernetes.audit.requestObject.spec.volumes.hostPath",
+    ]
+
+
+@pytest.mark.parametrize("prefix", ["", "objectRef."])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("apiGroup", "apps"),
+        ("resource", "pods"),
+        ("subresource", "exec"),
+        ("namespace", "default"),
+        ("apiGroup", ""),
+        ("subresource", ""),
+    ],
+)
+def test_ecs_kubernetes_objectref_alias(prefix, field, value):
+    rule = SigmaCollection.from_yaml(
+        f"""
+        title: Test
+        status: test
+        logsource:
+            product: kubernetes
+            service: audit
+        detection:
+            selection:
+                verb: create
+                {prefix}{field}: '{value}'
+            condition: selection
+        """
+    )
+    expected = "kubernetes.audit.verb:create"
+    if value:
+        expected += f" AND kubernetes.audit.objectRef.{field}:{value}"
+    assert LuceneBackend(ecs_kubernetes()).convert(rule) == [
+        f"kubernetes.audit.kind:Event AND ({expected})"
     ]
