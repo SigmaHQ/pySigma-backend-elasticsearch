@@ -17,8 +17,21 @@ from sigma.conditions import (
     ConditionValueExpression,
 )
 from sigma.types import SigmaCompareExpression, SigmaNull, SigmaFieldReference, SigmaString
-from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError, SigmaConfigurationError
 import sigma
+
+_DURATION_UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+
+
+def _duration_to_seconds(amount: int, unit: str) -> int:
+    return amount * _DURATION_UNIT_SECONDS[unit]
+
+
+def _seconds_to_duration(total_seconds: int) -> str:
+    for unit, factor in (("d", 86400), ("h", 3600), ("m", 60)):
+        if total_seconds % factor == 0:
+            return f"{total_seconds // factor}{unit}"
+    return f"{total_seconds}s"
 
 
 class LuceneBackend(LuceneRegexMixin, TextQueryBackend):
@@ -194,6 +207,7 @@ class LuceneBackend(LuceneRegexMixin, TextQueryBackend):
         ],
         schedule_interval: int = 5,
         schedule_interval_unit: str = "m",
+        meta_lookback: str = "1m",
         **kwargs,
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
@@ -210,6 +224,13 @@ class LuceneBackend(LuceneRegexMixin, TextQueryBackend):
         ]
         self.schedule_interval = schedule_interval or 5
         self.schedule_interval_unit = schedule_interval_unit or "m"
+        self.meta_lookback = meta_lookback or "1m"
+        lookback_match = re.fullmatch(r"(\d+)([smhd])", self.meta_lookback)
+        if not lookback_match:
+            raise SigmaConfigurationError(f"invalid meta_lookback: {self.meta_lookback!r}")
+        self._meta_lookback_seconds = _duration_to_seconds(
+            int(lookback_match.group(1)), lookback_match.group(2)
+        )
         self.severity_risk_mapping = {
             "INFORMATIONAL": 1,
             "LOW": 21,
@@ -217,6 +238,10 @@ class LuceneBackend(LuceneRegexMixin, TextQueryBackend):
             "HIGH": 73,
             "CRITICAL": 99,
         }
+
+    def _rule_from(self) -> str:
+        interval_seconds = _duration_to_seconds(self.schedule_interval, self.schedule_interval_unit)
+        return f"now-{_seconds_to_duration(interval_seconds + self._meta_lookback_seconds)}"
 
     @staticmethod
     def _is_field_null_condition(cond: ConditionItem) -> bool:
@@ -754,7 +779,7 @@ class LuceneBackend(LuceneRegexMixin, TextQueryBackend):
                 ),
                 "ruleId": str(rule.id),
                 "falsePositives": rule.falsepositives,
-                "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+                "from": self._rule_from(),
                 "immutable": False,
                 "license": (
                     rule.license 
@@ -763,7 +788,7 @@ class LuceneBackend(LuceneRegexMixin, TextQueryBackend):
                 ),
                 "outputIndex": "",
                 "meta": {
-                    "from": "1m",
+                    "from": self.meta_lookback,
                 },
                 "maxSignals": 100,
                 "riskScore": (
@@ -829,7 +854,7 @@ class LuceneBackend(LuceneRegexMixin, TextQueryBackend):
             ),
             "rule_id": str(rule.id),
             "false_positives": rule.falsepositives,
-            "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+            "from": self._rule_from(),
             "immutable": False,
             "license": (
                 rule.license 
@@ -838,7 +863,7 @@ class LuceneBackend(LuceneRegexMixin, TextQueryBackend):
             ),
             "output_index": "",
             "meta": {
-                "from": "1m",
+                "from": self.meta_lookback,
             },
             "max_signals": 100,
             "risk_score": (
