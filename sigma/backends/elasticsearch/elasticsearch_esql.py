@@ -371,11 +371,15 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
         collect_errors: bool = False,
         schedule_interval: int = 5,
         schedule_interval_unit: str = "m",
+        loopback_time: int = 1,
+        loopback_unit: str = "m",
         **kwargs,
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
         self.schedule_interval = schedule_interval
         self.schedule_interval_unit = schedule_interval_unit
+        self.loopback_time = loopback_time
+        self.loopback_unit = loopback_unit or "m"
         self.severity_risk_mapping = {
             "INFORMATIONAL": 1,
             "LOW": 21,
@@ -612,7 +616,7 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
                 ),
                 "ruleId": str(rule.id),
                 "falsePositives": rule.falsepositives,
-                "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+                "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}-{self.loopback_time}{self.loopback_unit}",
                 "immutable": False,
                 "license": (
                     rule.license 
@@ -620,9 +624,6 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
                     else "DRL"
                 ),
                 "outputIndex": "",
-                "meta": {
-                    "from": "1m",
-                },
                 "maxSignals": 100,
                 "relatedIntegrations": [],
                 "requiredFields": [],
@@ -700,12 +701,9 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
                 else "DRL"
             ),
             "output_index": "",
-            "meta": {
-                "from": "1m",
-            },
             "author": [rule.author] if rule.author is not None else [],
             "false_positives": rule.falsepositives,
-            "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+            "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}-{self.loopback_time}{self.loopback_unit}",
             "rule_id": str(rule.id),
             "max_signals": 100,
             "risk_score_mapping": [],
