@@ -17,18 +17,7 @@ import re
 import json
 from typing import ClassVar, Dict, Tuple, Pattern, List, Iterable, Optional, Union
 
-_DURATION_UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
-
-
-def _duration_to_seconds(amount: int, unit: str) -> int:
-    return amount * _DURATION_UNIT_SECONDS[unit]
-
-
-def _seconds_to_duration(total_seconds: int) -> str:
-    for unit, factor in (("d", 86400), ("h", 3600), ("m", 60)):
-        if total_seconds % factor == 0:
-            return f"{total_seconds // factor}{unit}"
-    return f"{total_seconds}s"
+_VALID_DURATION_UNITS = {"s", "m", "h", "d"}
 
 
 class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
@@ -385,19 +374,17 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
         collect_errors: bool = False,
         schedule_interval: int = 5,
         schedule_interval_unit: str = "m",
-        meta_lookback: str = "1m",
+        loopback_time: int = 1,
+        loopback_unit: str = "m",
         **kwargs,
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
         self.schedule_interval = schedule_interval
         self.schedule_interval_unit = schedule_interval_unit
-        self.meta_lookback = meta_lookback or "1m"
-        lookback_match = re.fullmatch(r"(\d+)([smhd])", self.meta_lookback)
-        if not lookback_match:
-            raise SigmaConfigurationError(f"invalid meta_lookback: {self.meta_lookback!r}")
-        self._meta_lookback_seconds = _duration_to_seconds(
-            int(lookback_match.group(1)), lookback_match.group(2)
-        )
+        self.loopback_time = loopback_time
+        self.loopback_unit = loopback_unit or "m"
+        if self.loopback_unit not in _VALID_DURATION_UNITS:
+            raise SigmaConfigurationError(f"invalid loopback_unit: {self.loopback_unit!r}")
         self.severity_risk_mapping = {
             "INFORMATIONAL": 1,
             "LOW": 21,
@@ -407,8 +394,7 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
         }
 
     def _rule_from(self) -> str:
-        interval_seconds = _duration_to_seconds(self.schedule_interval, self.schedule_interval_unit)
-        return f"now-{_seconds_to_duration(interval_seconds + self._meta_lookback_seconds)}"
+        return f"now-{self.schedule_interval}{self.schedule_interval_unit}-{self.loopback_time}{self.loopback_unit}"
 
     def flatten_list_of_indices(
         self, nested_list: List[Union[str, List[str]]]
@@ -646,9 +632,6 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
                     else "DRL"
                 ),
                 "outputIndex": "",
-                "meta": {
-                    "from": self.meta_lookback,
-                },
                 "maxSignals": 100,
                 "relatedIntegrations": [],
                 "requiredFields": [],
@@ -726,9 +709,6 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
                 else "DRL"
             ),
             "output_index": "",
-            "meta": {
-                "from": self.meta_lookback,
-            },
             "author": [rule.author] if rule.author is not None else [],
             "false_positives": rule.falsepositives,
             "from": self._rule_from(),

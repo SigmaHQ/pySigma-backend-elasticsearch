@@ -712,11 +712,10 @@ def test_elasticsearch_esql_siemrule(esql_backend: ESQLBackend):
             "description": "No description",
             "ruleId": "c277adc0-f0c4-42e1-af9d-fab062992156",
             "falsePositives": [],
-            "from": "now-6m",
+            "from": "now-5m-1m",
             "immutable": False,
             "license": "DRL",
             "outputIndex": "",
-            "meta": {"from": "1m"},
             "maxSignals": 100,
             "relatedIntegrations": [],
             "requiredFields": [],
@@ -770,10 +769,9 @@ def test_elasticsearch_esql_siemrule_ndjson(esql_backend: ESQLBackend):
         "note": "",
         "license": "DRL",
         "output_index": "",
-        "meta": {"from": "1m"},
         "author": [],
         "false_positives": [],
-        "from": "now-6m",
+        "from": "now-5m-1m",
         "rule_id": "c277adc0-f0c4-42e1-af9d-fab062992156",
         "max_signals": 100,
         "risk_score_mapping": [],
@@ -834,10 +832,9 @@ tags:
         "note": "",
         "license": "DRL",
         "output_index": "",
-        "meta": {"from": "1m"},
         "author": [],
         "false_positives": [],
-        "from": "now-6m",
+        "from": "now-5m-1m",
         "rule_id": "c277adc0-f0c4-42e1-af9d-fab062992156",
         "max_signals": 100,
         "risk_score_mapping": [],
@@ -897,8 +894,10 @@ tags:
     }
 
 
-def test_elasticsearch_esql_siemrule_custom_meta_lookback():
-    backend = ESQLBackend(schedule_interval=10, schedule_interval_unit="m", meta_lookback="2m")
+def test_elasticsearch_esql_siemrule_custom_loopback():
+    backend = ESQLBackend(
+        schedule_interval=10, schedule_interval_unit="m", loopback_time=2, loopback_unit="m"
+    )
     rule = SigmaCollection.from_yaml(
         """
             title: Test
@@ -914,11 +913,11 @@ def test_elasticsearch_esql_siemrule_custom_meta_lookback():
         """
     )
     result = backend.convert(rule, output_format="siem_rule_ndjson")
-    assert result[0]["from"] == "now-12m"
-    assert result[0]["meta"] == {"from": "2m"}
+    assert result[0]["from"] == "now-10m-2m"
+    assert "meta" not in result[0]
     assert result[0]["interval"] == "10m"
 
 
-def test_elasticsearch_esql_siemrule_invalid_meta_lookback():
+def test_elasticsearch_esql_siemrule_invalid_loopback_unit():
     with pytest.raises(SigmaConfigurationError):
-        ESQLBackend(meta_lookback="bogus")
+        ESQLBackend(loopback_unit="bogus")
