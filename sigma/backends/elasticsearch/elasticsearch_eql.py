@@ -249,6 +249,8 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
         ],
         schedule_interval: int = 5,
         schedule_interval_unit: str = "m",
+        loopback_time: int = 1,
+        loopback_unit: str = "m",
         **kwargs,
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
@@ -265,6 +267,8 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
         ]
         self.schedule_interval = schedule_interval or 5
         self.schedule_interval_unit = schedule_interval_unit or "m"
+        self.loopback_time = loopback_time
+        self.loopback_unit = loopback_unit or "m"
         self.severity_risk_mapping = {
             "INFORMATIONAL": 1,
             "LOW": 21,
@@ -593,7 +597,7 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
                 ),
                 "ruleId": str(rule.id),
                 "falsePositives": rule.falsepositives,
-                "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+                "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}-{self.loopback_time}{self.loopback_unit}",
                 "immutable": False,
                 "license": (
                     rule.license 
@@ -601,9 +605,6 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
                     else "DRL"
                 ),
                 "outputIndex": "",
-                "meta": {
-                    "from": "1m",
-                },
                 "maxSignals": 100,
                 "riskScore": (
                     self.severity_risk_mapping[rule.level.name]
@@ -667,7 +668,7 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
             ),
             "rule_id": str(rule.id),
             "false_positives": rule.falsepositives,
-            "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}",
+            "from": f"now-{self.schedule_interval}{self.schedule_interval_unit}-{self.loopback_time}{self.loopback_unit}",
             "immutable": False,
             "license": (
                 rule.license 
@@ -675,9 +676,6 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
                 else "DRL"
             ),
             "output_index": "",
-            "meta": {
-                "from": "1m",
-            },
             "max_signals": 100,
             "risk_score": (
                 self.severity_risk_mapping[rule.level.name]
