@@ -533,6 +533,41 @@ class TestConnectElasticsearch:
         result_dsl = lucene_backend.convert(rule, output_format="dsl_lucene")[0]
         self.query_backend_hits(result_dsl, num_wanted=1)
 
+    @pytest.mark.parametrize(
+        "modifiers, regex, num_wanted",
+        [
+            # Sigma regexes match anywhere in the value (Lucene regexes must match all of it)
+            ("re", r"exe\s[-/]u", 4),
+            # anchored at the start: excludes nonsysmon.exe
+            ("re", r"^Sysmon\.exe", 2),
+            # case-insensitive, anchored at both ends
+            ("re|i", r"^SYSMON\.EXE\s/U$", 1),
+        ],
+    )
+    def test_connect_lucene_regex_search_semantics(
+        self,
+        prepare_es_data,
+        lucene_backend: LuceneBackend,
+        modifiers,
+        regex,
+        num_wanted,
+    ):
+        rule = SigmaCollection.from_yaml(
+            f"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        CommandLine|{modifiers}: '{regex}'
+                    condition: sel
+            """
+        )
+        result = lucene_backend.convert(rule, output_format="dsl_lucene")[0]
+        self.query_backend_hits(result, num_wanted=num_wanted)
+
     def test_connect_lucene_cidr_v4_query(
         self, prepare_es_data, lucene_backend: LuceneBackend
     ):

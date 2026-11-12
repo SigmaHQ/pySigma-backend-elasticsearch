@@ -167,7 +167,7 @@ def test_lucene_regex_query(lucene_backend: LuceneBackend):
                 condition: sel
         """
     )
-    assert lucene_backend.convert(rule) == ["fieldA:/foo.*bar/ AND fieldB:foo"]
+    assert lucene_backend.convert(rule) == ["fieldA:/.*(foo.*bar).*/ AND fieldB:foo"]
 
 
 def test_lucene_regex_query_escaped_input(lucene_backend: LuceneBackend):
@@ -187,7 +187,7 @@ def test_lucene_regex_query_escaped_input(lucene_backend: LuceneBackend):
         """
     )
     assert lucene_backend.convert(rule) == [
-        "fieldA:/127\.0\.0\.1:[1-9]\d{3}/ AND fieldB:foo AND fieldC:/foo\\/bar/"
+        "fieldA:/.*(127\.0\.0\.1:[1-9]\d{3}).*/ AND fieldB:foo AND fieldC:/.*(foo\\/bar).*/"
     ]
 
 
@@ -598,13 +598,10 @@ def test_elasticsearch_siemrule_lucene(lucene_backend: LuceneBackend):
             "description": "No description",
             "ruleId": "c277adc0-f0c4-42e1-af9d-fab062992156",
             "falsePositives": [],
-            "from": "now-5m",
+            "from": "now-5m-1m",
             "immutable": False,
             "license": "DRL",
             "outputIndex": "",
-            "meta": {
-                "from": "1m",
-            },
             "maxSignals": 100,
             "riskScore": 21,
             "riskScoreMapping": [],
@@ -669,12 +666,9 @@ def test_elasticsearch_siemrule_lucene_ndjson(lucene_backend: LuceneBackend):
         "severity": "low",
         "license": "DRL",
         "output_index": "",
-        "meta": {
-            "from": "1m",
-        },
         "author": [],
         "false_positives": [],
-        "from": "now-5m",
+        "from": "now-5m-1m",
         "rule_id": "c277adc0-f0c4-42e1-af9d-fab062992156",
         "max_signals": 100,
         "risk_score_mapping": [],
@@ -744,12 +738,9 @@ def test_elasticsearch_siemrule_lucene_ndjson_with_threat(
         "severity": "low",
         "license": "DRL",
         "output_index": "",
-        "meta": {
-            "from": "1m",
-        },
         "author": [],
         "false_positives": [],
-        "from": "now-5m",
+        "from": "now-5m-1m",
         "rule_id": "c277adc0-f0c4-42e1-af9d-fab062992156",
         "max_signals": 100,
         "risk_score_mapping": [],

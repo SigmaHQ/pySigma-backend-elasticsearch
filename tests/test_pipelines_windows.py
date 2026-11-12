@@ -238,3 +238,36 @@ def test_ecs_windows_windows_event_logsource_phrase_quoted():
     assert LuceneBackend(ecs_windows()).convert(rule) == [
         r'winlog.channel:"Microsoft\-Windows\-Sysmon\/Operational" AND event.code:16'
         ]
+def test_ecs_windows_eql_regex_conversion():
+    """regression test for https://github.com/SigmaHQ/pySigma-backend-elasticsearch/issues/177"""
+    eql_backend = EqlBackend(ecs_windows())
+    rule = SigmaCollection.from_yaml("""
+        title: min re
+        status: test
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            sel:
+                CommandLine|re: 'foobar[0-9]{3}'
+            condition: sel
+    """)
+    result = eql_backend.convert(rule)
+    assert result == ['any where process.command_line regex ".*(foobar[0-9]{3}).*"']
+
+def test_ecs_windows_lucene_regex_conversion():
+    """regression test for https://github.com/SigmaHQ/pySigma-backend-elasticsearch/issues/177"""
+    lucene_backend = LuceneBackend(ecs_windows())
+    rule = SigmaCollection.from_yaml("""
+        title: min re
+        status: test
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            sel:
+                CommandLine|re: 'foobar[0-9]{3}'
+            condition: sel
+    """)
+    result = lucene_backend.convert(rule)
+    assert result == ["process.command_line:/.*(foobar[0-9]{3}).*/"]

@@ -21,7 +21,7 @@ def ecs_zeek_beats() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) for Zeek using filebeat >= 7.6.1",
         priority=20,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=[
             ProcessingItem(
                 identifier=f"zeek_mapping_category_{ category }_to_service_{ service }",
@@ -124,7 +124,7 @@ def ecs_zeek_beats() -> ProcessingPipeline:
                         "known_certs_subject": "zeek.known_certs.subject",
                         "sip_subject": "zeek.sip.subject",
                         "smtp_subject": "zeek.smtp.subject",
-                        "ssl_subject": "zeek.ssl.subject  ",
+                        "ssl_subject": "zeek.ssl.subject",
                         "trans_depth": "zeek.*.trans*depth",
                         "username": "zeek.*.username",
                         "uri": "url.original",
@@ -519,7 +519,7 @@ def ecs_zeek_corelight() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) mapping from Corelight",
         priority=20,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=[
             ProcessingItem(
                 identifier=f"zeek_mapping_category_{ category }_to_service_{ service }",
@@ -622,7 +622,7 @@ def ecs_zeek_corelight() -> ProcessingPipeline:
                         "known_certs_subject": "zeek.known_certs.subject",
                         "sip_subject": "zeek.sip.subject",
                         "smtp_subject": "zeek.smtp.subject",
-                        "ssl_subject": "zeek.ssl.subject  ",
+                        "ssl_subject": "zeek.ssl.subject",
                         "trans_depth": "zeek.*.trans*depth",
                         "username": "zeek.*.username",
                         "uri": "url.original",
@@ -1017,7 +1017,7 @@ def zeek_raw() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Zeek raw JSON field naming",
         priority=20,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=[
             ProcessingItem(
                 identifier=f"zeek_mapping_category_{ category }_to_service_{ service }",

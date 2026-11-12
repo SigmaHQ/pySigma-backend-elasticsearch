@@ -10,6 +10,7 @@ from sigma.processing.conditions import (
     IncludeFieldCondition,
     FieldNameProcessingItemAppliedCondition,
     MatchValueCondition,
+    MatchStringCondition,
     IsNullCondition,
 )
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
@@ -44,8 +45,8 @@ ecs_windows_variable_mappings = {
     "Protocol": (("category", "network_connection", "network.transport"),),
     "Initiated": (("category", "network_connection", "network.direction"),),
     "Signature": (
-        ("category", "driver_loaded", "file.code_signature.subject_name"),
-        ("category", "image_loaded", "file.code_signature.subject_name"),
+        ("category", "driver_load", "file.code_signature.subject_name"),
+        ("category", "image_load", "file.code_signature.subject_name"),
     ),
     "EngineVersion": (("service", "powershell-classic", "powershell.engine.version"),),
     "HostVersion": (
@@ -64,7 +65,7 @@ def ecs_windows() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat from version 7",
         priority=20,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=generate_windows_logsource_items("winlog.channel", "{source}")
         + [  # Variable field mapping depending on category/service
             ProcessingItem(
@@ -118,6 +119,7 @@ def ecs_windows() -> ProcessingPipeline:
                         "Device": "file.path",
                         "SourceThreadId": "process.thread.id",
                         "TargetObject": "registry.path",
+                        "Details": "registry.data.strings",
                         "PipeName": "file.name",
                         "Destination": "process.executable.caseless",
                         "QueryName": "dns.question.name",
@@ -185,7 +187,9 @@ def ecs_windows() -> ProcessingPipeline:
                 ],
                 detection_item_conditions=[
                     MatchValueCondition(value=True, cond="all"),
+                    MatchStringCondition(pattern=r"(?i)^true$", cond="all"),
                 ],
+                detection_item_condition_linking=any,
             ),
             ProcessingItem(
                 identifier="network_direction_ingress",
@@ -195,7 +199,9 @@ def ecs_windows() -> ProcessingPipeline:
                 ],
                 detection_item_conditions=[
                     MatchValueCondition(value=False, cond="all"),
+                    MatchStringCondition(pattern=r"(?i)^false$", cond="all"),
                 ],
+                detection_item_condition_linking=any,
             ),
             ProcessingItem(
                 identifier="values_to_str",
@@ -212,10 +218,6 @@ def ecs_windows() -> ProcessingPipeline:
                     ])
                 ],
                 field_name_condition_negation=True,
-                detection_item_conditions=[
-                    IsNullCondition(cond="any"),
-                ],
-                detection_item_condition_negation=True,
             ),
         ],
     )
@@ -225,7 +227,7 @@ def ecs_windows_old() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Elastic Common Schema (ECS) Windows log mappings from Winlogbeat up to version 6",
         priority=20,
-        allowed_backends=("elasticsearch", "eql", "lucene", "opensearch"),
+        allowed_backends=("elasticsearch", "eql", "esql", "lucene", "opensearch"),
         items=generate_windows_logsource_items("winlog.channel", "{source}")
         + [
             ProcessingItem(  # Field mappings
