@@ -223,6 +223,21 @@ def test_ecs_windows_null_value_handling():
     result = LuceneBackend(ecs_windows()).convert(rule)
     assert "SigmaNull" not in result[0]
 
+def test_ecs_windows_windows_event_logsource_phrase_quoted():
+    rule = SigmaCollection.from_yaml("""
+        title: Test
+        status: test
+        logsource:
+            product: windows
+            service: sysmon
+        detection:
+            selection:
+                    EventID: 16
+            condition: selection    
+    """)
+    assert LuceneBackend(ecs_windows()).convert(rule) == [
+        r'winlog.channel:"Microsoft\-Windows\-Sysmon\/Operational" AND event.code:16'
+        ]
 def test_ecs_windows_eql_regex_conversion():
     """regression test for https://github.com/SigmaHQ/pySigma-backend-elasticsearch/issues/177"""
     eql_backend = EqlBackend(ecs_windows())
