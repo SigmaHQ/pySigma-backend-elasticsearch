@@ -174,9 +174,14 @@ class ElastalertBackend(LuceneBackend):
             SigmaCorrelationConditionOperator.GTE,
             SigmaCorrelationConditionOperator.LTE,
         ]:
-            elastalert_rule[0][
-                self.correlation_condition_mapping[rule.condition.op]
-            ] -= 1
+            if rule.condition.op == SigmaCorrelationConditionOperator.GTE:
+                elastalert_rule[0][
+                    self.correlation_condition_mapping[rule.condition.op]
+                ] -= 1
+            else:
+                elastalert_rule[0][
+                    self.correlation_condition_mapping[rule.condition.op]
+                ] += 1
 
         return elastalert_rule
 
