@@ -17,7 +17,11 @@ from sigma.conversion.state import ConversionState
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.correlations import SigmaCorrelationRule
 from sigma.conversion.base import TextQueryBackend
-from sigma.backends.elasticsearch.lucene_regex import LuceneRegexMixin
+from sigma.backends.elasticsearch.lucene_regex import (
+    LUCENE_OPERATORS,
+    LuceneRegexMixin,
+    escape_for_query,
+)
 from sigma.conversion.deferred import DeferredQueryExpression
 from sigma.conditions import (
     ConditionItem,
@@ -25,9 +29,11 @@ from sigma.conditions import (
     ConditionOR,
     ConditionNOT,
     ConditionFieldEqualsValueExpression,
+    ConditionValueExpression,
 )
 from sigma.types import (
     CompareOperators,
+    SigmaCasedString,
     SigmaCompareExpression,
     SigmaNull,
     SigmaFieldReference,
@@ -39,6 +45,12 @@ from sigma.types import (
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import ipaddress
 import sigma
+
+# Characters that get a backslash when a literal character from a Sigma value is written
+# into a Lucene regular expression: the reserved characters of Lucene regexps
+# (https://www.elastic.co/docs/reference/query-languages/query-dsl/regexp-syntax) plus ^ $
+# and -, which lucene_regex keeps escaped as well, plus the further Lucene operators.
+_LUCENE_REGEX_ESCAPED = set(".?+*|{}[]()\\^$-\"") | LUCENE_OPERATORS
 
 
 class EqlBackend(LuceneRegexMixin, TextQueryBackend):
@@ -290,6 +302,23 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
         except ValueError:
             return False
 
+    def decide_convert_condition_as_in_expression(
+        self, cond: Union[ConditionOR, ConditionAND], state: ConversionState
+    ) -> bool:
+        """Lists with a value containing a literal * or ? are converted as plain
+        AND/OR-linked conditions: in an in-expression the value would be quoted as an EQL
+        string, where the \\* and \\? escapes produced for it are rejected by the EQL
+        lexer. Each value is then converted on its own, which renders it as a regex
+        match."""
+        if any(
+            isinstance(arg, ConditionFieldEqualsValueExpression)
+            and isinstance(arg.value, SigmaString)
+            and self._has_literal_wildcard(arg.value)
+            for arg in cond.args
+        ):
+            return False
+        return super().decide_convert_condition_as_in_expression(cond, state)
+
     def convert_condition_field_eq_expansion(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Any:
@@ -316,10 +345,60 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
             "ES Lucene backend can't handle field references."
         )
 
+    # A literal * or ? in a Sigma value can't be written into an EQL string: the EQL
+    # lexer only accepts the escape sequences \n \r \t \\ \" and \u{...}, so the \* and
+    # \? that convert_value_str produces make Elasticsearch reject the query with a lexer
+    # error, and the : operator and like keyword have no other way to match * or ?
+    # literally. Such values are rendered as a regex match instead (regex~ to keep the
+    # case-insensitive matching of the : operator, regex for cased values) with * and ?
+    # escaped as Lucene regex operators.
+    @staticmethod
+    def _has_literal_wildcard(value: SigmaString) -> bool:
+        """True if a plain part of the value (not a Sigma wildcard) contains * or ?."""
+        return any(
+            isinstance(part, str) and ("*" in part or "?" in part) for part in value.s
+        )
+
+    def _convert_literal_wildcard_match(
+        self, field: str, value: SigmaString, case_insensitive: bool
+    ) -> str:
+        """Render a string match whose value contains a literal * or ? as a regex match.
+
+        Sigma wildcards become the Lucene regex repeats .* and .; every literal character
+        that is an operator in Lucene regexps is escaped, and the result is escaped for
+        the enclosing EQL string with the backend's re_escape settings.
+        """
+        pattern = ""
+        for part in value.s:
+            if part == SpecialChars.WILDCARD_MULTI:
+                pattern += ".*"
+            elif part == SpecialChars.WILDCARD_SINGLE:
+                pattern += "."
+            elif isinstance(part, str):
+                for char in part:
+                    if char in _LUCENE_REGEX_ESCAPED:
+                        pattern += "\\"
+                    pattern += char
+            else:
+                raise NotImplementedError(
+                    "Placeholders in string values are not supported by the EQL backend."
+                )
+        return self.re_expression.format(
+            field=self.escape_and_quote_field(field),
+            regex=escape_for_query(
+                pattern, self.re_escape, self.re_escape_char, self.re_escape_escape_char
+            ),
+            flag_i="~" if case_insensitive else "",
+        )
+
     def convert_condition_field_eq_val_str(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:  # pragma: no cover
         """Conversion of field = string value expressions"""
+        if isinstance(cond.value, SigmaString) and self._has_literal_wildcard(cond.value):
+            return self._convert_literal_wildcard_match(
+                cond.field, cond.value, case_insensitive=True
+            )
         if (  # Use '==' as operator for empty string or ip addresses
             cond.value.convert() == "" or self.is_ip(cond.value)
         ):
@@ -331,6 +410,36 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
             )
         else:
             return super().convert_condition_field_eq_val_str(cond, state)
+
+    def convert_condition_val_str(
+        self, cond: ConditionValueExpression, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Conversion of value-only strings.
+
+        A fieldless value with a literal * or ? can't be expressed in EQL: wildcard
+        matching with : or like requires a field, and the \\* and \\? escapes produced
+        for an EQL string are rejected by the EQL lexer.
+        """
+        if isinstance(cond.value, SigmaString) and self._has_literal_wildcard(cond.value):
+            raise SigmaFeatureNotSupportedByBackendError(
+                "EQL can't express a fieldless string match on a literal * or ?."
+            )
+        return super().convert_condition_val_str(cond, state)
+
+    def convert_condition_field_eq_val_str_case_sensitive(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field = cased string value expressions.
+
+        A cased value with a literal * or ? can't be written into the EQL string of the ==
+        comparison either (same lexer restriction as for the : operator) and is therefore
+        rendered as a case-sensitive regex match.
+        """
+        if self._has_literal_wildcard(cond.value):
+            return self._convert_literal_wildcard_match(
+                cond.field, cond.value, case_insensitive=False
+            )
+        return super().convert_condition_field_eq_val_str_case_sensitive(cond, state)
 
     def convert_condition_field_eq_val_num(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
