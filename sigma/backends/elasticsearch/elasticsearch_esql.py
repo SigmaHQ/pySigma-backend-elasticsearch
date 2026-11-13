@@ -10,7 +10,14 @@ from sigma.conditions import (
     ConditionNOT,
     ConditionFieldEqualsValueExpression,
 )
-from sigma.types import SigmaCompareExpression, SigmaString, SpecialChars
+from sigma.types import (
+    SigmaCasedString,
+    SigmaCompareExpression,
+    SigmaString,
+    SpecialChars,
+)
+import copy
+import ipaddress
 import sigma
 import re
 import json
@@ -93,10 +100,24 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
     )
 
     # String matching operators. if none is appropriate eq_token is used.
-    startswith_expression: ClassVar[str] = "starts_with({field}, {value})"
-    endswith_expression: ClassVar[str] = "ends_with({field}, {value})"
+    # Sigma strings are case-insensitive unless |cased is used, but ES|QL ==, LIKE,
+    # starts_with() and ends_with() are case-sensitive. Fields and literal values are
+    # therefore lowercased with TO_LOWER(). See convert_condition_field_eq_val_str()
+    # for the exception for ip-typed fields.
+    eq_expression: ClassVar[str] = "TO_LOWER({field})=={value}"
+    startswith_expression: ClassVar[str] = "starts_with(TO_LOWER({field}), {value})"
+    endswith_expression: ClassVar[str] = "ends_with(TO_LOWER({field}), {value})"
     wildcard_match_expression: ClassVar[str] = (
-        "{field} like {value}"  # Special expression if wildcards can't be matched with the eq_token operator
+        "TO_LOWER({field}) like {value}"  # Special expression if wildcards can't be matched with the eq_token operator
+    )
+
+    # Case-sensitive counterparts used for |cased values.
+    case_sensitive_match_expression: ClassVar[Optional[str]] = "{field}=={value}"
+    case_sensitive_startswith_expression: ClassVar[Optional[str]] = (
+        "starts_with({field}, {value})"
+    )
+    case_sensitive_endswith_expression: ClassVar[Optional[str]] = (
+        "ends_with({field}, {value})"
     )
 
     # Regular expressions
@@ -244,21 +265,71 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
     def convert_condition_field_eq_val_str(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:
-        r"""Write LIKE matches with LIKE escaping; all other string matches as before.
+        r"""Convert a string value case-insensitively, except for ip literals.
 
-        In an ES|QL LIKE pattern the backslash is an escape character (only * and ?
-        may follow it), so literal backslashes, * and ? from the Sigma value need one
-        more level of escaping than in ==, starts_with() or ends_with(). Without it,
-        Elasticsearch rejects the pattern *\Users\* (from a Windows path), and a
-        literal * produces a string literal ES|QL can't parse.
+        Sigma strings are case-insensitive by default, but ES|QL ==, LIKE,
+        starts_with() and ends_with() are case-sensitive. Fields and values are
+        therefore lowercased. TO_LOWER() only accepts strings, so a value that is an
+        IP address is compared plain: ip-typed fields keep working because ES|QL
+        casts the literal implicitly.
+
+        LIKE patterns need their own escaping: in an ES|QL LIKE pattern the backslash
+        is an escape character (only * and ? may follow it), so literal backslashes, *
+        and ? from the Sigma value need one more level of escaping than in ==,
+        starts_with() or ends_with(). Without it, Elasticsearch rejects the pattern
+        *\Users\* (from a Windows path), and a literal * produces a string literal
+        ES|QL can't parse.
         """
         value = cond.value
-        if isinstance(value, SigmaString) and self._is_like_match(value):
+        if not isinstance(value, SigmaString):
+            return super().convert_condition_field_eq_val_str(cond, state)
+        if self._is_ip_literal(value):
+            return (
+                self.escape_and_quote_field(cond.field)
+                + self.eq_token
+                + self.convert_value_str(value, state)
+            )
+        value = self._lowercase_str(value)
+        if self._is_like_match(value):
             return self.wildcard_match_expression.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_like(value),
             )
-        return super().convert_condition_field_eq_val_str(cond, state)
+        return super().convert_condition_field_eq_val_str(
+            ConditionFieldEqualsValueExpression(cond.field, value), state
+        )
+
+    def convert_condition_field_eq_val_str_case_sensitive(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Convert |cased string values with the case-sensitive operators."""
+        if isinstance(cond.value, SigmaString) and self._is_like_match(cond.value):
+            return "{field} like {value}".format(
+                field=self.escape_and_quote_field(cond.field),
+                value=self.convert_value_like(cond.value),
+            )
+        return super().convert_condition_field_eq_val_str_case_sensitive(cond, state)
+
+    @staticmethod
+    def _lowercase_str(value: SigmaString) -> SigmaString:
+        """Copy of value with literal characters lowercased, wildcards unchanged."""
+        lowered = copy.copy(value)
+        lowered.s = [
+            part.lower() if isinstance(part, str) else part for part in value.s
+        ]
+        lowered.original = value.original.lower()
+        return lowered
+
+    @staticmethod
+    def _is_ip_literal(value: SigmaString) -> bool:
+        """True for wildcard-free IP addresses, which must not get TO_LOWER()."""
+        if value.contains_special():
+            return False
+        try:
+            ipaddress.ip_address(str(value))
+            return True
+        except ValueError:
+            return False
 
     @staticmethod
     def _is_like_match(value: SigmaString) -> bool:
@@ -309,6 +380,46 @@ class ESQLBackend(LuceneRegexMixin, TextQueryBackend):
                 )
         literal = pattern.replace("\\", "\\\\").replace('"', '\\"')
         return self.quote_string(literal)
+
+    def decide_convert_condition_as_in_expression(
+        self, cond: Union[ConditionOR, ConditionAND], state: ConversionState
+    ) -> bool:
+        """|cased and case-insensitive values can't share one in-expression."""
+        if not super().decide_convert_condition_as_in_expression(cond, state):
+            return False
+        return len({isinstance(arg.value, SigmaCasedString) for arg in cond.args}) == 1
+
+    def convert_condition_as_in_expression(
+        self, cond: Union[ConditionOR, ConditionAND], state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Convert field in value list, lowercasing field and values unless |cased.
+
+        Lists consisting only of IP addresses or numbers are matched as before,
+        because TO_LOWER() only accepts strings.
+        """
+        strings = [arg.value for arg in cond.args if isinstance(arg.value, SigmaString)]
+        cased = all(isinstance(value, SigmaCasedString) for value in strings)
+        ip_only = all(self._is_ip_literal(value) for value in strings)
+        lowercase = not cased and not ip_only
+        field = self.escape_and_quote_field(cond.args[0].field)
+        return self.field_in_list_expression.format(
+            field=f"TO_LOWER({field})" if lowercase else field,
+            op=(
+                self.or_in_operator
+                if isinstance(cond, ConditionOR)
+                else self.and_in_operator
+            ),
+            list=self.list_separator.join(
+                (
+                    self.convert_value_str(
+                        self._lowercase_str(value) if lowercase else value, state
+                    )
+                    if isinstance(value, SigmaString)
+                    else str(value)
+                )
+                for value in (arg.value for arg in cond.args)
+            ),
+        )
 
     def convert_correlation_aggregation_fields_from_template(
         self,

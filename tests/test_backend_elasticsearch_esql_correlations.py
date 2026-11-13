@@ -34,7 +34,7 @@ correlation:
             """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * metadata _id, _index, _version | where fieldA=="value1" and fieldB=="value2"
+        """from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="value1" and TO_LOWER(fieldB)=="value2"
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats event_count=count() by timebucket, fieldC, fieldD
 | where event_count >= 10"""
     ]
@@ -68,7 +68,7 @@ correlation:
             """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * metadata _id, _index, _version | where fieldA=="value1" and fieldB=="value2"
+        """from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="value1" and TO_LOWER(fieldB)=="value2"
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats event_count=count() by timebucket
 | where event_count >= 10"""
     ]
@@ -103,7 +103,7 @@ correlation:
             """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * metadata _id, _index, _version | where fieldA=="value1" and fieldB=="value2"
+        """from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="value1" and TO_LOWER(fieldB)=="value2"
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats value_count=count_distinct(fieldD) by timebucket, fieldC
 | where value_count < 10"""
     ]
@@ -147,8 +147,8 @@ correlation:
 """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * metadata _id, _index, _version | where (fieldA=="value1" and fieldB=="value2") or (fieldA=="value3" and fieldB=="value4")
-| eval event_type=case(fieldA=="value1" and fieldB=="value2", "base_rule_1", fieldA=="value3" and fieldB=="value4", "base_rule_2")
+        """from * metadata _id, _index, _version | where (TO_LOWER(fieldA)=="value1" and TO_LOWER(fieldB)=="value2") or (TO_LOWER(fieldA)=="value3" and TO_LOWER(fieldB)=="value4")
+| eval event_type=case(TO_LOWER(fieldA)=="value1" and TO_LOWER(fieldB)=="value2", "base_rule_1", TO_LOWER(fieldA)=="value3" and TO_LOWER(fieldB)=="value4", "base_rule_2")
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats event_type_count=count_distinct(event_type) by timebucket, fieldC
 | where event_type_count >= 2"""
     ]
@@ -216,8 +216,8 @@ transformations:
           product: product2
 """
     )).convert(correlation_rule) == [
-        """from logs-product1-*,logs-product2-* metadata _id, _index, _version | where (fieldA=="value1" and fieldB=="value2") or (fieldA=="value3" and fieldB=="value4")
-| eval event_type=case(fieldA=="value1" and fieldB=="value2", "base_rule_1", fieldA=="value3" and fieldB=="value4", "base_rule_2")
+        """from logs-product1-*,logs-product2-* metadata _id, _index, _version | where (TO_LOWER(fieldA)=="value1" and TO_LOWER(fieldB)=="value2") or (TO_LOWER(fieldA)=="value3" and TO_LOWER(fieldB)=="value4")
+| eval event_type=case(TO_LOWER(fieldA)=="value1" and TO_LOWER(fieldB)=="value2", "base_rule_1", TO_LOWER(fieldA)=="value3" and TO_LOWER(fieldB)=="value4", "base_rule_2")
 | eval timebucket=date_trunc(15minutes, @timestamp) | stats event_type_count=count_distinct(event_type) by timebucket, fieldC
 | where event_type_count >= 2"""
     ]
@@ -253,7 +253,7 @@ fields:
         """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * metadata _id, _index, _version | where fieldA=="value1"
+        """from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="value1"
 | eval timebucket=date_trunc(5minutes, @timestamp) | stats event_count=count() by timebucket, fieldC
 | where event_count >= 10"""
     ]
@@ -288,7 +288,7 @@ correlation:
         """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * metadata _id, _index, _version | where fieldA=="value1"
+        """from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="value1"
 | eval timebucket=date_trunc(5minutes, @timestamp) | stats event_count=count(), fieldD=values(fieldD) by timebucket, fieldC
 | where event_count >= 10"""
     ]
@@ -324,7 +324,7 @@ correlation:
         """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * metadata _id, _index, _version | where fieldA=="value1"
+        """from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="value1"
 | eval timebucket=date_trunc(5minutes, @timestamp) | stats event_count=count(), fieldD=values(fieldD) by timebucket, fieldC
 | where event_count >= 10"""
     ]
@@ -357,7 +357,7 @@ correlation:
         """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * metadata _id, _index, _version | where fieldA=="value1"
+        """from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="value1"
 | eval timebucket=date_trunc(5minutes, @timestamp) | stats event_count=count() by timebucket, fieldC
 | where event_count >= 10"""
     ]
@@ -393,7 +393,7 @@ correlation:
         """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * metadata _id, _index, _version | where fieldA=="value1"
+        """from * metadata _id, _index, _version | where TO_LOWER(fieldA)=="value1"
 | eval timebucket=date_trunc(5minutes, @timestamp) | stats value_count=count_distinct(fieldD), fieldE=values(fieldE) by timebucket, fieldC
 | where value_count < 10"""
     ]
@@ -437,8 +437,8 @@ correlation:
         """
     )
     assert esql_backend.convert(correlation_rule) == [
-        """from * metadata _id, _index, _version | where (fieldA=="value1") or (fieldA=="value2")
-| eval event_type=case(fieldA=="value1", "base_rule_1", fieldA=="value2", "base_rule_2")
+        """from * metadata _id, _index, _version | where (TO_LOWER(fieldA)=="value1") or (TO_LOWER(fieldA)=="value2")
+| eval event_type=case(TO_LOWER(fieldA)=="value1", "base_rule_1", TO_LOWER(fieldA)=="value2", "base_rule_2")
 | eval timebucket=date_trunc(5minutes, @timestamp) | stats event_type_count=count_distinct(event_type), fieldD=values(fieldD) by timebucket, fieldC
 | where event_type_count >= 2"""
     ]
