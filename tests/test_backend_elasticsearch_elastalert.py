@@ -305,7 +305,7 @@ filter:
 index: '*'
 metric_agg_key: fieldD
 metric_agg_type: cardinality
-min_threshold: 9
+min_threshold: 11
 name: Multiple occurrences of base event
 priority: 1
 query_key:
