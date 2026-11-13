@@ -253,6 +253,163 @@ def test_eql_regex_query_escaped_input(eql_backend: EqlBackend):
     ]
 
 
+def test_eql_literal_wildcard_contains(eql_backend: EqlBackend):
+    """A literal * in a Sigma value can't be written as \* in an EQL string (the EQL
+    lexer rejects it), so the value is matched with a regex instead."""
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|contains: ' -Filter \*'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        r'any where field regex~ ".* \\-Filter \\*.*"'
+    ]
+
+
+def test_eql_literal_single_wildcard_contains(eql_backend: EqlBackend):
+    """Same for a literal ?."""
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|contains: ' /\?'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [r'any where field regex~ ".* /\\?.*"']
+
+
+def test_eql_literal_wildcard_plain(eql_backend: EqlBackend):
+    """A value that is only a literal with a * in it is matched with regex~ as well."""
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field: 'foo\*bar'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [r'any where field regex~ "foo\\*bar"']
+
+
+def test_eql_literal_wildcard_mixed_with_wildcard(eql_backend: EqlBackend):
+    """A value with a real Sigma wildcard and a literal *: the wildcard becomes .* and
+    the literal * is escaped in the regex."""
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field: 'pre*\*post'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [r'any where field regex~ "pre.*\\*post"']
+
+
+def test_eql_literal_wildcard_escaped_quote(eql_backend: EqlBackend):
+    """Two levels of escaping: " is escaped for the regex and again for the EQL string."""
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|contains: 'say "hi" \*'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        r'any where field regex~ ".*say \\\"hi\\\" \\*.*"'
+    ]
+
+
+def test_eql_literal_wildcard_in_list(eql_backend: EqlBackend):
+    """A list containing a value with a literal * is converted as OR-linked conditions
+    instead of an in-expression, so the value can be rendered as a regex match."""
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|contains:
+                        - ' -Filter \*'
+                        - 'plain'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        r'any where field regex~ ".* \\-Filter \\*.*" or field:"*plain*"'
+    ]
+
+
+def test_eql_literal_wildcard_cased(eql_backend: EqlBackend):
+    """A cased value with a literal * keeps case-sensitive matching with regex."""
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|cased: 'Foo\*Bar'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [r'any where field regex "Foo\\*Bar"']
+
+
+def test_eql_literal_wildcard_fieldless(eql_backend: EqlBackend):
+    """A fieldless literal * can't be expressed in EQL (wildcard matching needs a
+    field), so the backend raises instead of emitting a lexer-invalid query."""
+    rule = SigmaCollection.from_yaml(
+        r"""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                keywords:
+                    - 'select \*'
+                condition: keywords
+        """
+    )
+    with pytest.raises(SigmaFeatureNotSupportedByBackendError):
+        eql_backend.convert(rule)
+
+
 def test_eql_regex_escaped_dollar_sign(eql_backend: EqlBackend):
     """Test that regex patterns with escaped special characters like $ are properly escaped for JSON."""
     rule = SigmaCollection.from_yaml(
