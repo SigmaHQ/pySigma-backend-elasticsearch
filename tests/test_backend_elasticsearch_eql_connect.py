@@ -222,6 +222,18 @@ def fixture_prepare_es_data():
             f"{pytest.es_url}/test-index/_doc/",
             json={
                 "@timestamp": 1696587400,
+                "OriginalFileName": "Cmd.exe",
+                "Image": "c:\\windows\\system32\\cmd.exe",
+                "CommandLine": "cmd.exe -Filter *",
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "@timestamp": 1696587400,
                 "Image": "c:\\windows\\system32\\Sysmon.exe",
                 "Description": "System activity monitor",
                 "CommandLine": "Sysmon.exe -u",
@@ -633,6 +645,24 @@ class TestConnectElasticsearch:
                     selection_cli:
                         CommandLine|contains: '<'
                     condition: all of selection_*
+            """
+        )
+
+        result_dsl = eql_backend.convert(rule, output_format="eqlapi")[0]
+        self.query_backend_hits(result_dsl, num_wanted=1)
+
+    def test_connect_eql_literal_wildcard(self, prepare_es_data, eql_backend: EqlBackend):
+        rule = SigmaCollection.from_yaml(
+            r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    selection:
+                        CommandLine|contains: '-Filter \*'
+                    condition: selection
             """
         )
 
