@@ -275,12 +275,18 @@ def test_ecs_windows_elastic_defend_caseless_image():
                 sel:
                     Image|endswith: '\\powershell.exe'
                     ParentImage|endswith: '\\cmd.exe'
+                    SourceImage|endswith: '\\notepad.exe'
+                    Destination|endswith: '\\svchost.exe'
+                    Application|endswith: '\\explorer.exe'
+                    NewProcessName|endswith: '\\calc.exe'
+                    ProcessName|endswith: '\\taskmgr.exe'
+                    ParentProcessName|endswith: '\\system.exe'
                 condition: sel
         """
             )
         )
         == [
-            "process.executable.caseless:*\\\\powershell.exe AND process.parent.executable.caseless:*\\\\cmd.exe"
+            "process.executable.caseless:*\\\\powershell.exe AND process.parent.executable.caseless:*\\\\cmd.exe AND process.executable.caseless:*\\\\notepad.exe AND process.executable.caseless:*\\\\svchost.exe AND process.executable.caseless:*\\\\explorer.exe AND process.executable.caseless:*\\\\calc.exe AND process.executable.caseless:*\\\\taskmgr.exe AND process.parent.name.caseless:*\\\\system.exe"
         ]
     )
 
@@ -306,5 +312,68 @@ def test_ecs_windows_no_caseless_by_default():
         )
         == [
             "process.executable:*\\\\powershell.exe AND process.parent.executable:*\\\\cmd.exe"
+        ]
+    )
+
+
+def test_ecs_windows_plus_elastic_defend_caseless_mapping():
+    """Test that ecs_windows() + ecs_windows_elastic_defend() produces .caseless field mapping.
+    
+    This test verifies the combination of both pipelines correctly remaps process executable
+    and name fields to their .caseless equivalents for Elastic Defend indices.
+    """
+    combined_pipeline = ecs_windows() + ecs_windows_elastic_defend()
+    
+    # Test all field variants that should be mapped to .caseless
+    assert (
+        LuceneBackend(combined_pipeline).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: process_creation
+                product: windows
+            detection:
+                sel:
+                    Image: test.exe
+                    ParentImage: parent.exe
+                condition: sel
+        """
+            )
+        )
+        == [
+            "process.executable.caseless:test.exe AND process.parent.executable.caseless:parent.exe"
+        ]
+    )
+
+
+def test_ecs_windows_plus_elastic_defend_process_name():
+    """Test that ecs_windows() + ecs_windows_elastic_defend() maps process.name to .caseless.
+    
+    This test verifies that ProcessName and ParentProcessName fields are properly
+    mapped to their .caseless variants.
+    """
+    combined_pipeline = ecs_windows() + ecs_windows_elastic_defend()
+    
+    assert (
+        LuceneBackend(combined_pipeline).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: process_creation
+                product: windows
+            detection:
+                sel:
+                    ProcessName: notepad.exe
+                    ParentProcessName: explorer.exe
+                condition: sel
+        """
+            )
+        )
+        == [
+            "process.name.caseless:notepad.exe AND process.parent.name.caseless:explorer.exe"
         ]
     )
