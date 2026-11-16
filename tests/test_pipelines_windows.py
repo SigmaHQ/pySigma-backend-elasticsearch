@@ -49,7 +49,7 @@ def test_ecs_values_to_str():
         """
             )
         ) == [
-            'from * metadata _id, _index, _version | where winlog.channel=="Security" and event.code=="123" and cidr_match(destination.ip, "192.168.0.0/16") and destination.port==80'
+            'from * metadata _id, _index, _version | where TO_LOWER(winlog.channel)=="security" and TO_LOWER(event.code)=="123" and cidr_match(destination.ip, "192.168.0.0/16") and destination.port==80'
         ]
     )
 
@@ -70,7 +70,7 @@ def test_ecs_network_direction_str_egress():
         """
             )
         ) == [
-            'from * metadata _id, _index, _version | where network.direction=="egress"'
+            'from * metadata _id, _index, _version | where TO_LOWER(network.direction)=="egress"'
         ]
     )
 
@@ -91,7 +91,7 @@ def test_ecs_network_direction_str_ingress():
         """
             )
         ) == [
-            'from * metadata _id, _index, _version | where network.direction=="ingress"'
+            'from * metadata _id, _index, _version | where TO_LOWER(network.direction)=="ingress"'
         ]
     )
 
