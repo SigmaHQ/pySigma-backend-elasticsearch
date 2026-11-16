@@ -374,6 +374,6 @@ def test_ecs_windows_plus_elastic_defend_process_name():
             )
         )
         == [
-            "process.name.caseless:notepad.exe AND process.parent.name.caseless:explorer.exe"
+            "process.executable.caseless:notepad.exe AND process.parent.name.caseless:explorer.exe"
         ]
     )
