@@ -32,6 +32,94 @@ This backend is currently maintained by:
 Further maintainers required! Send a message to [Thomas](mailto:thomas@patzke.org) if you want to co-maintain this
 backend.
 
+## Processing Pipelines: Purpose and Differences
+
+All processing pipelines in this backend serve a unified purpose: **transform Sigma detection rules (which use generic Sigma taxonomy field names like `Image`, `CommandLine`, `ProcessId`) into Elasticsearch queries using Elastic Common Schema (ECS) field naming conventions** that match how logs are stored after being ingested by different log collection agents.
+
+The pipelines act as adapters between:
+- **Input**: Sigma rules using standardized field taxonomy
+- **Output**: Elasticsearch queries using platform-specific and ingestion-method-specific ECS field names
+
+This allows security analysts to write detection rules once and apply them across multiple data sources, platforms, and log collection methods.
+
+### Pipeline Categories and Data Flow
+
+#### **Windows Pipelines** (Windows Event Logs)
+
+Three pipelines handle Windows event log ingestion via different Winlogbeat versions and Elastic Defend:
+
+1. **`ecs_windows`** - For Winlogbeat ≥ 7.x
+   - Maps 100+ Windows event fields to modern ECS format (e.g., `EventID` → `event.code`, `Image` → `process.executable`)
+   - Conditionally maps fields that differ based on event category/service (e.g., `CommandLine` maps to `process.command_line` for process creation but `powershell.command.value` for PowerShell logs)
+   - Adds `winlog.event_data.` prefix to unmapped fields
+   - Supported by: Elasticsearch, EQL, ES|QL, Lucene, OpenSearch
+
+2. **`ecs_windows_old`** - For Winlogbeat ≤ 6.x
+   - Handles legacy field naming: `event_id` instead of `event.code`, `event_data.*` instead of `winlog.event_data.*`
+   - Minimal field mapping for backward compatibility
+   - Supported by: Elasticsearch, EQL, ES|QL, Lucene, OpenSearch
+
+3. **`ecs_windows_elastic_defend`** (Add-on) - For Elastic Defend EDR Agent
+   - Remaps executable and process name fields to `.caseless` subfields for case-insensitive Lucene matching
+   - Works in conjunction with `ecs_windows` for Elastic Defend-collected data
+   - Addresses case-sensitivity in Windows filesystem paths
+
+#### **Network/IDS Pipelines** (Zeek Network Detection)
+
+Three pipelines handle Zeek IDS/NSM log ingestion via different methods:
+
+1. **`ecs_zeek_beats`** - For Zeek logs ingested via Filebeat
+   - Remaps Zeek log categories to services (e.g., `firewall` → `conn`, `dns` → `dns`, `proxy` → `http`)
+   - Maps 100+ Zeek-specific network fields to ECS (e.g., `src_ip` → `source.ip`, `ssl_cipher` → `zeek.ssl.cipher`)
+   - Preserves protocol-specific metadata under the `zeek.*` namespace
+   - Adds `event.dataset: zeek.$service` condition for index targeting
+   - Supported by: Elasticsearch, EQL, ES|QL, Lucene, OpenSearch
+
+2. **`ecs_zeek_corelight`** - For Zeek logs from Corelight Sensors
+   - Adapts to Corelight-specific log format variations
+   - Use when ingesting Zeek data via Corelight security sensors rather than vanilla Filebeat
+
+3. **`zeek_raw`** - For Direct Zeek JSON Logs
+   - Minimal transformation; preserves native Zeek field names (`src_ip`, `dst_ip`, `uid`, etc.)
+   - For advanced users requiring direct access to Zeek field naming
+   - No index conditions added
+
+#### **Container/Orchestration Pipeline** (Kubernetes Audit Logs)
+
+1. **`ecs_kubernetes`** - For Kubernetes Audit Logs via Kubernetes Integration
+   - Maps Kubernetes audit event fields to ECS (e.g., `verb` → `kubernetes.audit.verb`, `username` → `kubernetes.audit.user.username`)
+   - Adds index condition filtering: `kubernetes.audit.kind: "Event"`
+   - Drops empty `apiGroup` and `subresource` fields to reduce noise
+   - Supported by: Elasticsearch, EQL, ES|QL, Lucene
+
+#### **Endpoint Security Framework Pipeline** (macOS Endpoint Detection)
+
+1. **`ecs_macos_esf`** - For macOS ESF Events from Elastic Defend
+   - Comprehensive field mapping (100+ fields) for macOS-specific event types
+   - Maps Sigma taxonomy to ECS + ESF-specific fields:
+     - Process: `Image` → `process.executable`, `ProcessId` → `process.pid`
+     - Users: `User` → `process.user.name`, `RealUserId` → `process.real_user.id`
+     - Files: `TargetFilename` → `file.path`
+     - Code Signing: `SigningID` → `process.code_signature.signing_id`
+   - Adds category-specific ESF event type conditions (e.g., `process_creation` → `esf.event_type: 9`)
+   - Supports macOS-specific event types: ptrace (process injection), signals, kernel extensions, XPC, code signing
+   - Supported by: Elasticsearch, EQL, ES|QL, Lucene, OpenSearch
+
+### Data Collection and Logging Software
+
+Each pipeline transforms logs collected by specific agents:
+
+| Pipeline | Collection Agent | Purpose |
+|----------|------------------|---------|
+| `ecs_windows` | Winlogbeat ≥7.x | Collect Windows event logs in ECS format |
+| `ecs_windows_old` | Winlogbeat ≤6.x | Collect Windows event logs in legacy format |
+| `ecs_windows_elastic_defend` | Elastic Defend EDR | Endpoint detection & response with case-insensitive field variants |
+| `ecs_zeek_beats` | Filebeat + Zeek | Collect Zeek IDS logs with Filebeat shipper |
+| `ecs_zeek_corelight` | Filebeat + Corelight | Collect Zeek logs from Corelight sensors |
+| `zeek_raw` | Direct Zeek Output | Query native Zeek JSON format directly |
+| `ecs_kubernetes` | Kubernetes Integration | Collect Kubernetes audit logs |
+| `ecs_macos_esf` | Elastic Defend + eslogger | Collect macOS Endpoint Security Framework events |
+
 ## Formats vs. Query Post Processing
 
 While trying to support the minimum compatible output the built-in formats can't fits everyones needs. This gap is filled by a feature called "query post processing" available since pysigma v0.10.
