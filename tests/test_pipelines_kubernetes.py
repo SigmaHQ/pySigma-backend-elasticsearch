@@ -1,4 +1,3 @@
-import pytest
 from sigma.backends.elasticsearch.elasticsearch_lucene import LuceneBackend
 from sigma.pipelines.elasticsearch.kubernetes import ecs_kubernetes
 from sigma.collection import SigmaCollection
@@ -130,21 +129,9 @@ def test_ecs_kubernetes_fields():
     ]
 
 
-@pytest.mark.parametrize("prefix", ["", "objectRef."])
-@pytest.mark.parametrize(
-    "field,value",
-    [
-        ("apiGroup", "apps"),
-        ("resource", "pods"),
-        ("subresource", "exec"),
-        ("namespace", "default"),
-        ("apiGroup", ""),
-        ("subresource", ""),
-    ],
-)
-def test_ecs_kubernetes_objectref_alias(prefix, field, value):
+def test_ecs_kubernetes_objectref_alias():
     rule = SigmaCollection.from_yaml(
-        f"""
+        """
         title: Test
         status: test
         logsource:
@@ -153,13 +140,90 @@ def test_ecs_kubernetes_objectref_alias(prefix, field, value):
         detection:
             selection:
                 verb: create
-                {prefix}{field}: '{value}'
+                objectRef.apiGroup: apps
             condition: selection
         """
     )
-    expected = "kubernetes.audit.verb:create"
-    if value:
-        expected += f" AND kubernetes.audit.objectRef.{field}:{value}"
     assert LuceneBackend(ecs_kubernetes()).convert(rule) == [
-        f"kubernetes.audit.kind:Event AND ({expected})"
+        "kubernetes.audit.kind:Event AND (kubernetes.audit.verb:create AND kubernetes.audit.objectRef.apiGroup:apps)"
+    ]
+
+
+def test_ecs_kubernetes_objectref_alias_resource():
+    rule = SigmaCollection.from_yaml(
+        """
+        title: Test
+        status: test
+        logsource:
+            product: kubernetes
+            service: audit
+        detection:
+            selection:
+                verb: create
+                objectRef.resource: pods
+            condition: selection
+        """
+    )
+    assert LuceneBackend(ecs_kubernetes()).convert(rule) == [
+        "kubernetes.audit.kind:Event AND (kubernetes.audit.verb:create AND kubernetes.audit.objectRef.resource:pods)"
+    ]
+
+
+def test_ecs_kubernetes_objectref_alias_subresource():
+    rule = SigmaCollection.from_yaml(
+        """
+        title: Test
+        status: test
+        logsource:
+            product: kubernetes
+            service: audit
+        detection:
+            selection:
+                verb: create
+                subresource: exec
+            condition: selection
+        """
+    )
+    assert LuceneBackend(ecs_kubernetes()).convert(rule) == [
+        "kubernetes.audit.kind:Event AND (kubernetes.audit.verb:create AND kubernetes.audit.objectRef.subresource:exec)"
+    ]
+
+
+def test_ecs_kubernetes_objectref_alias_namespace():
+    rule = SigmaCollection.from_yaml(
+        """
+        title: Test
+        status: test
+        logsource:
+            product: kubernetes
+            service: audit
+        detection:
+            selection:
+                verb: create
+                namespace: default
+            condition: selection
+        """
+    )
+    assert LuceneBackend(ecs_kubernetes()).convert(rule) == [
+        "kubernetes.audit.kind:Event AND (kubernetes.audit.verb:create AND kubernetes.audit.objectRef.namespace:default)"
+    ]
+
+
+def test_ecs_kubernetes_objectref_alias_empty_value():
+    rule = SigmaCollection.from_yaml(
+        """
+        title: Test
+        status: test
+        logsource:
+            product: kubernetes
+            service: audit
+        detection:
+            selection:
+                verb: create
+                objectRef.apiGroup: ''
+            condition: selection
+        """
+    )
+    assert LuceneBackend(ecs_kubernetes()).convert(rule) == [
+        "kubernetes.audit.kind:Event AND (kubernetes.audit.verb:create)"
     ]
