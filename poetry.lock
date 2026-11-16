@@ -349,31 +349,16 @@ files = [
 ]
 
 [[package]]
-name = "diskcache"
-version = "5.6.3"
-description = "Disk Cache -- Disk and file backed persistent cache."
+name = "diskcache-community"
+version = "5.8.5"
+description = "Disk Cache - Disk and file backed persistent cache."
 optional = false
-python-versions = ">=3"
+python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "diskcache-5.6.3-py3-none-any.whl", hash = "sha256:5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19"},
-    {file = "diskcache-5.6.3.tar.gz", hash = "sha256:2c3a3fa2743d8535d832ec61c2054a1641f41775aa7c556758a109941e33e4fc"},
+    {file = "diskcache_community-5.8.5-py3-none-any.whl", hash = "sha256:a4f603839e2f802fb49a29f7239206017b12e001eb1e26a696af4fa0290cd7df"},
+    {file = "diskcache_community-5.8.5.tar.gz", hash = "sha256:f9d771b4ab53606cd9a4111d6dd065370e6a42eb2a6c22ea22d6558b85e62f12"},
 ]
-
-[[package]]
-name = "diskcache-stubs"
-version = "5.6.3.6.20240818"
-description = "diskcache stubs"
-optional = false
-python-versions = ">=3"
-groups = ["main"]
-files = [
-    {file = "diskcache_stubs-5.6.3.6.20240818-py3-none-any.whl", hash = "sha256:e1db90940b344140730976abe79f57f5b43ca296cbb43fa95da0c69b12d5de4f"},
-    {file = "diskcache_stubs-5.6.3.6.20240818.tar.gz", hash = "sha256:b6eb43899e906b3167a20ac09a9a226f30267a306a96542ea720ebbfc3282796"},
-]
-
-[package.dependencies]
-typing-extensions = ">=4.4.0"
 
 [[package]]
 name = "google-re2"
@@ -792,19 +777,18 @@ diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pysigma"
-version = "2.0.1"
+version = "2.1.0"
 description = "Sigma rule processing and conversion tools"
 optional = false
 python-versions = "<4.0,>=3.11"
 groups = ["main"]
 files = [
-    {file = "pysigma-2.0.1-py3-none-any.whl", hash = "sha256:7769a8f22177e732094312fb4c3a08f9fdd8af152a5905a4c549ff59dc7708e6"},
-    {file = "pysigma-2.0.1.tar.gz", hash = "sha256:7bb0188e1cfae1bec56da1f5703a091df158925caf32cf033594bab60b97f49f"},
+    {file = "pysigma-2.1.0-py3-none-any.whl", hash = "sha256:3495dcfff8aaefc81f9249a6ebdb3ef823ca84bfa32fa0a8f0ef0421049cced4"},
+    {file = "pysigma-2.1.0.tar.gz", hash = "sha256:b800923786ace5bc90bd35f488d81b7a2b86e04856f213f5de52c05f876901d1"},
 ]
 
 [package.dependencies]
-diskcache = ">=5.6.3,<6.0.0"
-diskcache-stubs = ">=5.6.3"
+diskcache-community = ">=5.8.3,<6.0.0"
 google-re2 = ">=1.0"
 jinja2 = ">=3.1.6,<4.0.0"
 jq = ">=1.12,<2.0"
@@ -812,7 +796,7 @@ packaging = ">=26.3,<27.0"
 pyparsing = ">=3.2.5,<4.0.0"
 pyyaml = ">=6.0.3,<7.0.0"
 requests = ">=2.32.5,<3.0.0"
-types-pyyaml = ">=6.0.12.20260815,<7.0.0.0"
+types-pyyaml = ">=6.0.12.20261103,<7.0.0.0"
 
 [[package]]
 name = "pytest"
@@ -963,26 +947,14 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<8)"]
 
 [[package]]
 name = "types-pyyaml"
-version = "6.0.12.20260906"
+version = "6.0.12.20261113"
 description = "Typing stubs for PyYAML"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "types_pyyaml-6.0.12.20260906-py3-none-any.whl", hash = "sha256:bca893ff0d51df5c9053137d5d0e6ccd36e939a196356f1d5c16372422f5137b"},
-    {file = "types_pyyaml-6.0.12.20260906.tar.gz", hash = "sha256:f59c1cc05010b833d2d72287bbaa72610106b28d42d89a907313117faba85212"},
-]
-
-[[package]]
-name = "typing-extensions"
-version = "4.16.0"
-description = "Backported and Experimental Type Hints for Python 3.9+"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"},
-    {file = "typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"},
+    {file = "types_pyyaml-6.0.12.20261113-py3-none-any.whl", hash = "sha256:3600749e613748afdc4327f0b17c3296cf880cdbc7335f320007abd9dd815f67"},
+    {file = "types_pyyaml-6.0.12.20261113.tar.gz", hash = "sha256:0828be2580fd94151182364f4d0158e4de62fdbeeb8d4296f7f7d2b6c22bb640"},
 ]
 
 [[package]]
@@ -1006,4 +978,4 @@ zstd = ["backports-zstd (>=1.0.0) ; python_version < \"3.14\""]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "da95be3acbca07cd48af9f0179b43d099231a5a0991e59209e012580f2d94ad7"
+content-hash = "e09721ae02dea89ce76700a63c85d6306e66eb8380ca4079eebd9aa3e4c4d7fc"
