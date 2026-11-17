@@ -270,7 +270,7 @@ class LuceneBackend(LuceneRegexMixin, TextQueryBackend):
         if self.decide_convert_condition_as_in_expression(or_cond, state):
             return self.convert_condition_as_in_expression(or_cond, state)
         else:
-            return self.convert_condition_or(cond, state)
+            return self.convert_condition_or(or_cond, state)
 
     def compare_precedence(self, outer: ConditionItem, inner: ConditionItem) -> bool:
         """Override precedence check for null field conditions."""
