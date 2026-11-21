@@ -218,16 +218,6 @@ def ecs_windows() -> ProcessingPipeline:
     )
 
 
-# Fields that have a .caseless subfield in Elastic Defend but not in Winlogbeat
-# or the Windows integration.
-_elastic_defend_caseless_fields = {
-    "process.executable": "process.executable.caseless",
-    "process.parent.executable": "process.parent.executable.caseless",
-    "process.name": "process.name.caseless",
-    "process.parent.name": "process.parent.name.caseless",
-}
-
-
 def ecs_windows_elastic_defend() -> ProcessingPipeline:
     """Add-on pipeline for Elastic Defend indices that remaps ECS executable/name
     fields to their .caseless subfields for case-insensitive matching in Lucene."""
@@ -238,7 +228,14 @@ def ecs_windows_elastic_defend() -> ProcessingPipeline:
         items=[
             ProcessingItem(
                 identifier="ecs_windows_elastic_defend_caseless_mapping",
-                transformation=FieldMappingTransformation(_elastic_defend_caseless_fields),
+                transformation=FieldMappingTransformation(
+                    {
+                        "process.executable": "process.executable.caseless",
+                        "process.parent.executable": "process.parent.executable.caseless",
+                        "process.name": "process.name.caseless",
+                        "process.parent.name": "process.parent.name.caseless",
+                    }
+                ),
                 rule_conditions=[LogsourceCondition(product="windows")],
             ),
         ],

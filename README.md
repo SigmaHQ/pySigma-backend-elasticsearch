@@ -64,6 +64,16 @@ Three pipelines handle Windows event log ingestion via different Winlogbeat vers
    - Works in conjunction with `ecs_windows` for Elastic Defend-collected data
    - Addresses case-sensitivity in Windows filesystem paths
 
+Field and pipeline overview:
+
+| Field | Winlogbeat 9.5.5 | Windows integration | Elastic Defend |
+|---|---|---|---|
+| `process.executable` | no | yes | yes |
+| `process.name` | no | yes | yes |
+| `process.parent.executable` | no | no | yes |
+| `process.parent.name` | no | no | yes |
+| Pipeline | ecs_windows | ecs_windows | ecs_windows + ecs_windows_elastic_defend |
+
 #### **Network/IDS Pipelines** (Zeek Network Detection)
 
 Three pipelines handle Zeek IDS/NSM log ingestion via different methods:

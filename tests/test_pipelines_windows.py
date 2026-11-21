@@ -260,7 +260,6 @@ def test_ecs_windows_lucene_regex_conversion():
 
 def test_ecs_windows_elastic_defend_caseless_image():
     """ecs_windows_elastic_defend remaps process.executable to .caseless for Elastic Defend indices."""
-    from sigma.pipelines.elasticsearch.windows import ecs_windows_elastic_defend
     pipeline = ecs_windows() + ecs_windows_elastic_defend()
     assert (
         LuceneBackend(pipeline).convert(
