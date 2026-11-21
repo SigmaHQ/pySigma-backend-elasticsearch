@@ -83,6 +83,12 @@ def fixture_prepare_es_data():
                         "fields": {"keyword": {"type": "keyword"}},
                     },
                     "keywordFieldA": {"type": "keyword"},
+                    "caseTextField": {
+                        "type": "text",
+                        "fields": {"keyword": {"type": "keyword"}},
+                    },
+                    "caseIntField": {"type": "integer"},
+                    "caseDateField": {"type": "date"},
                 },
                 "dynamic_templates": [
                     {"default": {"match": "*", "mapping": {"type": "keyword"}}}
@@ -326,6 +332,36 @@ def fixture_prepare_es_data():
             verify=False,
             auth=pytest.es_creds,
         )
+        # Mixed-case values of different field types for case-insensitivity tests.
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "mixedCaseField": "GiT.ExE --version",
+                "caseTextField": "C:\\Program Files\\IntelliJ IDEA\\bin\\idea64.exe",
+                "caseIntField": 42,
+                "caseDateField": "2024-01-01T00:00:00Z",
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={
+                "mixedCaseField": "PoWeRsHeLl.ExE -Command Invoke-Mimikatz",
+                "caseIntField": 7,
+            },
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
+        requests.post(
+            f"{pytest.es_url}/test-index/_doc/",
+            json={"mixedCaseField": "Path*With?Mark"},
+            timeout=120,
+            verify=False,
+            auth=pytest.es_creds,
+        )
 
         # Wait a bit for Documents to be indexed
         time.sleep(1)
@@ -549,7 +585,14 @@ class TestConnectElasticsearch:
         )
         result_esql = esql_backend.convert(rule)[0]
         result = self.query_backend_hits(result_esql, num_wanted=2)
-        assert all("Sysmon.exe" in entry[2] for entry in result["values"])
+
+        # Ensure we see only the searched Sysmon.exe Images.
+        image_col = next(
+            i
+            for i, column in enumerate(result["columns"])
+            if column["name"] == "Image"
+        )
+        assert all("Sysmon.exe" in entry[image_col] for entry in result["values"])
 
     def test_connect_esql_like_literal_star(
         self, prepare_es_data, esql_backend: ESQLBackend
@@ -933,4 +976,213 @@ class TestConnectElasticsearch:
 
         result_esql = esql_backend.convert(rule)[0]
         assert "ENDS_WITH(fieldA,fieldB)" in result_esql
+        self.query_backend_hits(result_esql, num_wanted=2)
+
+    def query_backend_hits_column(self, query, column, num_wanted):
+        result = self.query_backend_hits(query, num_wanted=num_wanted)
+        column_index = next(
+            i for i, col in enumerate(result["columns"]) if col["name"] == column
+        )
+        return [entry[column_index] for entry in result["values"]]
+
+    @pytest.mark.parametrize(
+        "modifier, value, expected",
+        [
+            # case-insensitive by default, Sigma value in the opposite case
+            ("", "git.exe --VERSION", "GiT.ExE --version"),
+            ("|contains", "POWERSHELL.EXE", "PoWeRsHeLl.ExE -Command Invoke-Mimikatz"),
+            ("|startswith", "powershell", "PoWeRsHeLl.ExE -Command Invoke-Mimikatz"),
+            ("|endswith", "INVOKE-MIMIKATZ", "PoWeRsHeLl.ExE -Command Invoke-Mimikatz"),
+        ],
+    )
+    def test_connect_esql_case_insensitive_string(
+        self, prepare_es_data, esql_backend: ESQLBackend, modifier, value, expected
+    ):
+        rule = SigmaCollection.from_yaml(
+            f"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        mixedCaseField{modifier}: '{value}'
+                    condition: sel
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        assert self.query_backend_hits_column(result_esql, "mixedCaseField", 1) == [
+            expected
+        ]
+
+    @pytest.mark.parametrize(
+        "modifier, value, num_wanted",
+        [
+            # |cased must not be lowercased
+            ("|cased", "git.exe --version", 0),
+            ("|cased", "GiT.ExE --version", 1),
+            ("|cased|contains", "powershell.exe", 0),
+            ("|cased|contains", "PoWeRsHeLl.ExE", 1),
+        ],
+    )
+    def test_connect_esql_cased_string(
+        self, prepare_es_data, esql_backend: ESQLBackend, modifier, value, num_wanted
+    ):
+        rule = SigmaCollection.from_yaml(
+            f"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        mixedCaseField{modifier}: '{value}'
+                    condition: sel
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        self.query_backend_hits(result_esql, num_wanted=num_wanted)
+
+    def test_connect_esql_case_insensitive_in_expression(
+        self, prepare_es_data, esql_backend: ESQLBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        mixedCaseField:
+                            - GIT.EXE --VERSION
+                            - POWERSHELL.EXE -COMMAND INVOKE-MIMIKATZ
+                    condition: sel
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        self.query_backend_hits(result_esql, num_wanted=2)
+
+    def test_connect_esql_case_insensitive_text_field(
+        self, prepare_es_data, esql_backend: ESQLBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        caseTextField.keyword: 'c:\PROGRAM FILES\intellij idea\bin\IDEA64.EXE'
+                    condition: sel
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        values = self.query_backend_hits_column(result_esql, "caseTextField.keyword", 1)
+        assert values == ["C:\\Program Files\\IntelliJ IDEA\\bin\\idea64.exe"]
+
+    def test_connect_esql_case_insensitive_like_literal_wildcards(
+        self, prepare_es_data, esql_backend: ESQLBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        mixedCaseField|contains: 'path\*with\?mark'
+                    condition: sel
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        assert self.query_backend_hits_column(result_esql, "mixedCaseField", 1) == [
+            "Path*With?Mark"
+        ]
+
+    def test_connect_esql_case_insensitive_like_backslash(
+        self, prepare_es_data, esql_backend: ESQLBackend
+    ):
+        rule = SigmaCollection.from_yaml(
+            r"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        Image|contains: '\SYSTEM32\SYSMON'
+                    condition: sel
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        assert self.query_backend_hits_column(result_esql, "Image", 2) == [
+            "c:\\windows\\system32\\Sysmon.exe",
+            "c:\\windows\\system32\\Sysmon.exe",
+        ]
+
+    def test_connect_esql_case_insensitive_with_non_string_condition(
+        self, prepare_es_data, esql_backend: ESQLBackend
+    ):
+        # The lowercased LIKE condition must also match when ES|QL can't push the
+        # whole expression down to Lucene.
+        rule = SigmaCollection.from_yaml(
+            """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel1:
+                        mixedCaseField|contains: git.exe
+                    sel2:
+                        caseIntField: 7
+                    condition: sel1 or sel2
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        self.query_backend_hits(result_esql, num_wanted=2)
+
+    def test_connect_esql_non_string_field_types(
+        self, prepare_es_data, esql_backend: ESQLBackend
+    ):
+        # TO_LOWER() only accepts strings: ip, integer and date comparisons must not
+        # be wrapped, otherwise Elasticsearch rejects the query.
+        rule = SigmaCollection.from_yaml(
+            """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel1:
+                        ipfield: 'fe80::beef'
+                    sel2:
+                        caseIntField: 42
+                    sel3:
+                        # |cased is the escape hatch for non-string fields
+                        caseDateField|cased: '2024-01-01'
+                    condition: sel1 or sel2 or sel3
+            """
+        )
+
+        result_esql = esql_backend.convert(rule)[0]
+        assert "TO_LOWER(" not in result_esql
         self.query_backend_hits(result_esql, num_wanted=2)
