@@ -376,3 +376,33 @@ def test_ecs_windows_plus_elastic_defend_process_name():
             "process.executable.caseless:notepad.exe AND process.parent.name.caseless:explorer.exe"
         ]
     )
+
+
+def test_ecs_windows_plus_elastic_defend_ecs_field_names():
+    """Rules that already use ECS field names are remapped to .caseless as well, except
+    process.name, which ecs_windows_elastic_defend leaves unchanged."""
+    combined_pipeline = ecs_windows() + ecs_windows_elastic_defend()
+
+    assert (
+        LuceneBackend(combined_pipeline).convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: process_creation
+                product: windows
+            detection:
+                sel:
+                    process.executable: test.exe
+                    process.parent.executable: parent.exe
+                    process.parent.name: parent.exe
+                    process.name: test.exe
+                condition: sel
+        """
+            )
+        )
+        == [
+            "process.executable.caseless:test.exe AND process.parent.executable.caseless:parent.exe AND process.parent.name.caseless:parent.exe AND process.name:test.exe"
+        ]
+    )

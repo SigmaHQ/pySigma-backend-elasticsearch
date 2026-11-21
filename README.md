@@ -48,7 +48,7 @@ This allows security analysts to write detection rules once and apply them acros
 
 Three pipelines handle Windows event log ingestion via different Winlogbeat versions and Elastic Defend:
 
-1. **`ecs_windows`** - For Winlogbeat ≥ 7.x
+1. **`ecs_windows`** - For Winlogbeat ≥ 7.x and the Elastic Windows integration
    - Maps 100+ Windows event fields to modern ECS format (e.g., `EventID` → `event.code`, `Image` → `process.executable`)
    - Conditionally maps fields that differ based on event category/service (e.g., `CommandLine` maps to `process.command_line` for process creation but `powershell.command.value` for PowerShell logs)
    - Adds `winlog.event_data.` prefix to unmapped fields
@@ -60,13 +60,17 @@ Three pipelines handle Windows event log ingestion via different Winlogbeat vers
    - Supported by: Elasticsearch, EQL, ES|QL, Lucene, OpenSearch
 
 3. **`ecs_windows_elastic_defend`** (Add-on) - For Elastic Defend EDR Agent
-   - Remaps executable and process name fields to `.caseless` subfields for case-insensitive Lucene matching
+   - Remaps `process.executable`, `process.parent.executable` and `process.parent.name` to their `.caseless` subfields for case-insensitive matching
    - Works in conjunction with `ecs_windows` for Elastic Defend-collected data
+   - Also remaps these fields in rules that already use the ECS field names directly
    - Addresses case-sensitivity in Windows filesystem paths
+   - **Use it only on Elastic Defend indices.** On Winlogbeat and Windows integration indices, use `ecs_windows` alone: Winlogbeat defines no `.caseless` subfields and the Windows integration lacks them on `process.parent.executable` and `process.parent.name`, so queries on these fields would silently match nothing (Lucene) or be rejected (EQL, ES|QL).
 
-Field and pipeline overview:
+With `ecs_windows` alone, Lucene matching on these fields is case-sensitive.
 
-| Field | Winlogbeat 9.5.5 | Windows integration | Elastic Defend |
+Availability of the `.caseless` subfield per product, and the pipelines to use:
+
+| `.caseless` subfield on | Winlogbeat 9.5.5 | Windows integration | Elastic Defend |
 |---|---|---|---|
 | `process.executable` | no | yes | yes |
 | `process.name` | no | yes | yes |

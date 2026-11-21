@@ -224,8 +224,15 @@ def ecs_windows() -> ProcessingPipeline:
 
 
 def ecs_windows_elastic_defend() -> ProcessingPipeline:
-    """Add-on pipeline for Elastic Defend indices that remaps ECS executable/name
-    fields to their .caseless subfields for case-insensitive matching in Lucene."""
+    """Add-on pipeline for Elastic Defend indices that remaps the ECS fields produced by
+    ecs_windows for process executables and parent process names to their .caseless
+    subfields for case-insensitive matching.
+
+    Only Elastic Defend defines .caseless on all of these fields. Winlogbeat defines none
+    of them and the Windows integration lacks them on process.parent.executable and
+    process.parent.name, so use ecs_windows alone for those.
+
+    The remapping also applies to rules that already use these ECS field names directly."""
     return ProcessingPipeline(
         name="Elastic Defend .caseless field remapping for ECS Windows pipelines",
         priority=21,
@@ -237,7 +244,6 @@ def ecs_windows_elastic_defend() -> ProcessingPipeline:
                     {
                         "process.executable": "process.executable.caseless",
                         "process.parent.executable": "process.parent.executable.caseless",
-                        "process.name": "process.name.caseless",
                         "process.parent.name": "process.parent.name.caseless",
                     }
                 ),
