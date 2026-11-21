@@ -325,6 +325,44 @@ def test_eql_field_name_with_whitespace(eql_backend: EqlBackend):
     assert eql_backend.convert(rule) == ['any where `field name`:"value"']
 
 
+def test_eql_field_name_with_hyphen(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    cs-uri-query: value
+                    c-useragent: ''
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        'any where `cs-uri-query`:"value" and `c-useragent`==""'
+    ]
+
+
+def test_eql_bool_value(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: true
+                    fieldB: false
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == ["any where fieldA==true and fieldB==false"]
+
+
 def test_eql_not_filter_null_and(eql_backend: EqlBackend):
     """Test for DSL output with embedded query string query."""
     rule = SigmaCollection.from_yaml(
@@ -674,13 +712,10 @@ def test_elasticsearch_siemrule_eql(eql_backend: EqlBackend):
             "description": "No description",
             "ruleId": "c277adc0-f0c4-42e1-af9d-fab062992156",
             "falsePositives": [],
-            "from": "now-5m",
+            "from": "now-5m-1m",
             "immutable": False,
             "license": "DRL",
             "outputIndex": "",
-            "meta": {
-                "from": "1m",
-            },
             "maxSignals": 100,
             "riskScore": 21,
             "riskScoreMapping": [],
@@ -749,13 +784,10 @@ def test_elasticsearch_siemrule_eql_with_threatmodel(eql_backend: EqlBackend):
             "description": "No description",
             "ruleId": "c277adc0-f0c4-42e1-af9d-fab062992156",
             "falsePositives": [],
-            "from": "now-5m",
+            "from": "now-5m-1m",
             "immutable": False,
             "license": "DRL",
             "outputIndex": "",
-            "meta": {
-                "from": "1m",
-            },
             "maxSignals": 100,
             "riskScore": 21,
             "riskScoreMapping": [],
@@ -837,12 +869,9 @@ def test_elasticsearch_siemrule_eql_ndjson(eql_backend: EqlBackend):
         "severity": "low",
         "license": "DRL",
         "output_index": "",
-        "meta": {
-            "from": "1m",
-        },
         "author": [],
         "false_positives": [],
-        "from": "now-5m",
+        "from": "now-5m-1m",
         "rule_id": "c277adc0-f0c4-42e1-af9d-fab062992156",
         "max_signals": 100,
         "risk_score_mapping": [],
