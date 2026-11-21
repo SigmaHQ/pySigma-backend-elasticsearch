@@ -171,6 +171,8 @@ vars:
     - "-*elastic-cloud-logs-*"
   schedule_interval: 5
   schedule_interval_unit: m
+  loopback_time: 1
+  loopback_unit: m
 postprocessing:
 - type: template
   template: |+
@@ -195,13 +197,10 @@ postprocessing:
         "description": "{{ rule.description }}",
         "ruleId": "{{ rule.id }}",
         "falsePositives": {{ rule.falsepositives }},
-        "from": "now-{{ pipeline.vars.schedule_interval }}{{ pipeline.vars.schedule_interval_unit }}",
+        "from": "now-{{ pipeline.vars.schedule_interval }}{{ pipeline.vars.schedule_interval_unit }}-{{ pipeline.vars.loopback_time }}{{ pipeline.vars.loopback_unit }}",
         "immutable": false,
         "license": "DRL",
         "outputIndex": "",
-        "meta": {
-          "from": "1m"
-        },
         "maxSignals": 100,
         "riskScore": (
             self.severity_risk_mapping[rule.level.name]
@@ -245,6 +244,8 @@ Use this pipeline with: `-t lucene -p lucene-kibana-siemrule.yml` but now withou
 vars:
   schedule_interval: 5
   schedule_interval_unit: m
+  loopback_time: 1
+  loopback_unit: m
 postprocessing:
   - type: template
     template: |+
@@ -262,14 +263,11 @@ postprocessing:
         "references": rule.references,
         "enabled": true,
         "interval": pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
-        "from": "now-" ~ pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
+        "from": "now-" ~ pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit ~ "-" ~ pipeline.vars.loopback_time|string ~ pipeline.vars.loopback_unit,
         "rule_id": rule.id | lower,
         "false_positives": rule.falsepositives,
         "immutable": false,
         "output_index": "",
-        "meta": {
-          "from": "1m"
-        },
         "risk_score": rule.custom_attributes.risk_score | default(21),
         "severity": rule.level.name | string | lower if rule.level is not none else 'low',
         "threat": rule.custom_attributes.threat | default([]),
@@ -304,6 +302,8 @@ The output can be imported directly into Kibana as a Detection Rule.
 vars:
   schedule_interval: 5
   schedule_interval_unit: m
+  loopback_time: 1
+  loopback_unit: m
 postprocessing:
   - type: template
     template: |+
@@ -320,14 +320,11 @@ postprocessing:
         "references": rule.references,
         "enabled": true,
         "interval": pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
-        "from": "now-" ~ pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
+        "from": "now-" ~ pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit ~ "-" ~ pipeline.vars.loopback_time|string ~ pipeline.vars.loopback_unit,
         "rule_id": rule.id | lower,
         "false_positives": rule.falsepositives,
         "immutable": false,
         "output_index": "",
-        "meta": {
-          "from": "1m"
-        },
         "risk_score": backend.severity_risk_mapping[rule.level.name] if rule.level is not none else 21, 
         "severity": rule.level.name | string | lower if rule.level is not none else "low",
         "severity_mapping": [],

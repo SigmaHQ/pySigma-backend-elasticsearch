@@ -42,3 +42,23 @@ def test_zeek_raw(sigma_rule):
     assert LuceneBackend(zeek_raw()).convert(sigma_rule) == [
         "@stream:http AND (method:POST AND host:test.invalid AND username:testuser)"
     ]
+
+
+@pytest.mark.parametrize("pipeline", [ecs_zeek_beats, ecs_zeek_corelight])
+def test_ecs_zeek_ssl_subject(pipeline):
+    rule = SigmaCollection.from_yaml(
+        """
+        title: Test
+        status: test
+        logsource:
+            product: zeek
+            service: ssl
+        detection:
+            sel:
+                ssl_subject: example
+            condition: sel
+        """
+    )
+    assert LuceneBackend(pipeline()).convert(rule) == [
+        "event.dataset:zeek.ssl AND zeek.ssl.subject:example"
+    ]
