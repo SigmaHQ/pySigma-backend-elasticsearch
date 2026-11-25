@@ -660,10 +660,10 @@ def test_eql_keyword_quotes_eqlapi(eql_backend: EqlBackend):
     ]
 
 
-def test_lucene_reference_query(eql_backend: EqlBackend):
+def test_eql_reference_query(eql_backend: EqlBackend):
     with pytest.raises(
         SigmaFeatureNotSupportedByBackendError,
-        match="ES Lucene backend can't handle field references.",
+        match="ES EQL backend can't handle field references.",
     ):
         eql_backend.convert(
             SigmaCollection.from_yaml(
