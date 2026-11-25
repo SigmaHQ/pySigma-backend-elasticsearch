@@ -193,6 +193,85 @@ def test_eql_contains_expression_trailing_backslash_multiple_values(eql_backend:
     ]
 
 
+def test_eql_number_list(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - 80
+                        - 443
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == ["any where fieldA==80 or fieldA==443"]
+
+
+def test_eql_not_number_list(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - 80
+                        - 443
+                condition: not sel
+        """
+    )
+    assert eql_backend.convert(rule) == ["any where not (fieldA==80 or fieldA==443)"]
+
+
+def test_eql_ip_list(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - 127.0.0.1
+                        - '::1'
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == ['any where fieldA=="127.0.0.1" or fieldA=="::1"']
+
+
+def test_eql_mixed_list(eql_backend: EqlBackend):
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - valueA
+                        - 443
+                        - 127.0.0.1
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        'any where fieldA:"valueA" or fieldA==443 or fieldA=="127.0.0.1"'
+    ]
+
+
 def test_eql_in_expression_empty_string(eql_backend: EqlBackend):
     rule = SigmaCollection.from_yaml(
         """
@@ -604,7 +683,7 @@ def test_eql_keyword_quotes(eql_backend: EqlBackend):
         """
     )
     assert eql_backend.convert(rule) == [
-        'any where (Field like~ ("1234", "5678")) and ("keywordA" or "keywordB")'
+        'any where (Field==1234 or Field==5678) and ("keywordA" or "keywordB")'
     ]
 
 
@@ -655,7 +734,7 @@ def test_eql_keyword_quotes_eqlapi(eql_backend: EqlBackend):
     )
     assert eql_backend.convert(rule, output_format="eqlapi") == [
         {
-            "query": "any where (Field like~ (\"1234\", \"5678\")) and (\"keywordA\" or \"keywordB\")"
+            "query": "any where (Field==1234 or Field==5678) and (\"keywordA\" or \"keywordB\")"
         }
     ]
 

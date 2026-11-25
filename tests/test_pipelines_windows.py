@@ -406,3 +406,29 @@ def test_ecs_windows_plus_elastic_defend_ecs_field_names():
             "process.executable.caseless:test.exe AND process.parent.executable.caseless:parent.exe AND process.parent.name.caseless:parent.exe AND process.name:test.exe"
         ]
     )
+
+
+def test_ecs_windows_eql_value_lists():
+    """Event IDs are converted to strings and keep the list form; ports stay numbers."""
+    eql_backend = EqlBackend(ecs_windows())
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                product: windows
+                category: network_connection
+            detection:
+                sel:
+                    EventID:
+                        - 3
+                        - 5156
+                    DestinationPort:
+                        - 80
+                        - 443
+                condition: sel
+        """
+    )
+    assert eql_backend.convert(rule) == [
+        'any where (event.code like~ ("3", "5156")) and (destination.port==80 or destination.port==443)'
+    ]
