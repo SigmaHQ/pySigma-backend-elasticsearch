@@ -660,10 +660,10 @@ def test_eql_keyword_quotes_eqlapi(eql_backend: EqlBackend):
     ]
 
 
-def test_lucene_reference_query(eql_backend: EqlBackend):
+def test_eql_reference_query(eql_backend: EqlBackend):
     with pytest.raises(
         SigmaFeatureNotSupportedByBackendError,
-        match="ES Lucene backend can't handle field references.",
+        match="ES EQL backend can't handle field references.",
     ):
         eql_backend.convert(
             SigmaCollection.from_yaml(
@@ -676,6 +676,31 @@ def test_lucene_reference_query(eql_backend: EqlBackend):
                 detection:
                     sel:
                         fieldA|fieldref: somefield
+                    condition: sel
+            """
+            )
+        )
+
+
+def test_eql_windash_reference_query(eql_backend: EqlBackend):
+    """An expansion that can't be converted as in-expression is OR-linked value by
+    value. A field reference inside it must raise the backend error instead of an
+    AttributeError."""
+    with pytest.raises(
+        SigmaFeatureNotSupportedByBackendError,
+        match="ES EQL backend can't handle field references.",
+    ):
+        eql_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|windash|fieldref: '-somefield'
                     condition: sel
             """
             )
