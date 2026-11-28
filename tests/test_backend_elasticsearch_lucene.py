@@ -527,6 +527,31 @@ def test_lucene_reference_query(lucene_backend: LuceneBackend):
         )
 
 
+def test_lucene_windash_reference_query(lucene_backend: LuceneBackend):
+    """An expansion that can't be converted as in-expression is OR-linked value by
+    value. A field reference inside it must raise the backend error instead of an
+    AttributeError."""
+    with pytest.raises(
+        SigmaFeatureNotSupportedByBackendError,
+        match="ES Lucene backend can't handle field references.",
+    ):
+        lucene_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|windash|fieldref: '-somefield'
+                    condition: sel
+            """
+            )
+        )
+
+
 def test_elasticsearch_ndjson_lucene(lucene_backend: LuceneBackend):
     """Test for NDJSON output with embedded query string query."""
     rule = SigmaCollection.from_yaml(
