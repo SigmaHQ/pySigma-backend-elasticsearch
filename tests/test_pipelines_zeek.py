@@ -62,3 +62,52 @@ def test_ecs_zeek_ssl_subject(pipeline):
     assert LuceneBackend(pipeline()).convert(rule) == [
         "event.dataset:zeek.ssl AND zeek.ssl.subject:example"
     ]
+
+
+@pytest.mark.parametrize(
+    "pipeline, field",
+    [(ecs_zeek_beats, "dns.answers.data"), (ecs_zeek_corelight, "dns.answers.name")],
+)
+@pytest.mark.parametrize("sigma_field", ["answer", "answers"])
+def test_ecs_zeek_dns_answer(pipeline, field, sigma_field):
+    rule = SigmaCollection.from_yaml(
+        f"""
+        title: Test
+        status: test
+        logsource:
+            product: zeek
+            service: dns
+        detection:
+            sel:
+                {sigma_field}: 127.0.0.1
+            condition: sel
+        """
+    )
+    assert LuceneBackend(pipeline()).convert(rule) == [
+        f"event.dataset:zeek.dns AND {field}:127.0.0.1"
+    ]
+
+
+@pytest.mark.parametrize(
+    "pipeline, field",
+    [(ecs_zeek_beats, "dns.answers.data"), (ecs_zeek_corelight, "dns.answers.name")],
+)
+def test_ecs_zeek_dns_answer_excluded(pipeline, field):
+    rule = SigmaCollection.from_yaml(
+        """
+        title: Test
+        status: test
+        logsource:
+            product: zeek
+            service: dns
+        detection:
+            sel:
+                query: example.invalid
+            filter:
+                answer: 127.0.0.1
+            condition: sel and not filter
+        """
+    )
+    assert LuceneBackend(pipeline()).convert(rule) == [
+        f"event.dataset:zeek.dns AND (dns.question.name:example.invalid AND (NOT {field}:127.0.0.1))"
+    ]
