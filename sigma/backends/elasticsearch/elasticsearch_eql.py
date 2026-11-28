@@ -32,7 +32,6 @@ from sigma.types import (
     SigmaNull,
     SigmaFieldReference,
     SpecialChars,
-    SigmaNumber,
     SigmaString,
     SigmaRegularExpressionFlag,
 )
@@ -367,13 +366,29 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
             + self.bool_values[cond.value.boolean]
         )
 
+    def decide_convert_condition_as_in_expression(
+        self, cond: Union[ConditionOR, ConditionAND], state: ConversionState
+    ) -> bool:
+        """Use the list form only for lists of strings that are not IP addresses.
+
+        'like~' requires string operands on both sides, so Elasticsearch
+        rejects it on numeric and ip fields. Lists that contain a number or an
+        IP address are converted as separate conditions, each with the
+        operator of its scalar form:
+
+            destination.port==80 or destination.port==443
+        """
+        return super().decide_convert_condition_as_in_expression(cond, state) and all(
+            isinstance(arg.value, SigmaString) and not self.is_ip(arg.value) for arg in cond.args
+        )
+
     def convert_condition_as_in_expression(
         self, cond: ConditionOR, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of field in value list conditions.
 
-        Values in the list are all quoted as strings because EQL's 'like~'
-        operator requires string operands (numeric values included).
+        Only reached for lists of strings, see
+        decide_convert_condition_as_in_expression.
         """
         if self.field_in_list_expression is None or self.list_separator is None:
             raise NotImplementedError("Field in list expressions are not supported by the backend")
@@ -388,13 +403,10 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
             field_name
         }:
             raise ValueError("Field in list expression requires all fields to be the same")
-        values = []
-        for arg in cond.args:
-            val = cast(ConditionFieldEqualsValueExpression, arg).value
-            if isinstance(val, SigmaString):
-                values.append(self.convert_value_str(val, state))
-            else:  # SigmaNumber or other scalar: quote as string
-                values.append(self.convert_value_str(SigmaString(str(val)), state))
+        values = [
+            self.convert_value_str(cast(ConditionFieldEqualsValueExpression, arg).value, state)
+            for arg in cond.args
+        ]
 
         return self.field_in_list_expression.format(
             field=self.escape_and_quote_field(field_name),
