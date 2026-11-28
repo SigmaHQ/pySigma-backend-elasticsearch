@@ -307,13 +307,13 @@ class EqlBackend(LuceneRegexMixin, TextQueryBackend):
         if self.decide_convert_condition_as_in_expression(or_cond, state):
             return self.convert_condition_as_in_expression(or_cond, state)
         else:
-            return self.convert_condition_or(cond, state)
+            return self.convert_condition_or(or_cond, state)
 
     def convert_condition_field_eq_field(
         self, cond: SigmaFieldReference, state: ConversionState
     ) -> Any:
         raise SigmaFeatureNotSupportedByBackendError(
-            "ES Lucene backend can't handle field references."
+            "ES EQL backend can't handle field references."
         )
 
     def convert_condition_field_eq_val_str(
